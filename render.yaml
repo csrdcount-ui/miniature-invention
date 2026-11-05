@@ -1,7 +1,9 @@
-# Uruchomienie na Render (region Frankfurt, dane w UE).
+# Uruchomienie na Render, plany DARMOWE (region Frankfurt, dane w UE).
+# Darmowa baza Render wygasa po 30 dniach — wystarczy na prototyp.
+# Darmowy serwer usypia się po ~15 min bezczynności.
 databases:
   - name: platforma-brokerska-db
-    plan: basic-256mb
+    plan: free
     region: frankfurt
     databaseName: broker
     user: broker
@@ -11,7 +13,7 @@ services:
   - type: web
     name: platforma-brokerska
     runtime: python
-    plan: starter
+    plan: free
     region: frankfurt
     branch: ccr-fcf28ba4-j6eqkl
     buildCommand: pip install -r requirements.txt
@@ -28,9 +30,3 @@ services:
         fromDatabase:
           name: platforma-brokerska-db
           property: connectionString
-      - key: OWNER_EMAIL
-        sync: false
-      - key: OWNER_PASSWORD
-        sync: false
-      - key: OWNER_NAME
-        sync: false
