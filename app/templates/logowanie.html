@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% from "_makra.html" import pole %}
+{% block title %}Logowanie{% endblock %}
+{% block content %}
+<h1>Logowanie do platformy brokerskiej</h1>
+<form method="post" action="/logowanie" class="stack">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  {{ pole("email", "E-mail", email, type="email", required=true, extra='autocomplete="username"') }}
+  {{ pole("haslo", "Hasło", "", type="password", required=true, extra='autocomplete="current-password"') }}
+  <button type="submit">Zaloguj</button>
+</form>
+{% endblock %}

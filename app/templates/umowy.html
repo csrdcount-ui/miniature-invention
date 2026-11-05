@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Umowy{% endblock %}
+{% block content %}
+<h1>Umowy</h1>
+<p><a href="/umowy/nowa">Dodaj nową umowę</a></p>
+<p>Liczba umów: {{ summary.count }}. Cała masa narzutu: {{ summary.total_markup|zl }}.</p>
+{% if contracts %}
+{% include "_lista_umow.html" with context %}
+{% else %}
+<p>Brak umów.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% from "_makra.html" import tabela_prowizji, wybor %}
+{% block title %}{{ c.client_name }}{% endblock %}
+{% block content %}
+<h1>Umowa: {{ c.client_name }}</h1>
+<p><a href="/umowy">Wróć do listy umów</a></p>
+
+{% for w in c.warnings %}<div role="alert" class="warn"><p>Uwaga: {{ w }}</p></div>{% endfor %}
+
+<h2>Dane umowy</h2>
+<dl>
+  <dt>Klient</dt><dd>{{ c.client_name }}{% if c.client_nip %}, NIP {{ c.client_nip }}{% endif %}</dd>
+  <dt>Spółka obrotu</dt><dd>{{ c.supplier_name }}</dd>
+  <dt>Medium</dt><dd>{{ MEDIA[c.medium] }}</dd>
+  <dt>Handlowiec</dt><dd>{{ c.trader_name }}</dd>
+  {% if c.manager_name %}<dt>Menedżer</dt><dd>{{ c.manager_name }}</dd>{% endif %}
+  <dt>Podpisana</dt><dd>{{ c.signed_date|data }}</dd>
+  <dt>Start dostaw</dt><dd>{{ c.start_date|data }}</dd>
+  <dt>Okres</dt><dd>{{ c.term_months }} mies.</dd>
+  <dt>Wolumen roczny</dt><dd>{{ c.annual_volume_mwh|mwh }}</dd>
+  <dt>Wolumen z całego okresu</dt><dd>{{ c.total_volume_mwh|mwh }}</dd>
+  <dt>Punkt poboru</dt><dd>{{ "nowe przyłącze, bez historii" if c.new_connection else "z historią zużycia" }}</dd>
+  {% if c.base_price_pln_mwh is not none %}<dt>Cena bazowa spółki</dt><dd>{{ c.base_price_pln_mwh|zl }}/MWh</dd>{% endif %}
+  <dt>Narzut</dt><dd>{{ c.markup_pln_mwh|zl }}/MWh</dd>
+  {% if c.client_price_pln_mwh is not none %}<dt>Cena dla klienta</dt><dd>{{ c.client_price_pln_mwh|zl }}/MWh</dd>{% endif %}
+  <dt>Cała masa narzutu</dt><dd>{{ c.total_markup|zl }}</dd>
+</dl>
+
+<h2>Prowizje</h2>
+{% if c.broker_share_pct is defined %}
+<p>Reguły zamrożone w dniu podpisania: udział brokera {{ c.broker_share_pct|pct }}, pierwsza transza {{ c.first_tranche_pct|pct }}, handlowiec {{ c.trader_share_pct|pct }} całego narzutu{% if c.manager_name %}, override menedżera {{ c.manager_override_pct|pct }} {{ OVERRIDE_BASES.get(c.manager_override_base) }}{% endif %}. Korekta: {{ CLAWBACK_MODES.get(c.clawback_mode)|lower }}.</p>
+{% else %}
+<p>
+  {% if c.trader_share_pct is defined %}Udział handlowca: {{ c.trader_share_pct|pct }} całego narzutu. {% endif %}
+  {% if c.first_tranche_pct is defined %}Pierwsza transza: {{ c.first_tranche_pct|pct }} prowizji. {% endif %}
+  {% if c.manager_override_pct is defined %}Twój override: {{ c.manager_override_pct|pct }} {{ OVERRIDE_BASES.get(c.manager_override_base) }}.{% endif %}
+</p>
+{% endif %}
+{% if c.new_connection %}
+<p>Nowe przyłącze: przez pierwsze {{ c.new_connection_months }} mies. prowizja z każdej zapłaconej faktury. Potem pierwsza transza od reszty umowy.</p>
+{% endif %}
+{% if c.rows %}
+{{ tabela_prowizji(c.rows, "Podział prowizji z całego okresu umowy", c.new_connection, c.new_connection_months) }}
+<p class="podpowiedz">To prognoza od wolumenu z umowy. Wypłata z góry jest zaliczką: przy zerwaniu umowy lub niższym zużyciu spółka może ją skorygować, a korekta przechodzi proporcjonalnie na handlowca i menedżera.</p>
+{% else %}
+<p>Nie masz udziału w prowizji z tej umowy.</p>
+{% endif %}
+
+<h2>Status w lejku</h2>
+<form method="post" action="/umowy/{{ c.id }}/status" class="stack">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  {{ wybor("status", "Status umowy", STATUSES|zip(STATUSES), c.status) }}
+  <button type="submit">Zmień status</button>
+</form>
+{% endblock %}

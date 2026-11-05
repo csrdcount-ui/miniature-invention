@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Platforma brokerska{% endblock %} – Platforma brokerska</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <a class="skip" href="#tresc">Przejdź do treści</a>
+  {% if user %}
+  <header>
+    <p class="who">Zalogowano: {{ user.name }}, {{ user.role_label }}</p>
+    <nav aria-label="Menu główne">
+      <ul>
+        <li><a href="/pulpit">Pulpit</a></li>
+        <li><a href="/umowy">Umowy</a></li>
+        <li><a href="/umowy/nowa">Nowa umowa</a></li>
+        {% if user.role == ROLE_OWNER %}
+        <li><a href="/spolki">Spółki i reguły</a></li>
+        <li><a href="/zespol">Zespół i stawki</a></li>
+        {% endif %}
+        <li><a href="/haslo">Zmiana hasła</a></li>
+      </ul>
+    </nav>
+    <form method="post" action="/wyloguj" class="logout">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button type="submit">Wyloguj</button>
+    </form>
+  </header>
+  {% endif %}
+  <main id="tresc" tabindex="-1">
+    {% if flashes %}
+    <div role="status" class="flash">
+      {% for f in flashes %}<p>{{ f }}</p>{% endfor %}
+    </div>
+    {% endif %}
+    {% if error %}
+    <div role="alert" class="error"><p>{{ error }}</p></div>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

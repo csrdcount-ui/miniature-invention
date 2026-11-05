@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% from "_makra.html" import pole %}
+{% block title %}Spółki i reguły{% endblock %}
+{% block content %}
+<h1>Spółki obrotu i reguły prowizji</h1>
+<p>Te informacje widzi wyłącznie właściciel. Handlowcy i menedżerowie nie znają warunków umów agencyjnych.</p>
+
+<h2>Lista spółek</h2>
+{% if rows %}
+<ul class="karty">
+{% for s, rs in rows %}
+  <li>
+    <h3><a href="/spolki/{{ s.id }}">{{ s.name }}</a>{% if not s.active %} (nieaktywna){% endif %}</h3>
+    {% if rs %}
+    <p>Udział brokera {{ rs.broker_share_pct|pct }}, pierwsza transza {{ rs.first_tranche_pct|pct }}, limit narzutu {{ rs.max_markup_pln_mwh|zl if rs.max_markup_pln_mwh is not none else "brak" }}{% if rs.max_markup_pln_mwh is not none %}/MWh{% endif %}.</p>
+    <p>Obowiązuje od {{ rs.valid_from|data }}.</p>
+    {% else %}
+    <p><strong>Brak reguł prowizji.</strong> Nie można zapisać umowy z tą spółką.</p>
+    {% endif %}
+  </li>
+{% endfor %}
+</ul>
+{% else %}
+<p>Nie dodano jeszcze żadnej spółki.</p>
+{% endif %}
+
+<h2>Dodaj spółkę</h2>
+<form method="post" action="/spolki" class="stack">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  {{ pole("nazwa", "Nazwa spółki obrotu", required=true) }}
+  <button type="submit">Dodaj spółkę</button>
+</form>
+{% endblock %}

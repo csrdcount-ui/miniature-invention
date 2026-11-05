@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% from "_makra.html" import pole, wybor %}
+{% block title %}{{ s.name }}{% endblock %}
+{% block content %}
+<h1>{{ s.name }}</h1>
+<p><a href="/spolki">Wróć do listy spółek</a></p>
+
+<h2>Obecnie obowiązujące reguły</h2>
+{% if current %}
+<dl>
+  <dt>Obowiązuje od</dt><dd>{{ current.valid_from|data }}</dd>
+  <dt>Udział brokera w całej masie narzutu</dt><dd>{{ current.broker_share_pct|pct }}</dd>
+  <dt>Pierwsza transza</dt><dd>{{ current.first_tranche_pct|pct }} udziału brokera</dd>
+  <dt>Kiedy spółka płaci pierwszą transzę</dt><dd>{{ TRIGGERS.get(current.first_tranche_trigger, current.first_tranche_trigger) }}</dd>
+  <dt>Limit narzutu</dt><dd>{% if current.max_markup_pln_mwh is not none %}{{ current.max_markup_pln_mwh|zl }}/MWh{% else %}brak limitu{% endif %}</dd>
+  <dt>Nowe przyłącza: rozliczenie z faktur przez</dt><dd>{{ current.new_connection_months }} mies.</dd>
+  <dt>Korekta prowizji</dt><dd>{{ CLAWBACK_MODES.get(current.clawback_mode, current.clawback_mode) }}</dd>
+  {% if current.note %}<dt>Uwagi</dt><dd>{{ current.note }}</dd>{% endif %}
+</dl>
+{% else %}
+<p>Ta spółka nie ma jeszcze reguł obowiązujących dzisiaj.</p>
+{% endif %}
+
+<h2>{% if s.rule_sets %}Zmień reguły{% else %}Ustaw reguły{% endif %}</h2>
+<p>Nowe reguły dotyczą umów podpisanych od podanej daty. Umowy już zapisane zachowują reguły z dnia podpisania.</p>
+<form method="post" action="/spolki/{{ s.id }}/reguly" class="stack">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  {{ pole("od", "Obowiązuje od", form.od or today.isoformat(), type="date", required=true) }}
+  {{ pole("udzial", "Udział brokera w całej masie narzutu, w procentach", form.udzial or (current.broker_share_pct|pct|replace("%","") if current else ""), hint="Na przykład 75. Klient płaci cały narzut, spółka oddaje brokerowi ten procent.", required=true, extra='inputmode="decimal"') }}
+  {{ pole("transza", "Pierwsza transza, w procentach udziału brokera", form.transza or (current.first_tranche_pct|pct|replace("%","") if current else ""), hint="Na przykład 30 albo 50. Resztę spółka płaci po zapłaconych fakturach. Handlowiec i menedżer dostają ten sam procent swojej części.", required=true, extra='inputmode="decimal"') }}
+  {{ wybor("wyzwalacz", "Kiedy spółka płaci pierwszą transzę", TRIGGERS.items(), form.wyzwalacz or (current.first_tranche_trigger if current else "weryfikacja")) }}
+  {{ pole("limit", "Limit narzutu w zł za MWh", form.limit or (current.max_markup_pln_mwh|num if current and current.max_markup_pln_mwh is not none else ""), hint="Zostaw puste, jeśli spółka nie ma limitu. Na przykład 200.", extra='inputmode="decimal"') }}
+  {{ pole("nowe_msc", "Nowe przyłącza: przez ile miesięcy prowizja z faktur", form.nowe_msc or (current.new_connection_months if current else 12), type="number", hint="Dla punktów bez historii zużycia. Zwykle 12.", required=true, extra='min="0" max="60"') }}
+  {{ wybor("korekta", "Korekta prowizji przy zerwaniu umowy lub niższym zużyciu", CLAWBACK_MODES.items(), form.korekta or (current.clawback_mode if current else "proporcjonalna")) }}
+  <div class="pole">
+    <label for="f-uwagi">Uwagi do umowy agencyjnej</label>
+    <textarea id="f-uwagi" name="uwagi" rows="3">{{ form.uwagi or "" }}</textarea>
+  </div>
+  <button type="submit">Zapisz reguły</button>
+</form>
+
+{% if s.rule_sets|length > 0 %}
+<h2>Historia reguł</h2>
+<ul>
+{% for rs in s.rule_sets %}
+  <li>Od {{ rs.valid_from|data }}: udział {{ rs.broker_share_pct|pct }}, transza {{ rs.first_tranche_pct|pct }}, limit {% if rs.max_markup_pln_mwh is not none %}{{ rs.max_markup_pln_mwh|zl }}/MWh{% else %}brak{% endif %}.</li>
+{% endfor %}
+</ul>
+{% endif %}
+
+<h2>Status spółki</h2>
+<form method="post" action="/spolki/{{ s.id }}/aktywna">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <button type="submit">{% if s.active %}Oznacz jako nieaktywną{% else %}Przywróć jako aktywną{% endif %}</button>
+</form>
+{% endblock %}

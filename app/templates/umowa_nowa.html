@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% from "_makra.html" import pole, wybor %}
+{% block title %}Nowa umowa{% endblock %}
+{% block content %}
+<h1>Nowa umowa</h1>
+{% if not suppliers %}
+<p>Nie ma aktywnych spółek obrotu.{% if user.role == ROLE_OWNER %} <a href="/spolki">Dodaj spółkę</a>.{% else %} Poproś właściciela o ich dodanie.{% endif %}</p>
+{% else %}
+<form method="post" action="/umowy/nowa" class="stack">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <fieldset>
+    <legend>Klient</legend>
+    {{ pole("klient", "Nazwa klienta", form.klient, required=true) }}
+    {{ pole("nip", "NIP", form.nip, hint="10 cyfr, bez kresek. Sprawdzam sumę kontrolną.", extra='inputmode="numeric"') }}
+  </fieldset>
+  <fieldset>
+    <legend>Umowa</legend>
+    <div class="pole">
+      <label for="f-spolka">Spółka obrotu (wymagane)</label>
+      <select id="f-spolka" name="spolka" required>
+        <option value="">Wybierz spółkę</option>
+        {% for s in suppliers %}<option value="{{ s.id }}" {% if form.spolka == s.id|string %}selected{% endif %}>{{ s.name }}</option>{% endfor %}
+      </select>
+    </div>
+    {{ wybor("medium", "Medium", MEDIA.items(), form.medium or "energia") }}
+    {% if traders|length > 1 %}
+    <div class="pole">
+      <label for="f-handlowiec">Handlowiec</label>
+      <select id="f-handlowiec" name="handlowiec">
+        {% for t in traders %}<option value="{{ t.id }}" {% if (form.handlowiec or user.id|string) == t.id|string %}selected{% endif %}>{{ t.name }}</option>{% endfor %}
+      </select>
+    </div>
+    {% endif %}
+    {{ pole("podpisana", "Data podpisania", form.podpisana or today.isoformat(), type="date", hint="Od tej daty zależą reguły prowizji spółki i stawka handlowca.", required=true) }}
+    {{ pole("start", "Planowany start dostaw", form.start, type="date") }}
+    {{ pole("okres", "Okres umowy w miesiącach", form.okres or 12, type="number", hint="Na przykład 12, 24, 36 albo 60.", required=true, extra='min="1" max="120"') }}
+    {{ pole("wolumen", "Wolumen roczny w MWh", form.wolumen, hint="Dla nowego przyłącza wpisz szacowany wolumen.", required=true, extra='inputmode="decimal"') }}
+    <div class="pole">
+      <label><input type="checkbox" name="nowe_przylacze" value="1" {% if form.nowe_przylacze == "1" %}checked{% endif %}>Nowe przyłącze, bez historii zużycia</label>
+    </div>
+  </fieldset>
+  <fieldset>
+    <legend>Cena</legend>
+    {{ pole("cena_bazowa", "Cena bazowa spółki w zł za MWh", form.cena_bazowa, hint="Opcjonalnie. Służy do pokazania ceny dla klienta.", extra='inputmode="decimal"') }}
+    {{ pole("narzut", "Narzut w zł za MWh", form.narzut, hint="Kwota doliczana do ceny bazowej. Limit zależy od spółki.", required=true, extra='inputmode="decimal"') }}
+  </fieldset>
+  {{ wybor("status", "Status", STATUSES|zip(STATUSES), form.status or "Umowa podpisana") }}
+  <button type="submit">Zapisz umowę i policz prowizję</button>
+</form>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,49 @@
+{% macro pole(name, label, value="", type="text", hint="", required=false, extra="") -%}
+<div class="pole">
+  <label for="f-{{ name }}">{{ label }}{% if required %} (wymagane){% endif %}</label>
+  {% if hint %}<p class="podpowiedz" id="h-{{ name }}">{{ hint }}</p>{% endif %}
+  <input id="f-{{ name }}" name="{{ name }}" type="{{ type }}" value="{{ value if value is not none else '' }}"
+    {% if hint %}aria-describedby="h-{{ name }}"{% endif %} {% if required %}required{% endif %} {{ extra|safe }}>
+</div>
+{%- endmacro %}
+
+{% macro wybor(name, label, options, selected="", hint="", empty=none) -%}
+<div class="pole">
+  <label for="f-{{ name }}">{{ label }}</label>
+  {% if hint %}<p class="podpowiedz" id="h-{{ name }}">{{ hint }}</p>{% endif %}
+  <select id="f-{{ name }}" name="{{ name }}" {% if hint %}aria-describedby="h-{{ name }}"{% endif %}>
+    {% if empty is not none %}<option value="">{{ empty }}</option>{% endif %}
+    {% for key, text in options %}
+    <option value="{{ key }}" {% if key|string == selected|string %}selected{% endif %}>{{ text }}</option>
+    {% endfor %}
+  </select>
+</div>
+{%- endmacro %}
+
+{% macro tabela_prowizji(rows, caption, new_connection=false, months=12) -%}
+<div class="tabela">
+<table>
+  <caption>{{ caption }}</caption>
+  <thead>
+    <tr>
+      <th scope="col">Strona</th>
+      <th scope="col" class="kw">Cała kwota</th>
+      {% if new_connection %}<th scope="col" class="kw">Z faktur przez pierwsze {{ months }} mies.</th>{% endif %}
+      <th scope="col" class="kw">Pierwsza transza</th>
+      <th scope="col" class="kw">Reszta po zapłaconych fakturach</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for label, p in rows %}
+    <tr>
+      <th scope="row">{{ label }}</th>
+      <td class="kw">{{ p.total|zl }}</td>
+      {% if new_connection %}<td class="kw">{{ p.first_period_invoices|zl }}</td>{% endif %}
+      <td class="kw">{{ p.tranche1|zl }}</td>
+      <td class="kw">{{ p.remaining_invoices|zl }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{%- endmacro %}

@@ -1,0 +1,17 @@
+# Szablon uruchomienia na Render — NIE jest jeszcze wdrożony.
+# Wymaga zgody właściciela (koszty, dane). Bazę Postgres można wziąć z Render albo Neon.
+services:
+  - type: web
+    name: platforma-brokerska
+    runtime: python
+    plan: starter
+    region: frankfurt
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: SECURE_COOKIES
+        value: "1"
+      - key: DATABASE_URL
+        sync: false

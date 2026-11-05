@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% from "_makra.html" import pole, wybor %}
+{% block title %}Zespół i stawki{% endblock %}
+{% block content %}
+<h1>Zespół i stawki</h1>
+
+<h2>Osoby</h2>
+<ul class="karty">
+{% for p, r in rows %}
+  <li>
+    <h3><a href="/zespol/{{ p.id }}">{{ p.name }}</a>{% if not p.active %} (nieaktywny){% endif %}</h3>
+    <p>{{ p.role_label }}{% if p.manager %}, zespół: {{ p.manager.name }}{% endif %}</p>
+    {% if r and p.role != ROLE_OWNER %}
+    <p>Udział w całej masie narzutu: {{ r.trader_share_pct|pct }}{% if p.role == ROLE_MANAGER %}, override {{ r.override_pct|pct }} {{ OVERRIDE_BASES.get(r.override_base) }}{% endif %}</p>
+    {% endif %}
+  </li>
+{% endfor %}
+</ul>
+
+<h2>Dodaj osobę</h2>
+<form method="post" action="/zespol" class="stack">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  {{ pole("imie", "Imię i nazwisko", form.imie, required=true) }}
+  {{ pole("email", "E-mail do logowania", form.email, type="email", required=true) }}
+  {{ pole("haslo", "Hasło startowe", "", type="password", hint="Co najmniej 10 znaków. Osoba może je potem zmienić.", required=true, extra='autocomplete="new-password"') }}
+  {{ wybor("rola", "Rola", ROLES.items(), form.rola or ROLE_TRADER) }}
+  <div class="pole">
+    <label for="f-menedzer">Menedżer, do którego zespołu należy</label>
+    <select id="f-menedzer" name="menedzer">
+      <option value="">Brak menedżera</option>
+      {% for m in managers %}<option value="{{ m.id }}" {% if form.menedzer == m.id|string %}selected{% endif %}>{{ m.name }}</option>{% endfor %}
+    </select>
+  </div>
+  {{ pole("udzial", "Udział w całej masie narzutu z własnej sprzedaży, w procentach", form.udzial, hint="Na przykład 40. Liczony od całego narzutu, nie od udziału brokera.", required=true, extra='inputmode="decimal"') }}
+  <fieldset>
+    <legend>Tylko dla menedżera</legend>
+    {{ pole("override", "Override od umów zespołu, w procentach", form.override, hint="Zostaw puste, jeśli osoba nie jest menedżerem.", extra='inputmode="decimal"') }}
+    {{ wybor("baza", "Od czego liczony jest override", OVERRIDE_BASES.items(), form.baza or "narzut") }}
+  </fieldset>
+  <button type="submit">Dodaj osobę</button>
+</form>
+{% endblock %}
