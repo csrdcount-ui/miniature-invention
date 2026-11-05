@@ -1,17 +1,36 @@
-# Szablon uruchomienia na Render — NIE jest jeszcze wdrożony.
-# Wymaga zgody właściciela (koszty, dane). Bazę Postgres można wziąć z Render albo Neon.
+# Uruchomienie na Render (region Frankfurt, dane w UE).
+databases:
+  - name: platforma-brokerska-db
+    plan: basic-256mb
+    region: frankfurt
+    databaseName: broker
+    user: broker
+    postgresMajorVersion: "16"
+
 services:
   - type: web
     name: platforma-brokerska
     runtime: python
     plan: starter
     region: frankfurt
+    branch: ccr-fcf28ba4-j6eqkl
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips='*'
+    healthCheckPath: /logowanie
     envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
       - key: SECRET_KEY
         generateValue: true
       - key: SECURE_COOKIES
         value: "1"
       - key: DATABASE_URL
+        fromDatabase:
+          name: platforma-brokerska-db
+          property: connectionString
+      - key: OWNER_EMAIL
+        sync: false
+      - key: OWNER_PASSWORD
+        sync: false
+      - key: OWNER_NAME
         sync: false
