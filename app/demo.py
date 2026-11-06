@@ -11,7 +11,8 @@ from sqlalchemy import func, select
 
 from . import services as svc
 from .db import Base, SessionLocal, engine
-from .models import ROLE_MANAGER, ROLE_OWNER, ROLE_TRADER, Supplier, SupplierRuleSet, User, UserRate
+from .migrate import run as migrate
+from .models import ROLE_MANAGER, ROLE_OWNER, ROLE_TRADER, Company, Supplier, SupplierRuleSet, User, UserRate
 from .security import hash_password
 
 PW = "demo-haslo-123"
@@ -20,17 +21,18 @@ START = date(2000, 1, 1)
 
 def main() -> None:
     Base.metadata.create_all(bind=engine)
+    migrate(engine)
     with SessionLocal() as db:
         if db.scalar(select(func.count(User.id))):
             print("Baza nie jest pusta — pomijam dane demo.")
             return
         h = hash_password(PW)
-        owner = User(email="wlasciciel@demo.pl", name="Właściciel Demo", password_hash=h, role=ROLE_OWNER)
-        mgr = User(email="menedzer@demo.pl", name="Marta Menedżer", password_hash=h, role=ROLE_MANAGER)
-        db.add_all([owner, mgr])
+        owner = User(email="wlasciciel@demo.pl", name="Właściciel Demo", first_name="Właściciel", last_name="Demo", password_hash=h, role=ROLE_OWNER)
+        mgr = User(email="menedzer@demo.pl", name="Marta Menedżer", first_name="Marta", last_name="Menedżer", password_hash=h, role=ROLE_MANAGER)
+        db.add_all([owner, mgr, Company(name="Biuro Brokerskie Demo sp. z o.o.")])
         db.flush()
-        t1 = User(email="handlowiec@demo.pl", name="Tomasz Handlowiec", password_hash=h, role=ROLE_TRADER, manager_id=mgr.id)
-        t2 = User(email="junior@demo.pl", name="Julia Junior", password_hash=h, role=ROLE_TRADER, manager_id=mgr.id)
+        t1 = User(email="handlowiec@demo.pl", name="Tomasz Handlowiec", first_name="Tomasz", last_name="Handlowiec", password_hash=h, role=ROLE_TRADER, manager_id=mgr.id)
+        t2 = User(email="junior@demo.pl", name="Julia Junior", first_name="Julia", last_name="Junior", password_hash=h, role=ROLE_TRADER, manager_id=mgr.id)
         db.add_all([t1, t2])
         db.flush()
         db.add_all([

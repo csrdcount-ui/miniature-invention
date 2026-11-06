@@ -328,13 +328,13 @@ def summary_for(viewer: User, contracts: list[Contract]) -> dict:
 
 def assignable_traders(db: Session, actor: User) -> list[User]:
     if actor.role == ROLE_OWNER:
-        return list(db.scalars(select(User).where(User.active.is_(True)).order_by(User.name)))
+        return list(db.scalars(select(User).where(User.active.is_(True)).order_by(User.last_name, User.first_name)))
     if actor.role == ROLE_MANAGER:
         return list(
             db.scalars(
                 select(User)
                 .where(User.active.is_(True), or_(User.id == actor.id, User.manager_id == actor.id))
-                .order_by(User.name)
+                .order_by(User.last_name, User.first_name)
             )
         )
     return [actor]

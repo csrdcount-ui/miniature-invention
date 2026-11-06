@@ -30,12 +30,15 @@ from .models import (
     ROLE_TRADER,
     ROLES,
     TRIGGERS,
+    Company,
     Contract,
     Supplier,
     SupplierRuleSet,
     User,
     UserRate,
+    split_full_name,
 )
+from . import migrate
 from .security import hash_password, new_csrf_token, verify_password
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -58,6 +61,7 @@ templates = Jinja2Templates(directory=BASE_DIR / "templates")
 @app.on_event("startup")
 def _startup() -> None:
     Base.metadata.create_all(bind=engine)
+    migrate.run(engine)
     _bootstrap_owner_from_env()
 
 
@@ -70,14 +74,12 @@ def _bootstrap_owner_from_env() -> None:
 
     with SessionLocal() as db:
         if db.scalar(select(func.count(User.id))) == 0:
-            db.add(
-                User(
-                    email=email.lower().strip(),
-                    name=os.environ.get("OWNER_NAME", "Właściciel"),
-                    password_hash=hash_password(password),
-                    role=ROLE_OWNER,
-                )
-            )
+            # Brak nazwiska lub nazwy firmy w zmiennych = właściciel uzupełni je po pierwszym logowaniu.
+            u = User(email=email.lower().strip(), password_hash=hash_password(password), role=ROLE_OWNER)
+            u.set_names(*split_full_name(os.environ.get("OWNER_NAME", "")))
+            db.add(u)
+            if os.environ.get("COMPANY_NAME", "").strip():
+                db.add(Company(name=os.environ["COMPANY_NAME"].strip()))
             db.commit()
 
 
@@ -171,7 +173,7 @@ SUBTABS = {
     "portfel": [("Podsumowanie", "/pulpit"), ("Umowy", "/umowy"), ("Nowa umowa", "/umowy/nowa")],
     "spolki": [("Lista spółek", "/spolki"), ("Dodaj spółkę", "/spolki/nowa")],
     "zespol": [("Lista osób", "/zespol"), ("Dodaj osobę", "/zespol/nowa")],
-    "konto": [("Moje konto", "/konto"), ("Zmiana hasła", "/haslo")],
+    "konto": [("Moje konto", "/konto"), ("Moje dane", "/konto/dane"), ("Zmiana hasła", "/haslo")],
 }
 
 
@@ -233,6 +235,7 @@ def render(request: Request, name: str, ctx: Optional[dict] = None, status_code:
     ctx["flashes"] = request.session.pop("flash", [])
     ctx.setdefault("user", None)
     ctx["nav"] = navigation(ctx["user"], request.url.path)
+    ctx["brand"] = getattr(request.state, "company_name", None) or "Platforma brokerska"
     return templates.TemplateResponse(request, name, ctx, status_code=status_code)
 
 
@@ -242,6 +245,29 @@ def redirect(url: str) -> RedirectResponse:
 
 class LoginRequired(Exception):
     pass
+
+
+class ProfileIncomplete(Exception):
+    pass
+
+
+COMPLETION_URL = "/konto/dane"
+COMPLETION_ALLOWED = {COMPLETION_URL, "/wyloguj"}
+
+
+def company_of(db: Session) -> Optional[Company]:
+    return db.scalar(select(Company).order_by(Company.id))
+
+
+def needs_completion(user: User, company: Optional[Company]) -> bool:
+    if user.needs_last_name or len(user.first_name or "") < 2:
+        return True
+    return user.role == ROLE_OWNER and company is None
+
+
+@app.exception_handler(ProfileIncomplete)
+async def _profile_incomplete(request: Request, exc: ProfileIncomplete):
+    return redirect(COMPLETION_URL)
 
 
 @app.exception_handler(LoginRequired)
@@ -268,6 +294,10 @@ def current_user(request: Request, db: Session = Depends(get_db)) -> User:
     if not user or not user.active:
         request.session.clear()
         raise LoginRequired()
+    company = company_of(db)
+    request.state.company_name = company.name if company else None
+    if request.url.path not in COMPLETION_ALLOWED and needs_completion(user, company):
+        raise ProfileIncomplete()
     return user
 
 
@@ -380,16 +410,14 @@ async def setup(request: Request, db: Session = Depends(get_db)):
     form = await form_data(request)
     if not _no_users(db):
         return redirect("/logowanie")
-    err = _validate_new_user(form, db, require_role=False)
+    err = company_error(form) or _validate_new_user(form, db, require_role=False)
     if err:
         return render(request, "start.html", {"error": err, "form": form}, 400)
-    u = User(
-        email=form["email"].lower(),
-        name=form["imie"],
-        password_hash=hash_password(form["haslo"]),
-        role=ROLE_OWNER,
-    )
+    u = User(email=form["email"].lower(), password_hash=hash_password(form["haslo"]), role=ROLE_OWNER)
+    u.set_names(form["imie"], form["nazwisko"])
     db.add(u)
+    if not company_of(db):
+        db.add(Company(name=form["firma"]))
     db.commit()
     request.session.clear()
     request.session["uid"] = u.id
@@ -397,9 +425,31 @@ async def setup(request: Request, db: Session = Depends(get_db)):
     return redirect("/spolki")
 
 
+def names_error(form: dict) -> Optional[str]:
+    first, last = form.get("imie", ""), form.get("nazwisko", "")
+    if len(first) < 2:
+        return "Podaj imię (co najmniej 2 znaki)."
+    if len(last) < 2:
+        return "Podaj nazwisko (co najmniej 2 znaki)."
+    if len(first) > 100 or len(last) > 100:
+        return "Imię i nazwisko mogą mieć najwyżej 100 znaków każde."
+    return None
+
+
+COMPANY_MIN, COMPANY_MAX = 3, 300
+
+
+def company_error(form: dict) -> Optional[str]:
+    n = len(form.get("firma", ""))
+    if n < COMPANY_MIN or n > COMPANY_MAX:
+        return f"Podaj pełną nazwę firmy ({COMPANY_MIN}–{COMPANY_MAX} znaków), np. „Energia Lublin sp. z o.o.”."
+    return None
+
+
 def _validate_new_user(form: dict, db: Session, require_role: bool = True) -> Optional[str]:
-    if not form.get("imie"):
-        return "Podaj imię i nazwisko."
+    err = names_error(form)
+    if err:
+        return err
     email = form.get("email", "").lower()
     if "@" not in email or "." not in email.split("@")[-1]:
         return "Podaj poprawny adres e-mail."
@@ -413,8 +463,42 @@ def _validate_new_user(form: dict, db: Session, require_role: bool = True) -> Op
 
 
 @app.get("/konto", response_class=HTMLResponse)
-def account_page(request: Request, user: User = Depends(current_user)):
-    return render(request, "konto.html", {"user": user})
+def account_page(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    return render(request, "konto.html", {"user": user, "company": company_of(db)})
+
+
+def _account_data_ctx(user: User, db: Session, form: Optional[dict] = None, error: Optional[str] = None) -> dict:
+    company = company_of(db)
+    return {
+        "user": user,
+        "company": company,
+        "incomplete": needs_completion(user, company),
+        "form": form or {"imie": user.first_name, "nazwisko": user.last_name, "firma": company.name if company else ""},
+        "error": error,
+    }
+
+
+@app.get("/konto/dane", response_class=HTMLResponse)
+def account_data_page(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    return render(request, "konto_dane.html", _account_data_ctx(user, db))
+
+
+@app.post("/konto/dane")
+async def account_data_save(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    form = await form_data(request)
+    err = names_error(form) or (company_error(form) if user.role == ROLE_OWNER else None)
+    if err:
+        return render(request, "konto_dane.html", _account_data_ctx(user, db, form, err), 400)
+    user.set_names(form["imie"], form["nazwisko"])
+    if user.role == ROLE_OWNER:
+        company = company_of(db)
+        if company:
+            company.name = form["firma"]
+        else:
+            db.add(Company(name=form["firma"]))
+    db.commit()
+    flash(request, "Zapisano dane.")
+    return redirect("/konto")
 
 
 @app.get("/raporty", response_class=HTMLResponse)
@@ -556,12 +640,12 @@ async def supplier_toggle(sid: int, request: Request, user: User = Depends(owner
 # --------------------------------------------------------------------------
 
 def _managers(db: Session) -> list[User]:
-    return list(db.scalars(select(User).where(User.role == ROLE_MANAGER, User.active.is_(True)).order_by(User.name)))
+    return list(db.scalars(select(User).where(User.role == ROLE_MANAGER, User.active.is_(True)).order_by(User.last_name, User.first_name)))
 
 
 @app.get("/zespol", response_class=HTMLResponse)
 def team_page(request: Request, user: User = Depends(owner_only), db: Session = Depends(get_db)):
-    people = list(db.scalars(select(User).order_by(User.role, User.name)))
+    people = list(db.scalars(select(User).order_by(User.role, User.last_name, User.first_name)))
     rows = [(p, svc.current_rate(p)) for p in people]
     return render(request, "zespol.html", {"user": user, "rows": rows})
 
@@ -596,11 +680,11 @@ async def team_add(request: Request, user: User = Depends(owner_only), db: Sessi
         )
     u = User(
         email=form["email"].lower(),
-        name=form["imie"],
         password_hash=hash_password(form["haslo"]),
         role=form["rola"],
         manager_id=manager_id if form["rola"] != ROLE_OWNER else None,
     )
+    u.set_names(form["imie"], form["nazwisko"])
     db.add(u)
     db.flush()
     db.add(
@@ -665,6 +749,16 @@ async def person_rate_add(uid: int, request: Request, user: User = Depends(owner
 async def person_update(uid: int, request: Request, user: User = Depends(owner_only), db: Session = Depends(get_db)):
     p = _get_user(db, uid)
     form = await form_data(request)
+    if "imie" in form or "nazwisko" in form:
+        err = names_error(form)
+        if err:
+            return render(
+                request,
+                "osoba.html",
+                {"user": user, "p": p, "current": svc.current_rate(p), "managers": _managers(db), "today": date.today(), "error": err, "form": {}},
+                400,
+            )
+        p.set_names(form["imie"], form["nazwisko"])
     if p.role != ROLE_OWNER:
         mid = form.get("menedzer", "")
         if mid == "":

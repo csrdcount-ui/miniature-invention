@@ -5,7 +5,8 @@
 <h1>Dodaj osobę do zespołu</h1>
 <form method="post" action="/zespol" class="stack">
   <input type="hidden" name="csrf" value="{{ csrf }}">
-  {{ pole("imie", "Imię i nazwisko", form.imie, required=true) }}
+  {{ pole("imie", "Imię", form.imie, required=true) }}
+  {{ pole("nazwisko", "Nazwisko", form.nazwisko, required=true) }}
   {{ pole("email", "E-mail do logowania", form.email, type="email", required=true) }}
   {{ pole("haslo", "Hasło startowe", "", type="password", hint="Co najmniej 10 znaków. Osoba może je potem zmienić.", required=true, extra='autocomplete="new-password"') }}
   {{ wybor("rola", "Rola", ROLES.items(), form.rola or ROLE_TRADER) }}

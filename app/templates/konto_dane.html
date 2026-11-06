@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "_makra.html" import pole %}
+{% block title %}Moje dane{% endblock %}
+{% block content %}
+{% if incomplete %}
+<h1>Uzupełnij dane</h1>
+<p>Zanim przejdziesz dalej, uzupełnij brakujące dane.{% if user.role == ROLE_OWNER %} Nazwa firmy pojawi się w górnej belce i w raportach.{% endif %}</p>
+{% else %}
+<h1>Moje dane</h1>
+{% endif %}
+<form method="post" action="/konto/dane" class="stack">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  {% if user.role == ROLE_OWNER %}
+  {{ pole("firma", "Pełna nazwa firmy", form.firma, hint="Tak jak w KRS lub CEIDG, np. Energia Lublin sp. z o.o.", required=true, extra='autocomplete="organization"') }}
+  {% endif %}
+  {{ pole("imie", "Imię", form.imie, required=true, extra='autocomplete="given-name"') }}
+  {{ pole("nazwisko", "Nazwisko", form.nazwisko, required=true, extra='autocomplete="family-name"') }}
+  <button type="submit">Zapisz</button>
+</form>
+{% if incomplete %}
+<form method="post" action="/wyloguj">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <button type="submit" class="drugi">Wyloguj</button>
+</form>
+{% endif %}
+{% endblock %}

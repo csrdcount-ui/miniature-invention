@@ -55,7 +55,10 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(String(200), unique=True, index=True)
+    # name = „Imię Nazwisko”, utrzymywane przez set_names(); imię i nazwisko osobno do sortowania
     name: Mapped[str] = mapped_column(String(200))
+    first_name: Mapped[str] = mapped_column(String(100), default="")
+    last_name: Mapped[str] = mapped_column(String(100), default="")
     password_hash: Mapped[str] = mapped_column(String(300))
     role: Mapped[str] = mapped_column(String(20))
     manager_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
@@ -70,6 +73,33 @@ class User(Base):
     @property
     def role_label(self) -> str:
         return ROLES.get(self.role, self.role)
+
+    @property
+    def needs_last_name(self) -> bool:
+        return not (self.last_name or "").strip()
+
+    def set_names(self, first: str, last: str) -> None:
+        self.first_name = first.strip()
+        self.last_name = last.strip()
+        self.name = f"{self.first_name} {self.last_name}".strip()
+
+
+def split_full_name(full: str) -> tuple[str, str]:
+    """Rozdziela „Imię Drugie Nazwisko”: ostatnie słowo to nazwisko. Jedno słowo = brak nazwiska."""
+    parts = (full or "").split()
+    if len(parts) < 2:
+        return (parts[0] if parts else ""), ""
+    return " ".join(parts[:-1]), parts[-1]
+
+
+class Company(Base):
+    """Dane firmy brokerskiej (jeden wiersz na instalację)."""
+
+    __tablename__ = "company"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(300))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
 class UserRate(Base):

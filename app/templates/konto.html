@@ -6,13 +6,22 @@
 <h2>Abonament</h2>
 <p>Informacja o planie i dacie ważności abonamentu pojawi się w kolejnej aktualizacji.</p>
 
+{% if user.role == ROLE_OWNER %}
+<h2>Firma</h2>
+<dl>
+  <dt>Pełna nazwa</dt><dd>{{ company.name if company else "nie podano" }}</dd>
+</dl>
+{% endif %}
+
 <h2>Moje dane</h2>
 <dl>
-  <dt>Imię i nazwisko</dt><dd>{{ user.name }}</dd>
+  <dt>Imię</dt><dd>{{ user.first_name }}</dd>
+  <dt>Nazwisko</dt><dd>{{ user.last_name or "nie podano" }}</dd>
   <dt>E-mail</dt><dd>{{ user.email }}</dd>
   <dt>Rola</dt><dd>{{ user.role_label }}</dd>
   {% if user.manager %}<dt>Menedżer</dt><dd>{{ user.manager.name }}</dd>{% endif %}
 </dl>
+<p><a href="/konto/dane">Zmień {{ "dane i nazwę firmy" if user.role == ROLE_OWNER else "imię i nazwisko" }}</a></p>
 
 <h2>Bezpieczeństwo</h2>
 <p><a href="/haslo">Zmień hasło</a></p>

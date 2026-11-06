@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>{% block title %}Platforma brokerska{% endblock %} – Platforma brokerska</title>
+  <title>{% block title %}Start{% endblock %} – {{ brand }}</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body{% if user %} class="z-menu"{% endif %}>
   <a class="skip" href="#tresc">Przejdź do treści</a>
   {% if user %}
   <header class="belka">
-    <p class="marka-nazwa">Platforma brokerska{% if nav.section %}<span class="sekcja">: {{ nav.section }}</span>{% endif %}</p>
+    <p class="marka-nazwa">{{ brand }}{% if nav.section %}<span class="sekcja">: {{ nav.section }}</span>{% endif %}</p>
   </header>
   <nav class="zakladki" aria-label="Menu główne">
     <ul>

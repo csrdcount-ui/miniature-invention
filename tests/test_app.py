@@ -13,7 +13,7 @@ def setup_company(client):
     # pierwsze uruchomienie: konto właściciela
     r = client.get("/logowanie", follow_redirects=False)
     assert r.status_code == 303 and r.headers["location"] == "/start"
-    r = post(client, "/start", "/start", {"imie": "Kris Właściciel", "email": "kris@firma.pl", "haslo": PW})
+    r = post(client, "/start", "/start", {"firma": "Kris Energia sp. z o.o.", "imie": "Kris", "nazwisko": "Właściciel", "email": "kris@firma.pl", "haslo": PW})
     assert r.status_code == 303
 
     # dwie spółki z różnymi warunkami
@@ -32,16 +32,16 @@ def setup_company(client):
 
     # menedżer i dwóch handlowców (jeden w zespole, drugi poza)
     r = post(client, "/zespol/nowa", "/zespol", {
-        "imie": "Marek Menedżer", "email": "marek@firma.pl", "haslo": PW, "rola": "menedzer",
+        "imie": "Marek", "nazwisko": "Menedżer", "email": "marek@firma.pl", "haslo": PW, "rola": "menedzer",
         "menedzer": "", "udzial": "45", "override": "5", "baza": "narzut",
     })
     assert r.status_code == 303, r.text
     post(client, "/zespol/nowa", "/zespol", {
-        "imie": "Hania Handlowiec", "email": "hania@firma.pl", "haslo": PW, "rola": "handlowiec",
+        "imie": "Hania", "nazwisko": "Handlowiec", "email": "hania@firma.pl", "haslo": PW, "rola": "handlowiec",
         "menedzer": "2", "udzial": "40", "override": "", "baza": "narzut",
     })
     post(client, "/zespol/nowa", "/zespol", {
-        "imie": "Olek Obcy", "email": "olek@firma.pl", "haslo": PW, "rola": "handlowiec",
+        "imie": "Olek", "nazwisko": "Obcy", "email": "olek@firma.pl", "haslo": PW, "rola": "handlowiec",
         "menedzer": "", "udzial": "35", "override": "", "baza": "narzut",
     })
 
@@ -249,8 +249,8 @@ def test_formularze_na_osobnych_stronach(client):
     # błąd wraca na stronę formularza z komunikatem i wpisanymi danymi
     r = post(client, "/spolki/nowa", "/spolki", {"nazwa": "Spółka A"})
     assert r.status_code == 400 and "już istnieje" in r.text and 'role="alert"' in r.text
-    r = post(client, "/zespol/nowa", "/zespol", {"imie": "Ala Nowa", "email": "", "haslo": "x", "rola": "handlowiec", "udzial": "10"})
-    assert r.status_code == 400 and 'value="Ala Nowa"' in r.text
+    r = post(client, "/zespol/nowa", "/zespol", {"imie": "Ala", "nazwisko": "Nowa", "email": "", "haslo": "x", "rola": "handlowiec", "udzial": "10"})
+    assert r.status_code == 400 and 'value="Ala"' in r.text and 'value="Nowa"' in r.text
 
 
 def test_formularze_tylko_dla_wlasciciela(client):
@@ -258,3 +258,114 @@ def test_formularze_tylko_dla_wlasciciela(client):
     login(client, "marek@firma.pl")
     assert client.get("/spolki/nowa").status_code == 403
     assert client.get("/zespol/nowa").status_code == 403
+
+
+# --------------------------------------------------------------------------
+# Imię i nazwisko osobno, nazwa firmy w belce, uzupełnianie danych
+# --------------------------------------------------------------------------
+
+def test_nazwa_firmy_w_belce_i_tytule(client):
+    setup_company(client)
+    login(client, "kris@firma.pl")
+    html = client.get("/zespol").text
+    assert '<p class="marka-nazwa">Kris Energia sp. z o.o.<span class="sekcja">: Zespół</span></p>' in html
+    assert "<title>Zespół i stawki – Kris Energia sp. z o.o.</title>" in html
+    # handlowiec widzi tę samą nazwę firmy
+    login(client, "hania@firma.pl")
+    assert "Kris Energia sp. z o.o.<span" in client.get("/pulpit").text
+
+
+def test_start_wymaga_firmy_imienia_i_nazwiska(client):
+    base = {"email": "a@firma.pl", "haslo": PW}
+    r = post(client, "/start", "/start", {**base, "firma": "", "imie": "Kris", "nazwisko": "Nowak"})
+    assert r.status_code == 400 and "pełną nazwę firmy" in r.text
+    r = post(client, "/start", "/start", {**base, "firma": "Firma X sp. z o.o.", "imie": "Kris", "nazwisko": ""})
+    assert r.status_code == 400 and "Podaj nazwisko" in r.text
+    r = post(client, "/start", "/start", {**base, "firma": "Firma X sp. z o.o.", "imie": "Kris", "nazwisko": "Nowak"})
+    assert r.status_code == 303
+
+
+def test_samo_imie_nie_przechodzi_przy_dodawaniu_osoby(client):
+    setup_company(client)
+    login(client, "kris@firma.pl")
+    r = post(client, "/zespol/nowa", "/zespol", {"imie": "Anna", "nazwisko": "", "email": "anna@firma.pl", "haslo": PW, "rola": "handlowiec", "udzial": "10"})
+    assert r.status_code == 400 and "Podaj nazwisko" in r.text
+
+
+def test_lista_zespolu_sortowana_po_nazwisku(client):
+    setup_company(client)
+    login(client, "kris@firma.pl")
+    html = client.get("/zespol").text
+    # handlowcy: Handlowiec (Hania) przed Obcy (Olek)
+    assert html.index("Hania Handlowiec") < html.index("Olek Obcy")
+
+
+def _stare_konto_bez_podzialu(email: str, full: str, role: str = "wlasciciel"):
+    """Symuluje konto sprzed podziału: tylko kolumna name."""
+    from app.models import User
+    from app.security import hash_password
+    with SessionLocal() as db:
+        db.add(User(email=email, name=full, first_name="", last_name="", password_hash=hash_password(PW), role=role))
+        db.commit()
+
+
+def test_migracja_rozdziela_stare_nazwy(client):
+    from app import migrate
+    from app.db import engine
+    from app.models import User
+    _stare_konto_bez_podzialu("boss@firma.pl", "Jan Maria Kowalski")
+    _stare_konto_bez_podzialu("solo@firma.pl", "Boss01", role="handlowiec")
+    migrate.run(engine)
+    migrate.run(engine)  # drugi raz nic nie psuje
+    with SessionLocal() as db:
+        jan = db.query(User).filter_by(email="boss@firma.pl").one()
+        assert (jan.first_name, jan.last_name, jan.name) == ("Jan Maria", "Kowalski", "Jan Maria Kowalski")
+        solo = db.query(User).filter_by(email="solo@firma.pl").one()
+        assert (solo.first_name, solo.last_name) == ("Boss01", "")
+        assert solo.needs_last_name
+
+
+def test_wlasciciel_bez_firmy_i_nazwiska_musi_uzupelnic(client):
+    # stan jak na produkcji: konto Boss01, brak nazwy firmy
+    _stare_konto_bez_podzialu("boss@firma.pl", "Boss01")
+    from app import migrate
+    from app.db import engine
+    migrate.run(engine)
+    login(client, "boss@firma.pl")
+    for url in ["/pulpit", "/zespol", "/konto"]:
+        r = client.get(url, follow_redirects=False)
+        assert r.status_code == 303 and r.headers["location"] == "/konto/dane", url
+    page = client.get("/konto/dane").text
+    assert "Uzupełnij dane" in page and 'name="firma"' in page and 'action="/wyloguj"' in page
+    r = post(client, "/konto/dane", "/konto/dane", {"firma": "Energia Lublin sp. z o.o.", "imie": "Boss01", "nazwisko": ""})
+    assert r.status_code == 400 and "Podaj nazwisko" in r.text
+    r = post(client, "/konto/dane", "/konto/dane", {"firma": "Energia Lublin sp. z o.o.", "imie": "Krystyna", "nazwisko": "Nowak"})
+    assert r.status_code == 303
+    html = client.get("/pulpit").text
+    assert "Energia Lublin sp. z o.o.<span" in html
+    assert "Nowak" in client.get("/konto").text
+
+
+def test_handlowiec_bez_nazwiska_uzupelnia_tylko_swoje_dane(client):
+    setup_company(client)
+    _stare_konto_bez_podzialu("solo@firma.pl", "Solo", role="handlowiec")
+    from app import migrate
+    from app.db import engine
+    migrate.run(engine)
+    login(client, "solo@firma.pl")
+    assert client.get("/pulpit", follow_redirects=False).headers["location"] == "/konto/dane"
+    page = client.get("/konto/dane").text
+    assert 'name="firma"' not in page
+    r = post(client, "/konto/dane", "/konto/dane", {"imie": "Solo", "nazwisko": "Sprzedawca", "firma": "Próba przejęcia"})
+    assert r.status_code == 303
+    assert client.get("/pulpit").status_code == 200
+    # nazwa firmy bez zmian — handlowiec nie może jej zmienić
+    assert "Kris Energia sp. z o.o.<span" in client.get("/pulpit").text
+
+
+def test_wlasciciel_poprawia_nazwisko_osoby(client):
+    setup_company(client)
+    login(client, "kris@firma.pl")
+    r = post(client, "/zespol/3", "/zespol/3", {"imie": "Hanna", "nazwisko": "Handlowiec-Nowak", "menedzer": "2", "aktywny": "1"})
+    assert r.status_code == 303
+    assert "Hanna Handlowiec-Nowak" in client.get("/zespol").text

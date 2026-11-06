@@ -1,7 +1,7 @@
 # Propozycja przebudowy widoku właściciela: wersje 1.0 i 1.1
 
 Stan: propozycja zatwierdzona do realizacji etapami, listopad 2026.
-Pierwszy etap realizacji: nawigacja (punkt 1 wersji 1.0).
+Zrealizowane: nawigacja (punkt 1), imię i nazwisko osobno (punkt 3), nazwa firmy przy pierwszym uruchomieniu i w górnej belce (część punktu 2).
 
 ## Co jest dziś i dlaczego jest nieczytelne
 

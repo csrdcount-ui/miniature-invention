@@ -6,7 +6,9 @@
 <p>W systemie nie ma jeszcze żadnego konta. Utwórz konto właściciela. Tylko właściciel widzi warunki ze spółkami obrotu i marżę firmy.</p>
 <form method="post" action="/start" class="stack">
   <input type="hidden" name="csrf" value="{{ csrf }}">
-  {{ pole("imie", "Imię i nazwisko", form.imie if form else "", required=true) }}
+  {{ pole("firma", "Pełna nazwa firmy", form.firma if form else "", hint="Tak jak w KRS lub CEIDG, np. Energia Lublin sp. z o.o. Pojawi się w górnej belce i w raportach.", required=true, extra='autocomplete="organization"') }}
+  {{ pole("imie", "Imię", form.imie if form else "", required=true, extra='autocomplete="given-name"') }}
+  {{ pole("nazwisko", "Nazwisko", form.nazwisko if form else "", required=true, extra='autocomplete="family-name"') }}
   {{ pole("email", "E-mail", form.email if form else "", type="email", required=true, extra='autocomplete="username"') }}
   {{ pole("haslo", "Hasło", "", type="password", hint="Co najmniej 10 znaków.", required=true, extra='autocomplete="new-password"') }}
   <button type="submit">Utwórz konto właściciela</button>

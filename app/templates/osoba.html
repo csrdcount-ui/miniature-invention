@@ -51,6 +51,9 @@
 <h2>Ustawienia konta</h2>
 <form method="post" action="/zespol/{{ p.id }}" class="stack">
   <input type="hidden" name="csrf" value="{{ csrf }}">
+  {% if p.needs_last_name %}<p class="warn">Brakuje nazwiska. Uzupełnij je poniżej.</p>{% endif %}
+  {{ pole("imie", "Imię", p.first_name, required=true) }}
+  {{ pole("nazwisko", "Nazwisko", p.last_name, required=true) }}
   {% if p.role != ROLE_OWNER %}
   <div class="pole">
     <label for="f-menedzer">Menedżer, do którego zespołu należy</label>

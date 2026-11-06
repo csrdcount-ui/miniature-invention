@@ -106,3 +106,4 @@ ul.karty { list-style: none; padding: 0; display: grid; gap: .75rem; }
 ul.karty li { border: 1px solid var(--ramka); border-radius: 8px; padding: .75rem 1rem; }
 ul.karty h3 { margin: 0 0 .25rem; }
 ul.karty p { margin: .1rem 0; }
+button.drugi { margin-top: 1.5rem; background: transparent; color: var(--marka); border: 1px solid var(--marka); }
