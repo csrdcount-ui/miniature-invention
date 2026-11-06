@@ -1,6 +1,8 @@
 # Uruchomienie na Render, plany DARMOWE (region Frankfurt, dane w UE).
 # Darmowa baza Render wygasa po 30 dniach — wystarczy na prototyp.
 # Darmowy serwer usypia się po ~15 min bezczynności.
+# Każdy push na gałąź main automatycznie uruchamia wdrożenie (autoDeploy).
+# PRZED PILOTAŻEM Z BROKEREM: serwer -> plan starter, baza -> basic-256mb.
 databases:
   - name: platforma-brokerska-db
     plan: free
@@ -15,7 +17,8 @@ services:
     runtime: python
     plan: free
     region: frankfurt
-    branch: ccr-fcf28ba4-j6eqkl
+    branch: main
+    autoDeploy: true
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips='*'
     healthCheckPath: /logowanie
