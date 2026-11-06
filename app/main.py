@@ -25,6 +25,7 @@ from .db import Base, engine, get_db
 from .models import (
     CONTRACT_STATUSES,
     MEDIA,
+    STATUSES_REQUIRING_NOTE,
     ROLE_MANAGER,
     ROLE_OWNER,
     ROLE_TRADER,
@@ -142,6 +143,7 @@ templates.env.globals.update(
     TRIGGERS=TRIGGERS,
     MEDIA=MEDIA,
     STATUSES=CONTRACT_STATUSES,
+    STATUSES_REQUIRING_NOTE=STATUSES_REQUIRING_NOTE,
     ROLE_OWNER=ROLE_OWNER,
     ROLE_MANAGER=ROLE_MANAGER,
     ROLE_TRADER=ROLE_TRADER,
@@ -854,22 +856,35 @@ def _get_visible_contract(db: Session, user: User, cid: int) -> Contract:
     return c
 
 
+def _contract_ctx(user: User, c: Contract, form: Optional[dict] = None, error: Optional[str] = None) -> dict:
+    return {
+        "user": user,
+        "c": svc.contract_view(user, c),
+        "history": c.events,
+        "since": svc.status_since(c),
+        "today": date.today(),
+        "form": form or {},
+        "error": error,
+    }
+
+
 @app.get("/umowy/{cid}", response_class=HTMLResponse)
 def contract_page(cid: int, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
     c = _get_visible_contract(db, user, cid)
-    return render(request, "umowa.html", {"user": user, "c": svc.contract_view(user, c)})
+    return render(request, "umowa.html", _contract_ctx(user, c))
 
 
 @app.post("/umowy/{cid}/status")
 async def contract_status(cid: int, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
     c = _get_visible_contract(db, user, cid)
     form = await form_data(request)
-    status = form.get("status")
-    if status not in CONTRACT_STATUSES or not svc.can_edit_status(user, c):
-        raise HTTPException(status_code=400, detail="Niepoprawny status.")
-    c.status = status
-    db.commit()
-    flash(request, f"Status umowy: {status}.")
+    try:
+        when = p_date(form, "data", "Data zdarzenia", required=False) or date.today()
+        svc.change_status(db, actor=user, c=c, new_status=form.get("status", ""), effective_date=when, note=form.get("notatka", ""))
+    except (FormError, svc.BusinessError) as e:
+        db.rollback()
+        return render(request, "umowa.html", _contract_ctx(user, c, form, str(e)), 400)
+    flash(request, f"Status umowy: {c.status}, od {fmt_date(when)}. Zmiana zapisana w historii.")
     return redirect(f"/umowy/{c.id}")
 
 

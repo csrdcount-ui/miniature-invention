@@ -190,3 +190,37 @@ class Contract(Base):
     supplier: Mapped[Supplier] = relationship()
     trader: Mapped[User] = relationship(foreign_keys=[trader_id])
     manager: Mapped[Optional[User]] = relationship(foreign_keys=[manager_id])
+    events: Mapped[list["ContractStatusEvent"]] = relationship(
+        back_populates="contract",
+        order_by="ContractStatusEvent.id",
+        cascade="all, delete-orphan",
+    )
+
+
+# Statusy, przy których trzeba podać powód (do raportów zerwań).
+STATUSES_REQUIRING_NOTE = {"Zerwana"}
+
+
+class ContractStatusEvent(Base):
+    """Historia statusów umowy. Każda zmiana to nowy wiersz, nic nie jest nadpisywane.
+
+    effective_date: kiedy zdarzenie faktycznie nastąpiło (np. start dostaw 1.11),
+    changed_at: kiedy wpisano je do systemu.
+    baseline: wiersz utworzony przy włączeniu historii dla umów zapisanych wcześniej;
+    pokazuje stan na ten dzień, a nie faktyczną datę wejścia w status.
+    """
+
+    __tablename__ = "contract_status_events"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    contract_id: Mapped[int] = mapped_column(ForeignKey("contracts.id"), index=True)
+    from_status: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
+    to_status: Mapped[str] = mapped_column(String(40), index=True)
+    effective_date: Mapped[date] = mapped_column(Date, index=True)
+    changed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    changed_by_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
+    note: Mapped[str] = mapped_column(Text, default="")
+    baseline: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    contract: Mapped[Contract] = relationship(back_populates="events")
+    changed_by: Mapped[Optional[User]] = relationship()

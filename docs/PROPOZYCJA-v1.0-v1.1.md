@@ -1,7 +1,7 @@
 # Propozycja przebudowy widoku właściciela: wersje 1.0 i 1.1
 
 Stan: propozycja zatwierdzona do realizacji etapami, listopad 2026.
-Zrealizowane: nawigacja (punkt 1), imię i nazwisko osobno (punkt 3), nazwa firmy przy pierwszym uruchomieniu i w górnej belce (część punktu 2).
+Zrealizowane: nawigacja (punkt 1), imię i nazwisko osobno (punkt 3), nazwa firmy w górnej belce (część punktu 2), historia statusów umów (część punktu 6).
 
 ## Co jest dziś i dlaczego jest nieczytelne
 
@@ -130,3 +130,60 @@ W 1.0 ta sama nawigacja z mniejszą liczbą zakładek. Poufność reguł spółe
 2. Progi ryzyka: 30 dni weryfikacji, 60 dni zmiany sprzedawcy.
 3. Abonament w 1.0 wpisywany ręcznie przez operatora.
 4. Kolejność: nawigacja, imię i nazwisko, historia statusów.
+
+## Moduł sprzedażowy handlowca (propozycja, do decyzji)
+
+### Diagnoza
+
+- Dziś handlowiec ma tylko listę umów i formularz nowej umowy. To rejestr prowizji, a nie narzędzie sprzedaży.
+- Lead jest dziś umową ze statusem „Lead”. Formularz wymaga jednak spółki, wolumenu, narzutu i daty podpisania, których na etapie leada nie ma. Handlowiec wpisuje więc dane na niby albo nie wpisuje leadów wcale, a wtedy właściciel nie ma danych o lejku.
+- Wniosek: lejek musi mieć własne obiekty, oddzielone od umowy. Umowa powstaje dopiero z wygranej szansy.
+
+### Nowe obiekty
+
+1. Klient: nazwa, NIP (z kontrolą sumy), adres, osoba kontaktowa, telefon, e-mail, zgody marketingowe RODO.
+2. Punkt poboru (PPE dla energii, punkt gazowy): numer, OSD, grupa taryfowa, moc umowna, roczne zużycie, obecny sprzedawca, data końca obecnej umowy.
+3. Szansa sprzedaży: klient, punkty poboru, etap lejka, szacowany wolumen, planowana data decyzji, następny krok z datą, powód przegranej.
+4. Oferta: szansa, spółka obrotu, cena bazowa, narzut, okres, ważna do, status (wysłana, przyjęta, odrzucona). Jedna szansa może mieć kilka ofert od różnych spółek, co rozstrzyga otwartą decyzję nr 1.
+5. Aktywność: telefon, spotkanie, e-mail, notatka, z datą i wynikiem.
+6. Zadanie: co, do kiedy, przypomnienie.
+
+Wygrana oferta zamienia się w umowę jednym przyciskiem. Dane klienta, spółki i narzutu przechodzą automatycznie, a historia statusów umowy zaczyna się od tej chwili.
+
+### Etapy lejka
+
+Lead, Kontakt, Analiza potrzeb (zebrane faktury i zużycie), Oferta wysłana, Negocjacje, Wygrana (powstaje umowa), Przegrana (z powodem: cena, zostaje u obecnego sprzedawcy, brak decyzji, inny broker, inne).
+
+### Podpowiedzi dla handlowca
+
+- Ekran „Mój dzień”: zadania na dziś, zaległe kroki, oferty, którym kończy się ważność, i klienci bez kontaktu od ponad 30 dni.
+- Koniec umowy u obecnego sprzedawcy: przypomnienie 6, 3 i 1 miesiąc przed terminem. W energii to najważniejszy moment sprzedaży, bo wtedy klient może zmienić sprzedawcę bez kar.
+- Odnowienia: przypomnienie przed końcem umowy już podpisanej przez biuro, żeby klient nie odszedł do konkurencji.
+- Kalkulator przy ofercie: handlowiec widzi swoją prowizję od wpisanego narzutu, bez udziału brokera u spółki. To czysta funkcja silnika prowizji, który już istnieje.
+- Limit narzutu spółki: ostrzeżenie już przy ofercie, nie dopiero przy zapisie umowy.
+- Kompletność danych: lista braków przed wysłaniem do spółki, na przykład brak numeru punktu poboru albo pełnomocnictwa.
+
+### Dane dla właściciela i menedżera
+
+Z tych obiektów biorą się liczby z punktów 5 i 6:
+
+- liczba ofert i skuteczność oferta do umowy, liczona z obiektu Oferta, a nie ze statusu;
+- czas na każdym etapie lejka i miejsca, w których szanse utykają;
+- powody przegranych według handlowca, spółki i segmentu klienta;
+- aktywność handlowca: liczba kontaktów i spotkań w tygodniu;
+- wartość lejka: szacowana prowizja z otwartych szans ważona etapem;
+- portfel do odnowienia w najbliższych 12 miesiącach.
+
+### Poufność
+
+- Handlowiec widzi tylko swoich klientów i szanse. Menedżer widzi te swojego zespołu.
+- Udział brokera u spółki pozostaje widoczny tylko dla właściciela.
+- Do decyzji: limit narzutu spółki. Dziś komunikat o przekroczeniu limitu pokazuje handlowcowi jego wartość. Handlowiec i tak potrzebuje go do wyceny oferty, więc proponuję pokazywać limit wprost.
+
+### Proponowana kolejność
+
+1. Klient i punkt poboru z datą końca obecnej umowy.
+2. Szansa i etapy lejka, ekran „Mój dzień”.
+3. Oferta z kalkulatorem prowizji i zamiana na umowę.
+4. Aktywności, zadania i przypomnienia (w aplikacji, później także e-mail).
+5. Raporty lejka dla właściciela i menedżera.

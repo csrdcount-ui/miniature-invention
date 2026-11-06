@@ -15,10 +15,13 @@ from sqlalchemy.orm import Session
 
 from . import engine as eng
 from .models import (
+    CONTRACT_STATUSES,
+    STATUSES_REQUIRING_NOTE,
     ROLE_MANAGER,
     ROLE_OWNER,
     ROLE_TRADER,
     Contract,
+    ContractStatusEvent,
     Supplier,
     SupplierRuleSet,
     User,
@@ -71,6 +74,13 @@ def current_rate(user: User, today: Optional[date] = None) -> Optional[UserRate]
 # --------------------------------------------------------------------------
 # Umowy
 # --------------------------------------------------------------------------
+
+def _initial_event_date(status: str, signed_date: date) -> date:
+    """Dla umów już podpisanych pierwszy wpis dostaje datę podpisania, dla leadów i ofert dzisiejszą."""
+    today = date.today()
+    signed_or_later = CONTRACT_STATUSES.index(status) >= CONTRACT_STATUSES.index("Umowa podpisana")
+    return min(signed_date, today) if signed_or_later else today
+
 
 def create_contract(
     db: Session,
@@ -146,6 +156,14 @@ def create_contract(
     # Walidacja silnikiem zanim zapiszemy.
     calculate_contract(c)
     db.add(c)
+    db.flush()
+    db.add(
+        ContractStatusEvent(
+            contract_id=c.id, from_status=None, to_status=status,
+            effective_date=_initial_event_date(status, signed_date), changed_by_id=actor.id,
+            note="Umowa wpisana do systemu.",
+        )
+    )
     db.commit()
     db.refresh(c)
     return c
@@ -207,6 +225,52 @@ def can_view_contract(user: User, c: Contract) -> bool:
 
 def can_edit_status(user: User, c: Contract) -> bool:
     return can_view_contract(user, c)
+
+
+HISTORY_MAX_YEARS_BACK = 5
+
+
+def change_status(
+    db: Session, *, actor: User, c: Contract, new_status: str, effective_date: date, note: str = ""
+) -> ContractStatusEvent:
+    """Zmienia status umowy i zapisuje zdarzenie w historii (w jednej transakcji)."""
+    if new_status not in CONTRACT_STATUSES:
+        raise BusinessError("Niepoprawny status.")
+    if not can_edit_status(actor, c):
+        raise BusinessError("Nie możesz zmienić statusu tej umowy.")
+    if new_status == c.status:
+        raise BusinessError(f"Umowa ma już status „{new_status}”. Wybierz inny status.")
+    today = date.today()
+    if effective_date > today:
+        raise BusinessError("Data zdarzenia nie może być z przyszłości.")
+    if effective_date.year < today.year - HISTORY_MAX_YEARS_BACK:
+        raise BusinessError(f"Data zdarzenia może być najwyżej {HISTORY_MAX_YEARS_BACK} lat wstecz.")
+    last_real = next((e for e in reversed(c.events) if not e.baseline), None)
+    if last_real and effective_date < last_real.effective_date:
+        raise BusinessError(
+            f"Data zdarzenia nie może być wcześniejsza niż poprzednia zmiana statusu "
+            f"({last_real.effective_date:%d.%m.%Y}: {last_real.to_status})."
+        )
+    note = (note or "").strip()[:2000]
+    if new_status in STATUSES_REQUIRING_NOTE and not note:
+        raise BusinessError(f"Przy statusie „{new_status}” podaj powód. Trafi do raportu zerwań.")
+    ev = ContractStatusEvent(
+        contract_id=c.id, from_status=c.status, to_status=new_status,
+        effective_date=effective_date, changed_by_id=actor.id, note=note,
+    )
+    c.status = new_status
+    db.add(ev)
+    db.commit()
+    return ev
+
+
+def status_since(c: Contract, today: Optional[date] = None) -> Optional[dict]:
+    """Od kiedy umowa jest w obecnym statusie. None, gdy brak historii."""
+    today = today or date.today()
+    last = next((e for e in reversed(c.events) if e.to_status == c.status), None)
+    if not last:
+        return None
+    return {"date": last.effective_date, "days": (today - last.effective_date).days, "baseline": last.baseline}
 
 
 # --------------------------------------------------------------------------

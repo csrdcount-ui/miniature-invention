@@ -107,3 +107,6 @@ ul.karty li { border: 1px solid var(--ramka); border-radius: 8px; padding: .75re
 ul.karty h3 { margin: 0 0 .25rem; }
 ul.karty p { margin: .1rem 0; }
 button.drugi { margin-top: 1.5rem; background: transparent; color: var(--marka); border: 1px solid var(--marka); }
+textarea { min-height: 6rem; }
+ol.historia { padding-left: 1.5rem; display: grid; gap: .5rem; }
+ol.historia p { margin: .1rem 0; }

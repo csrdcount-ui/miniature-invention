@@ -369,3 +369,113 @@ def test_wlasciciel_poprawia_nazwisko_osoby(client):
     r = post(client, "/zespol/3", "/zespol/3", {"imie": "Hanna", "nazwisko": "Handlowiec-Nowak", "menedzer": "2", "aktywny": "1"})
     assert r.status_code == 303
     assert "Hanna Handlowiec-Nowak" in client.get("/zespol").text
+
+
+# --------------------------------------------------------------------------
+# Historia statusów umów
+# --------------------------------------------------------------------------
+
+def _umowa_hani(client) -> str:
+    setup_company(client)
+    login(client, "hania@firma.pl")
+    r = post(client, "/umowy/nowa", "/umowy/nowa", CONTRACT)
+    return r.headers["location"].rsplit("/", 1)[1]
+
+
+def _events(cid):
+    from app.models import ContractStatusEvent
+    with SessionLocal() as db:
+        return [
+            (e.from_status, e.to_status, e.effective_date.isoformat(), e.note, e.baseline)
+            for e in db.query(ContractStatusEvent).filter_by(contract_id=int(cid)).order_by(ContractStatusEvent.id)
+        ]
+
+
+def test_nowa_umowa_zapisuje_pierwszy_wpis_historii(client):
+    from datetime import date
+    cid = _umowa_hani(client)
+    ev = _events(cid)
+    assert ev == [(None, "Umowa podpisana", "2026-10-01", "Umowa wpisana do systemu.", False)]  # data podpisania
+    page = client.get(f"/umowy/{cid}").text
+    assert "<h2>Historia statusów</h2>" in page and "Wpisał(a): Hania Handlowiec" in page
+
+
+def test_zmiana_statusu_z_data_i_notatka(client):
+    cid = _umowa_hani(client)
+    r = post(client, f"/umowy/{cid}", f"/umowy/{cid}/status",
+             {"status": "Weryfikacja spółki", "data": "2026-10-03", "notatka": "Wysłane do spółki."})
+    assert r.status_code == 303
+    assert _events(cid)[-1] == ("Umowa podpisana", "Weryfikacja spółki", "2026-10-03", "Wysłane do spółki.", False)
+    page = client.get(f"/umowy/{cid}").text
+    assert "Obecny status: <strong>Weryfikacja spółki</strong>, od 03.10.2026" in page
+    assert "Umowa podpisana → Weryfikacja spółki" in page
+
+
+def test_bledne_zmiany_statusu_nic_nie_zapisuja(client):
+    from datetime import date, timedelta
+    cid = _umowa_hani(client)
+    tomorrow = (date.today() + timedelta(days=1)).isoformat()
+    cases = [
+        ({"status": "Umowa podpisana"}, "ma już status"),
+        ({"status": "Zerwana", "notatka": ""}, "podaj powód"),
+        ({"status": "Start dostaw", "data": tomorrow}, "z przyszłości"),
+        ({"status": "Start dostaw", "data": "2001-01-01"}, "lat wstecz"),
+        ({"status": "Nieznany"}, "Niepoprawny status"),
+    ]
+    for data, msg in cases:
+        r = post(client, f"/umowy/{cid}", f"/umowy/{cid}/status", data)
+        assert r.status_code == 400 and msg in r.text, (data, r.status_code)
+    assert len(_events(cid)) == 1
+    with SessionLocal() as db:
+        assert db.get(Contract, int(cid)).status == "Umowa podpisana"
+
+
+def test_zerwanie_z_powodem(client):
+    cid = _umowa_hani(client)
+    r = post(client, f"/umowy/{cid}", f"/umowy/{cid}/status",
+             {"status": "Zerwana", "notatka": "Klient przeszedł do innego sprzedawcy."})
+    assert r.status_code == 303
+    assert _events(cid)[-1][1:2] == ("Zerwana",)
+    assert "Klient przeszedł do innego sprzedawcy." in client.get(f"/umowy/{cid}").text
+
+
+def test_obcy_handlowiec_nie_zmieni_statusu(client):
+    cid = _umowa_hani(client)
+    login(client, "olek@firma.pl")
+    r = post(client, "/umowy/nowa", f"/umowy/{cid}/status", {"status": "Start dostaw"})
+    assert r.status_code == 404
+    assert len(_events(cid)) == 1
+
+
+def test_menedzer_zmienia_status_umowy_zespolu(client):
+    cid = _umowa_hani(client)
+    login(client, "marek@firma.pl")
+    r = post(client, f"/umowy/{cid}", f"/umowy/{cid}/status", {"status": "Start dostaw"})
+    assert r.status_code == 303
+    login(client, "hania@firma.pl")
+    assert "Wpisał(a): Marek Menedżer" in client.get(f"/umowy/{cid}").text
+
+
+def test_migracja_dodaje_stan_poczatkowy_dla_starych_umow(client):
+    from app import migrate
+    from app.db import engine
+    from app.models import ContractStatusEvent
+    cid = _umowa_hani(client)
+    with SessionLocal() as db:  # symulacja umowy sprzed włączenia historii
+        db.query(ContractStatusEvent).delete()
+        db.commit()
+    migrate.run(engine)
+    migrate.run(engine)  # drugi raz nie dubluje
+    ev = _events(cid)
+    assert len(ev) == 1 and ev[0][1] == "Umowa podpisana" and ev[0][4] is True
+    page = client.get(f"/umowy/{cid}").text
+    assert "co najmniej od" in page and "Wpis automatyczny." in page
+
+
+def test_data_zmiany_nie_cofa_sie_przed_poprzednia(client):
+    cid = _umowa_hani(client)
+    post(client, f"/umowy/{cid}", f"/umowy/{cid}/status", {"status": "Weryfikacja spółki", "data": "2026-10-10"})
+    r = post(client, f"/umowy/{cid}", f"/umowy/{cid}/status", {"status": "Start dostaw", "data": "2026-10-05"})
+    assert r.status_code == 400 and "wcześniejsza niż poprzednia zmiana" in r.text
+    r = post(client, f"/umowy/{cid}", f"/umowy/{cid}/status", {"status": "Start dostaw", "data": "2026-10-10"})
+    assert r.status_code == 303

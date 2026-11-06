@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_makra.html" import tabela_prowizji, wybor %}
+{% from "_makra.html" import tabela_prowizji, wybor, pole %}
 {% block title %}{{ c.client_name }}{% endblock %}
 {% block content %}
 <h1>Umowa: {{ c.client_name }}</h1>
@@ -47,9 +47,31 @@
 {% endif %}
 
 <h2>Status w lejku</h2>
+<p>Obecny status: <strong>{{ c.status }}</strong>{% if since %}{% if since.baseline %}, co najmniej od {{ since.date|data }}{% else %}, od {{ since.date|data }}{% endif %} ({{ since.days }} {{ "dzień" if since.days == 1 else "dni" }}){% endif %}.</p>
 <form method="post" action="/umowy/{{ c.id }}/status" class="stack">
   <input type="hidden" name="csrf" value="{{ csrf }}">
-  {{ wybor("status", "Status umowy", STATUSES|zip(STATUSES), c.status) }}
+  {{ wybor("status", "Nowy status", STATUSES|zip(STATUSES), form.status or c.status) }}
+  {{ pole("data", "Data zdarzenia", form.data or today.isoformat(), type="date", hint="Kiedy to faktycznie nastąpiło, np. dzień startu dostaw. Domyślnie dzisiaj.", extra='max="' ~ today.isoformat() ~ '"') }}
+  <div class="pole">
+    <label for="f-notatka">Notatka</label>
+    <p class="podpowiedz" id="h-notatka">Przy statusie „{{ STATUSES_REQUIRING_NOTE|join("”, „") }}” wymagany jest powód, np. „klient wypowiedział umowę, przeszedł do innego sprzedawcy”.</p>
+    <textarea id="f-notatka" name="notatka" rows="3" maxlength="2000" aria-describedby="h-notatka">{{ form.notatka or "" }}</textarea>
+  </div>
   <button type="submit">Zmień status</button>
 </form>
+
+<h2>Historia statusów</h2>
+{% if history %}
+<ol class="historia">
+{% for e in history %}
+  <li>
+    <p><strong>{{ e.effective_date|data }}</strong>: {% if e.from_status %}{{ e.from_status }} → {{ e.to_status }}{% else %}{{ e.to_status }}{% endif %}</p>
+    <p class="podpowiedz">{% if e.baseline %}Wpis automatyczny.{% else %}Wpisał(a): {{ e.changed_by.name if e.changed_by else "system" }}, {{ e.changed_at.strftime("%d.%m.%Y") }}.{% endif %}</p>
+    {% if e.note %}<p>{{ e.note }}</p>{% endif %}
+  </li>
+{% endfor %}
+</ol>
+{% else %}
+<p>Brak zapisanej historii.</p>
+{% endif %}
 {% endblock %}

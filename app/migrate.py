@@ -10,7 +10,7 @@ from sqlalchemy import inspect, select, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
-from .models import User, split_full_name
+from .models import Contract, ContractStatusEvent, User, split_full_name
 
 
 def _add_column(engine: Engine, table: str, column: str, ddl: str) -> None:
@@ -33,4 +33,28 @@ def run(engine: Engine) -> None:
             u.first_name, u.last_name = first, last
             changed = True
         if changed:
+            db.commit()
+    _baseline_status_history(engine)
+
+
+def _baseline_status_history(engine: Engine) -> None:
+    """Umowy bez historii dostają jeden wiersz „stan w chwili włączenia historii”."""
+    if not inspect(engine).has_table("contract_status_events"):
+        return
+    with Session(engine) as db:
+        have = select(ContractStatusEvent.contract_id)
+        missing = list(db.scalars(select(Contract).where(Contract.id.not_in(have))))
+        for c in missing:
+            db.add(
+                ContractStatusEvent(
+                    contract_id=c.id,
+                    from_status=None,
+                    to_status=c.status,
+                    effective_date=(c.created_at.date() if c.created_at else c.signed_date),
+                    changed_by_id=None,
+                    note="Stan w chwili włączenia historii statusów. Wcześniejsze zmiany nie były zapisywane.",
+                    baseline=True,
+                )
+            )
+        if missing:
             db.commit()
