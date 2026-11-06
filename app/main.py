@@ -155,6 +155,53 @@ templates.env.globals.update(
 
 
 # --------------------------------------------------------------------------
+# Nawigacja: zakładki główne i podsekcje
+# --------------------------------------------------------------------------
+
+# (klucz, podpis, adres, prefiksy adresów należących do zakładki, tylko właściciel)
+TABS = [
+    ("portfel", "Portfel", "/pulpit", ("/pulpit", "/umowy"), False),
+    ("spolki", "Spółki", "/spolki", ("/spolki",), True),
+    ("zespol", "Zespół", "/zespol", ("/zespol",), True),
+    ("raporty", "Raporty", "/raporty", ("/raporty",), False),
+    ("konto", "Konto", "/konto", ("/konto", "/haslo"), False),
+]
+
+SUBTABS = {
+    "portfel": [("Podsumowanie", "/pulpit"), ("Umowy", "/umowy"), ("Nowa umowa", "/umowy/nowa")],
+    "spolki": [("Lista spółek", "/spolki"), ("Dodaj spółkę", "/spolki/nowa")],
+    "zespol": [("Lista osób", "/zespol"), ("Dodaj osobę", "/zespol/nowa")],
+    "konto": [("Moje konto", "/konto"), ("Zmiana hasła", "/haslo")],
+}
+
+
+def _belongs(path: str, prefix: str) -> bool:
+    return path == prefix or path.startswith(prefix + "/")
+
+
+def navigation(user: Optional[User], path: str) -> dict:
+    """Zakładki widoczne dla roli oraz podsekcje bieżącej zakładki."""
+    if not user:
+        return {"tabs": [], "sub": [], "section": None}
+    tabs, active = [], None
+    for key, label, url, prefixes, owner_only_tab in TABS:
+        if owner_only_tab and user.role != ROLE_OWNER:
+            continue
+        is_active = any(_belongs(path, pre) for pre in prefixes)
+        if is_active:
+            active = key
+        tabs.append({"key": key, "label": label, "url": url, "active": is_active})
+    sub = []
+    if active in SUBTABS:
+        # najdłuższe pasujące dopasowanie wygrywa, np. /umowy/nowa przed /umowy
+        urls = [u for _, u in SUBTABS[active]]
+        match = max((u for u in urls if _belongs(path, u)), key=len, default=None)
+        sub = [{"label": lab, "url": u, "active": u == match} for lab, u in SUBTABS[active]]
+    section = next((t["label"] for t in tabs if t["active"]), None)
+    return {"tabs": tabs, "sub": sub, "section": section}
+
+
+# --------------------------------------------------------------------------
 # Sesja, CSRF, komunikaty
 # --------------------------------------------------------------------------
 
@@ -185,6 +232,7 @@ def render(request: Request, name: str, ctx: Optional[dict] = None, status_code:
     ctx["csrf"] = csrf_token(request)
     ctx["flashes"] = request.session.pop("flash", [])
     ctx.setdefault("user", None)
+    ctx["nav"] = navigation(ctx["user"], request.url.path)
     return templates.TemplateResponse(request, name, ctx, status_code=status_code)
 
 
@@ -364,6 +412,16 @@ def _validate_new_user(form: dict, db: Session, require_role: bool = True) -> Op
     return None
 
 
+@app.get("/konto", response_class=HTMLResponse)
+def account_page(request: Request, user: User = Depends(current_user)):
+    return render(request, "konto.html", {"user": user})
+
+
+@app.get("/raporty", response_class=HTMLResponse)
+def reports_page(request: Request, user: User = Depends(current_user)):
+    return render(request, "raporty.html", {"user": user})
+
+
 @app.get("/haslo", response_class=HTMLResponse)
 def password_page(request: Request, user: User = Depends(current_user)):
     return render(request, "haslo.html", {"user": user})
@@ -381,7 +439,7 @@ async def password_change(request: Request, user: User = Depends(current_user), 
     user.password_hash = hash_password(form["nowe"])
     db.commit()
     flash(request, "Hasło zmienione.")
-    return redirect("/pulpit")
+    return redirect("/konto")
 
 
 # --------------------------------------------------------------------------
@@ -411,16 +469,21 @@ def suppliers_page(request: Request, user: User = Depends(owner_only), db: Sessi
     return render(request, "spolki.html", {"user": user, "rows": rows})
 
 
+@app.get("/spolki/nowa", response_class=HTMLResponse)
+def supplier_new_page(request: Request, user: User = Depends(owner_only)):
+    return render(request, "spolka_nowa.html", {"user": user, "form": {}})
+
+
 @app.post("/spolki")
 async def supplier_add(request: Request, user: User = Depends(owner_only), db: Session = Depends(get_db)):
     form = await form_data(request)
     name = form.get("nazwa", "")
     if not name:
-        flash(request, "Błąd: podaj nazwę spółki.")
-        return redirect("/spolki")
+        return render(request, "spolka_nowa.html", {"user": user, "form": form, "error": "Podaj nazwę spółki."}, 400)
     if db.scalar(select(Supplier).where(Supplier.name == name)):
-        flash(request, f"Błąd: spółka {name} już istnieje.")
-        return redirect("/spolki")
+        return render(
+            request, "spolka_nowa.html", {"user": user, "form": form, "error": f"Spółka {name} już istnieje."}, 400
+        )
     s = Supplier(name=name)
     db.add(s)
     db.commit()
@@ -500,7 +563,12 @@ def _managers(db: Session) -> list[User]:
 def team_page(request: Request, user: User = Depends(owner_only), db: Session = Depends(get_db)):
     people = list(db.scalars(select(User).order_by(User.role, User.name)))
     rows = [(p, svc.current_rate(p)) for p in people]
-    return render(request, "zespol.html", {"user": user, "rows": rows, "managers": _managers(db), "form": {}})
+    return render(request, "zespol.html", {"user": user, "rows": rows})
+
+
+@app.get("/zespol/nowa", response_class=HTMLResponse)
+def team_new_page(request: Request, user: User = Depends(owner_only), db: Session = Depends(get_db)):
+    return render(request, "zespol_nowa.html", {"user": user, "managers": _managers(db), "form": {}})
 
 
 @app.post("/zespol")
@@ -523,10 +591,8 @@ async def team_add(request: Request, user: User = Depends(owner_only), db: Sessi
         except FormError as e:
             err = str(e)
     if err:
-        people = list(db.scalars(select(User).order_by(User.role, User.name)))
-        rows = [(p, svc.current_rate(p)) for p in people]
         return render(
-            request, "zespol.html", {"user": user, "rows": rows, "managers": _managers(db), "error": err, "form": form}, 400
+            request, "zespol_nowa.html", {"user": user, "managers": _managers(db), "error": err, "form": form}, 400
         )
     u = User(
         email=form["email"].lower(),

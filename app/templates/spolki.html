@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-{% from "_makra.html" import pole %}
 {% block title %}Spółki i reguły{% endblock %}
 {% block content %}
 <h1>Spółki obrotu i reguły prowizji</h1>
@@ -21,13 +20,7 @@
 {% endfor %}
 </ul>
 {% else %}
-<p>Nie dodano jeszcze żadnej spółki.</p>
+<p>Nie dodano jeszcze żadnej spółki. <a href="/spolki/nowa">Dodaj pierwszą spółkę</a>.</p>
 {% endif %}
 
-<h2>Dodaj spółkę</h2>
-<form method="post" action="/spolki" class="stack">
-  <input type="hidden" name="csrf" value="{{ csrf }}">
-  {{ pole("nazwa", "Nazwa spółki obrotu", required=true) }}
-  <button type="submit">Dodaj spółkę</button>
-</form>
 {% endblock %}

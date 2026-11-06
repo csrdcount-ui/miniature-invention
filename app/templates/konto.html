@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Konto{% endblock %}
+{% block content %}
+<h1>Moje konto</h1>
+
+<h2>Abonament</h2>
+<p>Informacja o planie i dacie ważności abonamentu pojawi się w kolejnej aktualizacji.</p>
+
+<h2>Moje dane</h2>
+<dl>
+  <dt>Imię i nazwisko</dt><dd>{{ user.name }}</dd>
+  <dt>E-mail</dt><dd>{{ user.email }}</dd>
+  <dt>Rola</dt><dd>{{ user.role_label }}</dd>
+  {% if user.manager %}<dt>Menedżer</dt><dd>{{ user.manager.name }}</dd>{% endif %}
+</dl>
+
+<h2>Bezpieczeństwo</h2>
+<p><a href="/haslo">Zmień hasło</a></p>
+<form method="post" action="/wyloguj">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <button type="submit">Wyloguj</button>
+</form>
+{% endblock %}

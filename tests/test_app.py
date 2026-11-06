@@ -1,4 +1,6 @@
 """Testy przepływu: właściciel ustawia reguły, ludzie sprzedają, każdy widzi tylko swoje."""
+import re
+
 from app.db import SessionLocal
 from app.models import Contract
 
@@ -15,8 +17,8 @@ def setup_company(client):
     assert r.status_code == 303
 
     # dwie spółki z różnymi warunkami
-    post(client, "/spolki", "/spolki", {"nazwa": "Spółka A"})
-    post(client, "/spolki", "/spolki", {"nazwa": "Spółka B"})
+    post(client, "/spolki/nowa", "/spolki", {"nazwa": "Spółka A"})
+    post(client, "/spolki/nowa", "/spolki", {"nazwa": "Spółka B"})
     r = post(client, "/spolki/1", "/spolki/1/reguly", {
         "od": "2020-01-01", "udzial": "77", "transza": "30", "wyzwalacz": "weryfikacja",
         "limit": "200", "nowe_msc": "12", "korekta": "proporcjonalna",
@@ -29,16 +31,16 @@ def setup_company(client):
     assert r.status_code == 303, r.text
 
     # menedżer i dwóch handlowców (jeden w zespole, drugi poza)
-    r = post(client, "/zespol", "/zespol", {
+    r = post(client, "/zespol/nowa", "/zespol", {
         "imie": "Marek Menedżer", "email": "marek@firma.pl", "haslo": PW, "rola": "menedzer",
         "menedzer": "", "udzial": "45", "override": "5", "baza": "narzut",
     })
     assert r.status_code == 303, r.text
-    post(client, "/zespol", "/zespol", {
+    post(client, "/zespol/nowa", "/zespol", {
         "imie": "Hania Handlowiec", "email": "hania@firma.pl", "haslo": PW, "rola": "handlowiec",
         "menedzer": "2", "udzial": "40", "override": "", "baza": "narzut",
     })
-    post(client, "/zespol", "/zespol", {
+    post(client, "/zespol/nowa", "/zespol", {
         "imie": "Olek Obcy", "email": "olek@firma.pl", "haslo": PW, "rola": "handlowiec",
         "menedzer": "", "udzial": "35", "override": "", "baza": "narzut",
     })
@@ -143,7 +145,7 @@ def test_handlowiec_nie_przypisze_umowy_innemu(client):
 
 def test_brak_regul_blokuje_umowe(client):
     setup_company(client)
-    post(client, "/spolki", "/spolki", {"nazwa": "Spółka C"})
+    post(client, "/spolki/nowa", "/spolki", {"nazwa": "Spółka C"})
     login(client, "hania@firma.pl")
     r = post(client, "/umowy/nowa", "/umowy/nowa", {**CONTRACT, "spolka": "3"})
     assert r.status_code == 400
@@ -180,3 +182,79 @@ def test_strony_renderuja_sie(client):
         r = client.get(url)
         assert r.status_code == 200, url
         assert 'lang="pl"' in r.text
+
+
+# --------------------------------------------------------------------------
+# Nawigacja: zakładki główne, podsekcje, osobne strony formularzy
+# --------------------------------------------------------------------------
+
+def _menu(html: str) -> str:
+    start = html.index('aria-label="Menu główne"')
+    return html[start:html.index("</nav>", start)]
+
+
+def test_zakladki_wlasciciela(client):
+    setup_company(client)
+    login(client, "kris@firma.pl")
+    menu = _menu(client.get("/pulpit").text)
+    for label in ["Portfel", "Spółki", "Zespół", "Raporty", "Konto"]:
+        assert f"<span>{label}</span>" in menu, label
+    # stare, długie menu zniknęło z każdej strony
+    html = client.get("/pulpit").text
+    assert "Zalogowano:" not in html
+    assert 'action="/wyloguj"' not in html
+
+
+def test_zakladki_handlowca_bez_spolek_i_zespolu(client):
+    setup_company(client)
+    login(client, "hania@firma.pl")
+    menu = _menu(client.get("/pulpit").text)
+    assert "<span>Portfel</span>" in menu and "<span>Konto</span>" in menu
+    assert "<span>Spółki</span>" not in menu and "<span>Zespół</span>" not in menu
+
+
+def test_biezaca_zakladka_i_podsekcja(client):
+    setup_company(client)
+    login(client, "kris@firma.pl")
+    html = client.get("/umowy/nowa").text
+    menu = _menu(html)
+    assert re.search(r'href="/pulpit" aria-current="page"', menu)
+    assert menu.count('aria-current="page"') == 1
+    # podsekcja: wygrywa najdłuższe dopasowanie, tylko „Nowa umowa” jest bieżąca
+    assert '<a href="/umowy/nowa" aria-current="page">Nowa umowa</a>' in html
+    assert '<a href="/umowy">Umowy</a>' in html
+    html = client.get("/zespol/2").text
+    assert re.search(r'href="/zespol" aria-current="page"', _menu(html))
+
+
+def test_konto_ma_wylogowanie_i_haslo(client):
+    setup_company(client)
+    login(client, "hania@firma.pl")
+    r = client.get("/konto")
+    assert r.status_code == 200
+    assert "hania@firma.pl" in r.text and 'action="/wyloguj"' in r.text and 'href="/haslo"' in r.text
+    r = post(client, "/konto", "/wyloguj", {})
+    assert r.status_code == 303
+    assert client.get("/pulpit", follow_redirects=False).headers["location"] == "/logowanie"
+
+
+def test_formularze_na_osobnych_stronach(client):
+    setup_company(client)
+    login(client, "kris@firma.pl")
+    assert 'action="/spolki"' not in client.get("/spolki").text
+    assert 'action="/zespol"' not in client.get("/zespol").text
+    assert 'action="/spolki"' in client.get("/spolki/nowa").text
+    assert 'action="/zespol"' in client.get("/zespol/nowa").text
+    assert client.get("/raporty").status_code == 200
+    # błąd wraca na stronę formularza z komunikatem i wpisanymi danymi
+    r = post(client, "/spolki/nowa", "/spolki", {"nazwa": "Spółka A"})
+    assert r.status_code == 400 and "już istnieje" in r.text and 'role="alert"' in r.text
+    r = post(client, "/zespol/nowa", "/zespol", {"imie": "Ala Nowa", "email": "", "haslo": "x", "rola": "handlowiec", "udzial": "10"})
+    assert r.status_code == 400 and 'value="Ala Nowa"' in r.text
+
+
+def test_formularze_tylko_dla_wlasciciela(client):
+    setup_company(client)
+    login(client, "marek@firma.pl")
+    assert client.get("/spolki/nowa").status_code == 403
+    assert client.get("/zespol/nowa").status_code == 403

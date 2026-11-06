@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% from "_makra.html" import pole %}
+{% block title %}Dodaj spółkę{% endblock %}
+{% block content %}
+<h1>Dodaj spółkę obrotu</h1>
+<p>Po dodaniu przejdziesz do strony spółki, gdzie ustawisz jej reguły prowizji.</p>
+<form method="post" action="/spolki" class="stack">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  {{ pole("nazwa", "Nazwa spółki obrotu", form.nazwa, required=true) }}
+  <button type="submit">Dodaj spółkę</button>
+</form>
+{% endblock %}
