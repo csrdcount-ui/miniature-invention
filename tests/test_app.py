@@ -479,3 +479,23 @@ def test_data_zmiany_nie_cofa_sie_przed_poprzednia(client):
     assert r.status_code == 400 and "wcześniejsza niż poprzednia zmiana" in r.text
     r = post(client, f"/umowy/{cid}", f"/umowy/{cid}/status", {"status": "Start dostaw", "data": "2026-10-10"})
     assert r.status_code == 303
+
+
+# --------------------------------------------------------------------------
+# Architektura: warstwy nie mieszają się
+# --------------------------------------------------------------------------
+
+def test_logika_biznesowa_nie_zalezy_od_warstwy_stron():
+    """Silnik prowizji i usługi nie mogą importować FastAPI ani modułów stron.
+    Dzięki temu da się je kiedyś wydzielić albo użyć w procesie w tle."""
+    import ast
+    import pathlib
+    root = pathlib.Path(__file__).resolve().parent.parent / "app"
+    for name in ["engine.py", "services.py", "models.py", "migrate.py"]:
+        tree = ast.parse((root / name).read_text())
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom):
+                mod = ("." * node.level) + (node.module or "")
+                assert not mod.startswith(("fastapi", "starlette", ".web", ".routes")), (name, mod)
+            if isinstance(node, ast.Import):
+                assert not any(a.name.startswith(("fastapi", "starlette")) for a in node.names), name
