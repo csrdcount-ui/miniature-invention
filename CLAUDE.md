@@ -101,25 +101,17 @@ Następne (w tej kolejności, po odpowiedziach na pytania niżej):
 
 ## Otwarte pytania do właścicielki
 
-Rezerwacja i dokumenty:
-- Kto decyduje o przedłużeniu rezerwacji i na jak długo zwykle?
-- Co dokładnie znaczy „regres” (odrzucenie/cofnięcie umowy przez spółkę z braków?).
-- Jak klient akceptuje ofertę w systemie spółki (SMS, podpis elektroniczny, link)?
-- Scoring: z jakich wywiadowni korzystają (KRD i inne)? Wpis ręczny z PDF czy integracja?
+Odpowiedzi z 7.11.2026 są w `docs/WIEDZA-BRANZOWA.md`. Zostały:
 
-Uprawnienia BOK:
-- Czy BOK może przepinać klientów i zmieniać statusy domyślnie? (Dziś: statusy tak,
-  przepinanie nie; właściciel przełącza.)
-- Czy w BOK bywa kilka osób z kierownikiem i podziałem pracy, np. według spółek?
-
-Oferty i ceny:
-- Forma cenników w spółkach bez własnego systemu (Excel, PDF)?
+- Punkt poboru w dwóch umowach: czy liczy się nakładanie okresów dostaw (odnowienie
+  podpisane wcześniej, ze startem po końcu starej umowy, jest dozwolone)?
+- Grupy taryfowe gazu, które mają być na liście (energia: B, C, G).
+- „Ofertownik”: czy to narzędzie spółki, czy dokument biura brokerskiego dla klienta
+  (wtedy aplikacja ma generować ofertę, np. PDF z logo)?
+- Co znaczy „regres” (odrzucenie/cofnięcie umowy przez spółkę z braków?).
+- Na jak długo opiekun brokera zwykle przedłuża rezerwację?
 - Produkty w cennikach (stała, indeks, mix), zależność od okresu i taryfy.
 - Ważność wyceny indywidualnej.
-
-Klienci, migracja, pliki:
-- Gospodarstwa domowe czy tylko firmy?
-- Klient z wieloma punktami poboru: jedna umowa czy kilka?
-- Z jakich CRM-ów migrujemy; zanonimizowany eksport do analizy.
-- Czy przenosimy historię wypłaconych prowizji i korekt?
-- Zgoda na płatny magazyn plików w UE (Frankfurt) i okres przechowywania dokumentów (RODO).
+- BOK: domyślne uprawnienia do przepinania klientów; kilka osób z podziałem pracy?
+- Migracja: z jakich CRM-ów, zanonimizowany eksport, historia wypłat i korekt.
+- Zgoda na płatny magazyn plików w UE (Frankfurt) i okres przechowywania (RODO).

@@ -15,6 +15,8 @@ między spółkami obrotu, więc w aplikacji mają być konfigurowalne per spó�
 - Gdy NIP jest już zarezerwowany przez innego agenta albo sprzedaż wewnętrzną:
   odmowa rezerwacji, nie można ofertować w tej spółce. Można ofertować w innej
   spółce. Dlatego brokerzy mają kilka spółek w portfelu.
+- O przedłużeniu rezerwacji decyduje najczęściej koordynator po stronie spółki,
+  tzw. opiekun brokera. Do niego trafia wniosek z dowodami.
 - Wyjątek: przy prawdziwej relacji z klientem i jego pisemnym poświadczeniu, że
   chce oferty od danego brokera, można rozmawiać z dyrektorem sprzedaży spółki o
   przepięciu rezerwacji na siebie.
@@ -27,6 +29,16 @@ między spółkami obrotu, więc w aplikacji mają być konfigurowalne per spó�
   spółka ma własną strukturę tytułu i treści, np. „Rezerwacja: NIP: nazwa firmy”.
 - Po podpisaniu umowy rezerwacja zostaje przy brokerze na cały okres umowy, żeby
   mógł ją przedłużyć przed końcem albo po nim.
+
+## Klienci i punkty poboru
+
+- Klienci biur brokerskich to firmy w taryfach C i B oraz wspólnoty mieszkaniowe
+  w taryfie G dla części wspólnych budynku. Pojedyncze gospodarstwa domowe nie są
+  typowym klientem.
+- Jeden klient (NIP) może mieć wiele punktów poboru. Jedna umowa może obejmować
+  wiele punktów.
+- Ten sam klient może mieć jednocześnie kilka umów z różnymi sprzedawcami na różne
+  punkty poboru. Nie może mieć dwóch umów na ten sam punkt poboru.
 
 ## Jedna oferta na klienta
 
@@ -46,6 +58,15 @@ między spółkami obrotu, więc w aplikacji mają być konfigurowalne per spó�
 - Przy większych klientach scoring: sprawdzenie w wywiadowniach gospodarczych i
   rejestrach dłużników, a także informacji o zaległościach publikowanych na
   fakturach za energię.
+- Scoring jest indywidualny dla każdej spółki: każda korzysta z innych wywiadowni.
+  BOK sprawdza klienta w systemie danej spółki i przekazuje handlowcowi decyzję:
+  zielone światło albo nie można ofertować.
+
+## Podpisanie umowy
+
+- Najczęściej elektronicznie: przez platformę podpisu (np. Autenti) albo autorski
+  system spółki, zwykle kodem SMS.
+- Także na papierze: wtedy skan umowy idzie do spółki, a oryginał pocztą.
 
 ## Biuro obsługi klienta (BOK)
 
@@ -65,6 +86,10 @@ między spółkami obrotu, więc w aplikacji mają być konfigurowalne per spó�
   a traderzy spółki wyceniają klienta osobnym procesem.
 - Cennik zmienia się zwykle raz w tygodniu, częściej przy dynamicznej sytuacji
   na giełdzie.
+- Forma cennika w spółkach bez własnego systemu: najczęściej PDF albo cena w
+  e-mailu, którą wpisuje się do tzw. ofertownika. Niektóre spółki dają edytowalny
+  PDF, w który wpisuje się NIP, nazwę firmy i ceny. Coraz więcej spółek przechodzi
+  na własne systemy, ale jeszcze nie wszystkie.
 - Cennik obowiązuje do wydania nowego. Po wydaniu nowego spółka zwykle gwarantuje
   ceny poprzedniego do końca doby, w której wydała nowy.
 - Spółki z własnym systemem: ofertę generuje się w systemie spółki i system wysyła
@@ -104,6 +129,14 @@ między spółkami obrotu, więc w aplikacji mają być konfigurowalne per spó�
 11. Termin wypowiedzenia starej umowy jako twardy termin w kalendarzu: do kiedy
     klient musi mieć nową umowę.
 12. Rezerwacja trwająca przez okres umowy jako podstawa przypomnień o odnowieniu.
+13. Punkt poboru jako osobny obiekt z grupą taryfową. Kontrola: punkt poboru nie
+    może być w dwóch umowach w tym samym okresie.
+14. Scoring jako decyzja per klient i spółka (zielone światło / nie ofertować),
+    wpisywana przez BOK; razem z rezerwacją tworzy mapę dostępności klienta.
+15. Sposób podpisania umowy (elektronicznie / papier). Przy papierze lista kontrolna:
+    skan wysłany, oryginał wysłany pocztą.
+16. Ceny wpisywane ręcznie z PDF lub e-maila spółki; import cenników nie jest
+    potrzebny na start.
 
 ## Do doprecyzowania
 
