@@ -1,7 +1,7 @@
 # Propozycja przebudowy widoku właściciela: wersje 1.0 i 1.1
 
 Stan: propozycja zatwierdzona do realizacji etapami, listopad 2026.
-Zrealizowane: nawigacja (punkt 1), imię i nazwisko osobno (punkt 3), nazwa firmy w górnej belce (część punktu 2), historia statusów umów (część punktu 6).
+Zrealizowane: nawigacja (punkt 1), imię i nazwisko osobno (punkt 3), nazwa firmy w górnej belce (część punktu 2), historia statusów umów (część punktu 6), rola BOK z przełącznikami uprawnień.
 
 ## Co jest dziś i dlaczego jest nieczytelne
 

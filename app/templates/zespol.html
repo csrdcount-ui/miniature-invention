@@ -10,7 +10,7 @@
     <h3><a href="/zespol/{{ p.id }}">{{ p.name }}</a>{% if not p.active %} (nieaktywny){% endif %}</h3>
     {% if p.needs_last_name %}<p><strong>Uzupełnij nazwisko.</strong></p>{% endif %}
     <p>{{ p.role_label }}{% if p.manager %}, zespół: {{ p.manager.name }}{% endif %}</p>
-    {% if r and p.role != ROLE_OWNER %}
+    {% if r and p.role in (ROLE_MANAGER, ROLE_TRADER) %}
     <p>Udział w całej masie narzutu: {{ r.trader_share_pct|pct }}{% if p.role == ROLE_MANAGER %}, override {{ r.override_pct|pct }} {{ OVERRIDE_BASES.get(r.override_base) }}{% endif %}</p>
     {% endif %}
   </li>

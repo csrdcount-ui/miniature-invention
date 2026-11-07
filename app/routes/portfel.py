@@ -26,7 +26,7 @@ from ..models import (
     Supplier,
     User,
 )
-from ..web.auth import current_user
+from ..web.auth import bok_perms, current_user
 from ..web.forms import (
     FormError,
     p_date,
@@ -47,8 +47,9 @@ router = APIRouter()
 @router.get("/pulpit", response_class=HTMLResponse)
 def dashboard(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
     contracts = list(db.scalars(svc.visible_contracts_query(user)))
-    summary = svc.summary_for(user, contracts)
-    ctx = {"user": user, "summary": summary, "recent": [svc.contract_view(user, c) for c in contracts[:5]]}
+    perms = bok_perms(db)
+    summary = svc.summary_for(user, contracts, perms)
+    ctx = {"user": user, "summary": summary, "recent": [svc.contract_view(user, c, perms) for c in contracts[:5]]}
     if user.role == ROLE_OWNER:
         suppliers = list(db.scalars(select(Supplier).order_by(Supplier.name)))
         ctx["suppliers_without_rules"] = [s.name for s in suppliers if not s.rule_sets]
@@ -59,8 +60,9 @@ def dashboard(request: Request, user: User = Depends(current_user), db: Session 
 @router.get("/umowy", response_class=HTMLResponse)
 def contracts_page(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
     contracts = list(db.scalars(svc.visible_contracts_query(user)))
-    views = [svc.contract_view(user, c) for c in contracts]
-    return render(request, "umowy.html", {"user": user, "contracts": views, "summary": svc.summary_for(user, contracts)})
+    perms = bok_perms(db)
+    views = [svc.contract_view(user, c, perms) for c in contracts]
+    return render(request, "umowy.html", {"user": user, "contracts": views, "summary": svc.summary_for(user, contracts, perms)})
 
 
 def _new_contract_ctx(db: Session, user: User, **extra) -> dict:
@@ -127,10 +129,12 @@ def _get_visible_contract(db: Session, user: User, cid: int) -> Contract:
     return c
 
 
-def _contract_ctx(user: User, c: Contract, form: Optional[dict] = None, error: Optional[str] = None) -> dict:
+def _contract_ctx(user: User, c: Contract, form: Optional[dict] = None, error: Optional[str] = None, perms=None) -> dict:
+    perms = perms or svc.DEFAULT_PERMS
     return {
         "user": user,
-        "c": svc.contract_view(user, c),
+        "c": svc.contract_view(user, c, perms),
+        "can_edit_status": svc.can_edit_status(user, c, perms),
         "history": c.events,
         "since": svc.status_since(c),
         "today": date.today(),
@@ -142,7 +146,7 @@ def _contract_ctx(user: User, c: Contract, form: Optional[dict] = None, error: O
 @router.get("/umowy/{cid}", response_class=HTMLResponse)
 def contract_page(cid: int, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
     c = _get_visible_contract(db, user, cid)
-    return render(request, "umowa.html", _contract_ctx(user, c))
+    return render(request, "umowa.html", _contract_ctx(user, c, perms=bok_perms(db)))
 
 
 @router.post("/umowy/{cid}/status")
@@ -151,9 +155,9 @@ async def contract_status(cid: int, request: Request, user: User = Depends(curre
     form = await form_data(request)
     try:
         when = p_date(form, "data", "Data zdarzenia", required=False) or date.today()
-        svc.change_status(db, actor=user, c=c, new_status=form.get("status", ""), effective_date=when, note=form.get("notatka", ""))
+        svc.change_status(db, actor=user, c=c, new_status=form.get("status", ""), effective_date=when, note=form.get("notatka", ""), perms=bok_perms(db))
     except (FormError, svc.BusinessError) as e:
         db.rollback()
-        return render(request, "umowa.html", _contract_ctx(user, c, form, str(e)), 400)
+        return render(request, "umowa.html", _contract_ctx(user, c, form, str(e), perms=bok_perms(db)), 400)
     flash(request, f"Status umowy: {c.status}, od {fmt_date(when)}. Zmiana zapisana w historii.")
     return redirect(f"/umowy/{c.id}")

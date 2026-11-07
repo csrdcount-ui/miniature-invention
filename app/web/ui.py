@@ -12,6 +12,9 @@ from fastapi.templating import Jinja2Templates
 
 from .. import engine as eng
 from ..models import (
+    BOK_PERMISSIONS,
+    ROLE_BOK,
+    SELLING_ROLES,
     CONTRACT_STATUSES,
     MEDIA,
     ROLE_MANAGER,
@@ -91,6 +94,9 @@ templates.env.globals.update(
     ROLE_OWNER=ROLE_OWNER,
     ROLE_MANAGER=ROLE_MANAGER,
     ROLE_TRADER=ROLE_TRADER,
+    ROLE_BOK=ROLE_BOK,
+    SELLING_ROLES=SELLING_ROLES,
+    BOK_PERMISSIONS=BOK_PERMISSIONS,
     OVERRIDE_BASES={
         eng.OVERRIDE_OD_NARZUTU: "od całej masy narzutu",
         eng.OVERRIDE_OD_HANDLOWCA: "od prowizji handlowca",

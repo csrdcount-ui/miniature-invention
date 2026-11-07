@@ -18,10 +18,39 @@ from .db import Base
 ROLE_OWNER = "wlasciciel"
 ROLE_MANAGER = "menedzer"
 ROLE_TRADER = "handlowiec"
+ROLE_BOK = "bok"
 ROLES = {
     ROLE_OWNER: "Właściciel",
     ROLE_MANAGER: "Menedżer",
     ROLE_TRADER: "Handlowiec",
+    ROLE_BOK: "Biuro obsługi (BOK)",
+}
+# Role, które sprzedają i mogą mieć przypisane umowy oraz stawki prowizji.
+SELLING_ROLES = (ROLE_OWNER, ROLE_MANAGER, ROLE_TRADER)
+
+# Uprawnienia biura obsługi włączane przez właściciela.
+# klucz: (nazwa, opis, wartość domyślna, działa już w aplikacji)
+BOK_PERMISSIONS = {
+    "bok_can_change_status": (
+        "Zmienia statusy umów",
+        "BOK może przesuwać umowy w lejku i wpisywać daty zdarzeń, np. start dostaw.",
+        True, True,
+    ),
+    "bok_sees_commissions": (
+        "Widzi prowizje handlowców i override menedżerów",
+        "Np. do przygotowania wypłat. Udziału brokera u spółki i marży właściciela BOK nie widzi nigdy.",
+        False, True,
+    ),
+    "bok_can_reserve_nip": (
+        "Rezerwuje NIP-y w spółkach obrotu",
+        "Zacznie działać razem z modułem rezerwacji NIP.",
+        True, False,
+    ),
+    "bok_can_reassign_clients": (
+        "Przepina klientów między handlowcami",
+        "Zacznie działać razem z modułem klientów.",
+        False, False,
+    ),
 }
 
 TRIGGERS = {
@@ -100,6 +129,26 @@ class Company(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(300))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    # uprawnienia BOK (opis w BOK_PERMISSIONS)
+    bok_can_change_status: Mapped[bool] = mapped_column(Boolean, default=True)
+    bok_sees_commissions: Mapped[bool] = mapped_column(Boolean, default=False)
+    bok_can_reserve_nip: Mapped[bool] = mapped_column(Boolean, default=True)
+    bok_can_reassign_clients: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class PermissionChange(Base):
+    """Kto, kiedy i jak zmienił uprawnienie BOK."""
+
+    __tablename__ = "permission_changes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    setting: Mapped[str] = mapped_column(String(60))
+    old_value: Mapped[bool] = mapped_column(Boolean)
+    new_value: Mapped[bool] = mapped_column(Boolean)
+    changed_by_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
+    changed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    changed_by: Mapped[Optional[User]] = relationship()
 
 
 class UserRate(Base):

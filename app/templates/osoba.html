@@ -11,7 +11,7 @@
   <dt>Konto</dt><dd>{{ "aktywne" if p.active else "nieaktywne" }}</dd>
 </dl>
 
-{% if p.role != ROLE_OWNER %}
+{% if p.role in (ROLE_MANAGER, ROLE_TRADER) %}
 <h2>Obecne stawki</h2>
 {% if current %}
 <dl>
@@ -54,7 +54,7 @@
   {% if p.needs_last_name %}<p class="warn">Brakuje nazwiska. Uzupełnij je poniżej.</p>{% endif %}
   {{ pole("imie", "Imię", p.first_name, required=true) }}
   {{ pole("nazwisko", "Nazwisko", p.last_name, required=true) }}
-  {% if p.role != ROLE_OWNER %}
+  {% if p.role in (ROLE_MANAGER, ROLE_TRADER) %}
   <div class="pole">
     <label for="f-menedzer">Menedżer, do którego zespołu należy</label>
     <p class="podpowiedz" id="h-menedzer">Zmiana zespołu nie przenosi override z umów już zapisanych.</p>

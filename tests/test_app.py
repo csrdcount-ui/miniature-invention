@@ -499,3 +499,127 @@ def test_logika_biznesowa_nie_zalezy_od_warstwy_stron():
                 assert not mod.startswith(("fastapi", "starlette", ".web", ".routes")), (name, mod)
             if isinstance(node, ast.Import):
                 assert not any(a.name.startswith(("fastapi", "starlette")) for a in node.names), name
+
+
+# --------------------------------------------------------------------------
+# Biuro obsługi (BOK) i przełączniki uprawnień właściciela
+# --------------------------------------------------------------------------
+
+def _firma_z_bok_i_umowa(client) -> str:
+    setup_company(client)
+    login(client, "hania@firma.pl")
+    r = post(client, "/umowy/nowa", "/umowy/nowa", CONTRACT)
+    cid = r.headers["location"].rsplit("/", 1)[1]
+    login(client, "kris@firma.pl")
+    r = post(client, "/zespol/nowa", "/zespol", {
+        "imie": "Beata", "nazwisko": "Biuro", "email": "bok@firma.pl", "haslo": PW, "rola": "bok", "udzial": "",
+    })
+    assert r.status_code == 303, r.text
+    return cid
+
+
+def _ustaw_bok(client, **flags):
+    """Zapisuje formularz uprawnień; niewymienione przełączniki zostają przy wartościach domyślnych."""
+    from app.models import BOK_PERMISSIONS
+    login(client, "kris@firma.pl")
+    values = {k: d[2] for k, d in BOK_PERMISSIONS.items()} | flags
+    data = {k: "1" for k, v in values.items() if v}
+    r = post(client, "/konto", "/konto/uprawnienia-bok", data)
+    assert r.status_code == 303
+
+
+def test_bok_bez_stawek_i_poza_listami_sprzedawcow(client):
+    _firma_z_bok_i_umowa(client)
+    from app.models import User, UserRate
+    with SessionLocal() as db:
+        b = db.query(User).filter_by(email="bok@firma.pl").one()
+        assert b.role == "bok" and db.query(UserRate).filter_by(user_id=b.id).count() == 0
+    html = client.get("/zespol").text
+    assert "Beata Biuro" in html and "Biuro obsługi (BOK)" in html
+    # BOK nie jest do wyboru jako handlowiec przy nowej umowie
+    assert 'Beata Biuro</option>' not in client.get("/umowy/nowa").text
+
+
+def test_bok_widzi_wszystkie_umowy_bez_warunkow_wlasciciela(client):
+    cid = _firma_z_bok_i_umowa(client)
+    login(client, "bok@firma.pl")
+    menu = _menu(client.get("/pulpit").text)
+    assert "<span>Spółki</span>" not in menu and "<span>Zespół</span>" not in menu
+    assert client.get("/spolki").status_code == 403
+    assert client.get("/zespol").status_code == 403
+    page = client.get(f"/umowy/{cid}").text
+    assert "Piekarnia Kowalski" in page
+    for secret in ["Spółka obrotu → broker", "Marża właściciela", "udział brokera", "Udział brokera"]:
+        assert secret not in page, secret
+    # domyślnie bez prowizji handlowców
+    assert "Prowizja handlowca" not in page and "20\u00a0000,00\u00a0zł" not in page
+    pulpit = client.get("/pulpit").text
+    assert "Marża właściciela" not in pulpit and "Prowizje handlowców" not in pulpit
+
+
+def test_wlasciciel_wlacza_bokowi_prowizje(client):
+    cid = _firma_z_bok_i_umowa(client)
+    _ustaw_bok(client, bok_can_change_status=True, bok_sees_commissions=True)
+    login(client, "bok@firma.pl")
+    page = client.get(f"/umowy/{cid}").text
+    assert "Prowizja handlowca: Hania Handlowiec" in page
+    assert "20\u00a0000,00\u00a0zł" in page  # twarda spacja w tysiącach
+    assert "Override menedżera: 5%" in page and "Twój override" not in page
+    assert "Spółka obrotu → broker" not in page and "Marża właściciela" not in page
+    assert "Prowizje handlowców" in client.get("/pulpit").text
+
+
+def test_bok_zmienia_status_tylko_gdy_wlaczone(client):
+    cid = _firma_z_bok_i_umowa(client)
+    login(client, "bok@firma.pl")  # domyślnie włączone
+    r = post(client, f"/umowy/{cid}", f"/umowy/{cid}/status", {"status": "Weryfikacja spółki"})
+    assert r.status_code == 303
+    assert "Wpisał(a): Beata Biuro" in client.get(f"/umowy/{cid}").text
+    _ustaw_bok(client, bok_can_change_status=False)
+    login(client, "bok@firma.pl")
+    page = client.get(f"/umowy/{cid}").text
+    assert f'action="/umowy/{cid}/status"' not in page and "Zmiana statusu jest wyłączona" in page
+    r = post(client, "/umowy/nowa", f"/umowy/{cid}/status", {"status": "Start dostaw"})
+    assert r.status_code == 400 and "Nie możesz zmienić statusu" in r.text
+
+
+def test_bok_wpisuje_umowe_za_handlowca(client):
+    _firma_z_bok_i_umowa(client)
+    login(client, "bok@firma.pl")
+    from app.models import User
+    with SessionLocal() as db:
+        hania = db.query(User).filter_by(email="hania@firma.pl").one().id
+    r = post(client, "/umowy/nowa", "/umowy/nowa", {**CONTRACT, "klient": "Sklep Nowak", "handlowiec": str(hania)})
+    assert r.status_code == 303
+    with SessionLocal() as db:
+        c = db.query(Contract).filter_by(client_name="Sklep Nowak").one()
+        assert c.trader_id == hania and c.trader_share_pct > 0
+    # przypisać umowy samemu BOK się nie da
+    with SessionLocal() as db:
+        bok = db.query(User).filter_by(email="bok@firma.pl").one().id
+    r = post(client, "/umowy/nowa", "/umowy/nowa", {**CONTRACT, "klient": "Sklep X", "handlowiec": str(bok)})
+    assert r.status_code == 400
+
+
+def test_zmiany_uprawnien_maja_historie_i_tylko_wlasciciel(client):
+    _firma_z_bok_i_umowa(client)
+    _ustaw_bok(client, bok_can_change_status=True, bok_sees_commissions=True)
+    page = client.get("/konto").text
+    assert "Historia zmian uprawnień" in page
+    assert "Widzi prowizje handlowców i override menedżerów, włączone, zmienił(a): Kris Właściciel" in page
+    assert "Zacznie działać razem z modułem rezerwacji NIP." in page
+    from app.models import PermissionChange
+    with SessionLocal() as db:
+        assert db.query(PermissionChange).count() == 1  # zmieniło się tylko jedno ustawienie
+    for who in ["bok@firma.pl", "marek@firma.pl", "hania@firma.pl"]:
+        login(client, who)
+        assert "uprawnienia-bok" not in client.get("/konto").text
+        r = post(client, "/konto", "/konto/uprawnienia-bok", {"bok_sees_commissions": "1"})
+        assert r.status_code == 403, who
+
+
+def test_migracja_dodaje_przelaczniki_z_domyslnymi(client):
+    from sqlalchemy import inspect
+    from app.db import engine
+    cols = {c["name"] for c in inspect(engine).get_columns("company")}
+    assert {"bok_can_change_status", "bok_sees_commissions", "bok_can_reserve_nip", "bok_can_reassign_clients"} <= cols

@@ -10,12 +10,14 @@ from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..models import (
+    BOK_PERMISSIONS,
+    PermissionChange,
     ROLE_OWNER,
     Company,
     User,
 )
 from ..security import hash_password, verify_password
-from ..web.auth import company_of, current_user, needs_completion
+from ..web.auth import company_of, current_user, needs_completion, owner_only
 from ..web.forms import company_error, names_error, validate_new_user
 from ..web.ui import (
     flash,
@@ -92,7 +94,36 @@ async def setup(request: Request, db: Session = Depends(get_db)):
 
 @router.get("/konto", response_class=HTMLResponse)
 def account_page(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    return render(request, "konto.html", {"user": user, "company": company_of(db)})
+    company = company_of(db)
+    ctx = {"user": user, "company": company}
+    if user.role == ROLE_OWNER and company:
+        ctx["bok_settings"] = [
+            {"key": k, "label": lab, "desc": desc, "on": bool(getattr(company, k)), "works": works}
+            for k, (lab, desc, _, works) in BOK_PERMISSIONS.items()
+        ]
+        ctx["bok_history"] = list(
+            db.scalars(select(PermissionChange).order_by(PermissionChange.changed_at.desc(), PermissionChange.id.desc()).limit(20))
+        )
+    return render(request, "konto.html", ctx)
+
+
+@router.post("/konto/uprawnienia-bok")
+async def bok_permissions_save(request: Request, user: User = Depends(owner_only), db: Session = Depends(get_db)):
+    form = await form_data(request)
+    company = company_of(db)
+    if not company:
+        return redirect("/konto/dane")
+    changes = []
+    for key, (label, _, _, _) in BOK_PERMISSIONS.items():
+        new = form.get(key) == "1"
+        old = bool(getattr(company, key))
+        if new != old:
+            setattr(company, key, new)
+            db.add(PermissionChange(setting=key, old_value=old, new_value=new, changed_by_id=user.id))
+            changes.append(f"{label}: {'włączone' if new else 'wyłączone'}")
+    db.commit()
+    flash(request, "Zapisano uprawnienia BOK. " + ("; ".join(changes) + "." if changes else "Bez zmian."))
+    return redirect("/konto#uprawnienia-bok")
 
 
 def _account_data_ctx(user: User, db: Session, form: Optional[dict] = None, error: Optional[str] = None) -> dict:

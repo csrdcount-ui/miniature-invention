@@ -10,7 +10,7 @@ from sqlalchemy import inspect, select, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
-from .models import Contract, ContractStatusEvent, User, split_full_name
+from .models import BOK_PERMISSIONS, Contract, ContractStatusEvent, User, split_full_name
 
 
 def _add_column(engine: Engine, table: str, column: str, ddl: str) -> None:
@@ -35,6 +35,9 @@ def run(engine: Engine) -> None:
         if changed:
             db.commit()
     _baseline_status_history(engine)
+    if inspect(engine).has_table("company"):
+        for key, (_, _, default, _) in BOK_PERMISSIONS.items():
+            _add_column(engine, "company", key, f"BOOLEAN NOT NULL DEFAULT {'TRUE' if default else 'FALSE'}")
 
 
 def _baseline_status_history(engine: Engine) -> None:

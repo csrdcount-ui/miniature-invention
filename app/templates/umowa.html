@@ -33,7 +33,7 @@
 <p>
   {% if c.trader_share_pct is defined %}Udział handlowca: {{ c.trader_share_pct|pct }} całego narzutu. {% endif %}
   {% if c.first_tranche_pct is defined %}Pierwsza transza: {{ c.first_tranche_pct|pct }} prowizji. {% endif %}
-  {% if c.manager_override_pct is defined %}Twój override: {{ c.manager_override_pct|pct }} {{ OVERRIDE_BASES.get(c.manager_override_base) }}.{% endif %}
+  {% if c.manager_override_pct is defined %}{{ "Override menedżera" if user.role == ROLE_BOK else "Twój override" }}: {{ c.manager_override_pct|pct }} {{ OVERRIDE_BASES.get(c.manager_override_base) }}.{% endif %}
 </p>
 {% endif %}
 {% if c.new_connection %}
@@ -48,6 +48,7 @@
 
 <h2>Status w lejku</h2>
 <p>Obecny status: <strong>{{ c.status }}</strong>{% if since %}{% if since.baseline %}, co najmniej od {{ since.date|data }}{% else %}, od {{ since.date|data }}{% endif %} ({{ since.days }} {{ "dzień" if since.days == 1 else "dni" }}){% endif %}.</p>
+{% if can_edit_status %}
 <form method="post" action="/umowy/{{ c.id }}/status" class="stack">
   <input type="hidden" name="csrf" value="{{ csrf }}">
   {{ wybor("status", "Nowy status", STATUSES|zip(STATUSES), form.status or c.status) }}
@@ -59,6 +60,9 @@
   </div>
   <button type="submit">Zmień status</button>
 </form>
+{% else %}
+<p>Zmiana statusu jest wyłączona dla Twojej roli. Może ją włączyć właściciel w ustawieniach konta.</p>
+{% endif %}
 
 <h2>Historia statusów</h2>
 {% if history %}

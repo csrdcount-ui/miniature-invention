@@ -27,6 +27,13 @@ def company_of(db: Session) -> Optional[Company]:
     return db.scalar(select(Company).order_by(Company.id))
 
 
+def bok_perms(db: Session):
+    """Uprawnienia BOK z ustawień firmy (import lokalny: auth nie zależy od usług przy imporcie)."""
+    from ..services import BokPerms
+
+    return BokPerms.of(company_of(db))
+
+
 def needs_completion(user: User, company: Optional[Company]) -> bool:
     if user.needs_last_name or len(user.first_name or "") < 2:
         return True

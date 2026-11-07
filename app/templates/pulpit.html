@@ -23,6 +23,10 @@
   <dt>Prowizje handlowców</dt><dd>{{ summary.trader_total|zl }}</dd>
   <dt>Marża właściciela</dt><dd>{{ summary.owner_total|zl }}</dd>
   {% endif %}
+  {% if user.role == ROLE_BOK and summary.trader_total is defined %}
+  <dt>Prowizje handlowców</dt><dd>{{ summary.trader_total|zl }}</dd>
+  <dt>Override menedżerów</dt><dd>{{ (summary.override_all_total or 0)|zl }}</dd>
+  {% endif %}
   {% if summary.mine_total %}
   <dt>Twoja prowizja z własnej sprzedaży</dt><dd>{{ summary.mine_total|zl }}</dd>
   <dt>W tym pierwsze transze</dt><dd>{{ summary.mine_tranche1|zl }}</dd>

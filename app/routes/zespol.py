@@ -18,6 +18,8 @@ from .. import engine as eng
 from .. import services as svc
 from ..db import get_db
 from ..models import (
+    ROLE_TRADER,
+    SELLING_ROLES,
     ROLE_MANAGER,
     ROLE_OWNER,
     User,
@@ -70,7 +72,8 @@ async def team_add(request: Request, user: User = Depends(owner_only), db: Sessi
         else:
             manager_id = m.id
     rate = None
-    if not err:
+    sells = form.get("rola") in SELLING_ROLES
+    if not err and sells:
         try:
             share = p_dec(form, "udzial", "Udział w narzucie", minimum=0, maximum=100)
             override = p_dec(form, "override", "Override", required=False, minimum=0, maximum=100) or Decimal(0)
@@ -85,20 +88,21 @@ async def team_add(request: Request, user: User = Depends(owner_only), db: Sessi
         email=form["email"].lower(),
         password_hash=hash_password(form["haslo"]),
         role=form["rola"],
-        manager_id=manager_id if form["rola"] != ROLE_OWNER else None,
+        manager_id=manager_id if form["rola"] in (ROLE_MANAGER, ROLE_TRADER) else None,
     )
     u.set_names(form["imie"], form["nazwisko"])
     db.add(u)
     db.flush()
-    db.add(
-        UserRate(
-            user_id=u.id,
-            valid_from=date(2000, 1, 1),
-            trader_share_pct=rate[0],
-            override_pct=rate[1] if u.role == ROLE_MANAGER else Decimal(0),
-            override_base=form.get("baza") if form.get("baza") in eng.OVERRIDE_BASES else eng.OVERRIDE_OD_NARZUTU,
+    if sells:
+        db.add(
+            UserRate(
+                user_id=u.id,
+                valid_from=date(2000, 1, 1),
+                trader_share_pct=rate[0],
+                override_pct=rate[1] if u.role == ROLE_MANAGER else Decimal(0),
+                override_base=form.get("baza") if form.get("baza") in eng.OVERRIDE_BASES else eng.OVERRIDE_OD_NARZUTU,
+            )
         )
-    )
     db.commit()
     flash(request, f"Dodano osobę {u.name} ({u.role_label}). Przekaż jej e-mail i hasło startowe.")
     return redirect("/zespol")
@@ -162,7 +166,7 @@ async def person_update(uid: int, request: Request, user: User = Depends(owner_o
                 400,
             )
         p.set_names(form["imie"], form["nazwisko"])
-    if p.role != ROLE_OWNER:
+    if p.role in (ROLE_MANAGER, ROLE_TRADER):
         mid = form.get("menedzer", "")
         if mid == "":
             p.manager_id = None
@@ -170,6 +174,7 @@ async def person_update(uid: int, request: Request, user: User = Depends(owner_o
             m = db.get(User, int(mid))
             if m and m.role == ROLE_MANAGER and m.id != p.id:
                 p.manager_id = m.id
+    if p.role != ROLE_OWNER:
         if p.id != user.id:
             p.active = form.get("aktywny") == "1"
     if form.get("nowe_haslo"):

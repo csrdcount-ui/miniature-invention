@@ -23,6 +23,32 @@
 </dl>
 <p><a href="/konto/dane">Zmień {{ "dane i nazwę firmy" if user.role == ROLE_OWNER else "imię i nazwisko" }}</a></p>
 
+{% if bok_settings %}
+<h2 id="uprawnienia-bok">Uprawnienia biura obsługi (BOK)</h2>
+<p>Zaznacz, które zadania wykonuje biuro obsługi. Udziału brokera u spółek i Twojej marży BOK nie widzi nigdy, niezależnie od ustawień.</p>
+<form method="post" action="/konto/uprawnienia-bok" class="stack">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <fieldset>
+    <legend>BOK może</legend>
+    {% for s in bok_settings %}
+    <div class="pole">
+      <label><input type="checkbox" name="{{ s.key }}" value="1" aria-describedby="h-{{ s.key }}" {% if s.on %}checked{% endif %}>{{ s.label }}</label>
+      <p class="podpowiedz" id="h-{{ s.key }}">{{ s.desc }}</p>
+    </div>
+    {% endfor %}
+  </fieldset>
+  <button type="submit">Zapisz uprawnienia</button>
+</form>
+{% if bok_history %}
+<h3>Historia zmian uprawnień</h3>
+<ul>
+{% for h in bok_history %}
+  <li>{{ h.changed_at.strftime("%d.%m.%Y %H:%M") }}: {{ BOK_PERMISSIONS[h.setting][0] if h.setting in BOK_PERMISSIONS else h.setting }}, {{ "włączone" if h.new_value else "wyłączone" }}, zmienił(a): {{ h.changed_by.name if h.changed_by else "system" }}.</li>
+{% endfor %}
+</ul>
+{% endif %}
+{% endif %}
+
 <h2>Bezpieczeństwo</h2>
 <p><a href="/haslo">Zmień hasło</a></p>
 <form method="post" action="/wyloguj">

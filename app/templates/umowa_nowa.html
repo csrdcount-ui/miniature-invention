@@ -23,7 +23,7 @@
       </select>
     </div>
     {{ wybor("medium", "Medium", MEDIA.items(), form.medium or "energia") }}
-    {% if traders|length > 1 %}
+    {% if traders|length > 1 or user.role == ROLE_BOK %}
     <div class="pole">
       <label for="f-handlowiec">Handlowiec</label>
       <select id="f-handlowiec" name="handlowiec">

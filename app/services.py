@@ -6,6 +6,7 @@ nigdy nie dostają do przeglądarki udziału brokera ani marży właściciela.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 from typing import Optional
@@ -17,9 +18,13 @@ from . import engine as eng
 from .models import (
     CONTRACT_STATUSES,
     STATUSES_REQUIRING_NOTE,
+    BOK_PERMISSIONS,
+    ROLE_BOK,
     ROLE_MANAGER,
     ROLE_OWNER,
     ROLE_TRADER,
+    SELLING_ROLES,
+    Company,
     Contract,
     ContractStatusEvent,
     Supplier,
@@ -31,6 +36,25 @@ from .models import (
 
 class BusinessError(ValueError):
     pass
+
+
+@dataclass(frozen=True)
+class BokPerms:
+    """Uprawnienia biura obsługi ustawione przez właściciela."""
+
+    bok_can_change_status: bool = BOK_PERMISSIONS["bok_can_change_status"][2]
+    bok_sees_commissions: bool = BOK_PERMISSIONS["bok_sees_commissions"][2]
+    bok_can_reserve_nip: bool = BOK_PERMISSIONS["bok_can_reserve_nip"][2]
+    bok_can_reassign_clients: bool = BOK_PERMISSIONS["bok_can_reassign_clients"][2]
+
+    @classmethod
+    def of(cls, company: Optional[Company]) -> "BokPerms":
+        if company is None:
+            return cls()
+        return cls(**{k: bool(getattr(company, k)) for k in BOK_PERMISSIONS})
+
+
+DEFAULT_PERMS = BokPerms()
 
 
 # --------------------------------------------------------------------------
@@ -197,9 +221,9 @@ def team_ids(db: Session, manager: User) -> list[int]:
 
 
 def can_assign_trader(actor: User, trader: User) -> bool:
-    if not trader.active:
+    if not trader.active or trader.role not in SELLING_ROLES:
         return False
-    if actor.role == ROLE_OWNER:
+    if actor.role in (ROLE_OWNER, ROLE_BOK):
         return True
     if actor.role == ROLE_MANAGER:
         return trader.id == actor.id or trader.manager_id == actor.id
@@ -208,7 +232,7 @@ def can_assign_trader(actor: User, trader: User) -> bool:
 
 def visible_contracts_query(user: User):
     q = select(Contract).order_by(Contract.signed_date.desc(), Contract.id.desc())
-    if user.role == ROLE_OWNER:
+    if user.role in (ROLE_OWNER, ROLE_BOK):
         return q
     if user.role == ROLE_MANAGER:
         return q.where(or_(Contract.trader_id == user.id, Contract.manager_id == user.id))
@@ -216,14 +240,16 @@ def visible_contracts_query(user: User):
 
 
 def can_view_contract(user: User, c: Contract) -> bool:
-    if user.role == ROLE_OWNER:
+    if user.role in (ROLE_OWNER, ROLE_BOK):
         return True
     if user.role == ROLE_MANAGER:
         return c.trader_id == user.id or c.manager_id == user.id
     return c.trader_id == user.id
 
 
-def can_edit_status(user: User, c: Contract) -> bool:
+def can_edit_status(user: User, c: Contract, perms: BokPerms = DEFAULT_PERMS) -> bool:
+    if user.role == ROLE_BOK:
+        return perms.bok_can_change_status
     return can_view_contract(user, c)
 
 
@@ -231,12 +257,13 @@ HISTORY_MAX_YEARS_BACK = 5
 
 
 def change_status(
-    db: Session, *, actor: User, c: Contract, new_status: str, effective_date: date, note: str = ""
+    db: Session, *, actor: User, c: Contract, new_status: str, effective_date: date, note: str = "",
+    perms: BokPerms = DEFAULT_PERMS,
 ) -> ContractStatusEvent:
     """Zmienia status umowy i zapisuje zdarzenie w historii (w jednej transakcji)."""
     if new_status not in CONTRACT_STATUSES:
         raise BusinessError("Niepoprawny status.")
-    if not can_edit_status(actor, c):
+    if not can_edit_status(actor, c, perms):
         raise BusinessError("Nie możesz zmienić statusu tej umowy.")
     if new_status == c.status:
         raise BusinessError(f"Umowa ma już status „{new_status}”. Wybierz inny status.")
@@ -286,7 +313,7 @@ def _payout(p: eng.Payout) -> dict:
     }
 
 
-def contract_view(viewer: User, c: Contract) -> dict:
+def contract_view(viewer: User, c: Contract, perms: BokPerms = DEFAULT_PERMS) -> dict:
     """Słownik z danymi umowy, który wolno pokazać danej osobie."""
     b = calculate_contract(c)
     client_price = None
@@ -341,6 +368,20 @@ def contract_view(viewer: User, c: Contract) -> dict:
         view["warnings"] = list(b.warnings)
         return view
 
+    if viewer.role == ROLE_BOK:
+        # BOK nigdy nie widzi warunków właściciela u spółki ani jego marży.
+        view["total_markup"] = b.total_markup
+        view["manager_name"] = c.manager.name if c.manager else None
+        if perms.bok_sees_commissions:
+            view["trader_share_pct"] = c.trader_share_pct
+            view["first_tranche_pct"] = c.first_tranche_pct
+            view["rows"].append((f"Prowizja handlowca: {c.trader.name}", _payout(b.trader)))
+            if c.manager:
+                view["manager_override_pct"] = c.manager_override_pct
+                view["manager_override_base"] = c.manager_override_base
+                view["rows"].append((f"Override menedżera: {c.manager.name}", _payout(b.manager_override)))
+        return view
+
     # Menedżer i handlowiec: cała masa narzutu jest jawna (wynika z ceny
     # dla klienta), poufne są warunki właściciela u spółki.
     view["total_markup"] = b.total_markup
@@ -358,7 +399,7 @@ def contract_view(viewer: User, c: Contract) -> dict:
     return view
 
 
-def summary_for(viewer: User, contracts: list[Contract]) -> dict:
+def summary_for(viewer: User, contracts: list[Contract], perms: BokPerms = DEFAULT_PERMS) -> dict:
     """Sumy na pulpit — tylko kolumny dozwolone dla roli."""
     sums = {
         "count": len(contracts),
@@ -383,16 +424,26 @@ def summary_for(viewer: User, contracts: list[Contract]) -> dict:
         if viewer.role == ROLE_OWNER:
             sums["broker_total"] += b.broker.total
             sums["owner_total"] += b.owner_margin.total
+        if viewer.role == ROLE_OWNER or (viewer.role == ROLE_BOK and perms.bok_sees_commissions):
             sums["trader_total"] += b.trader.total
+            sums["override_all_total"] = sums.get("override_all_total", Decimal(0)) + b.manager_override.total
     if viewer.role != ROLE_OWNER:
-        for k in ("broker_total", "owner_total", "trader_total"):
+        for k in ("broker_total", "owner_total"):
             sums.pop(k)
+    if not (viewer.role == ROLE_OWNER or (viewer.role == ROLE_BOK and perms.bok_sees_commissions)):
+        sums.pop("trader_total")
     return sums
 
 
 def assignable_traders(db: Session, actor: User) -> list[User]:
-    if actor.role == ROLE_OWNER:
-        return list(db.scalars(select(User).where(User.active.is_(True)).order_by(User.last_name, User.first_name)))
+    if actor.role in (ROLE_OWNER, ROLE_BOK):
+        return list(
+            db.scalars(
+                select(User)
+                .where(User.active.is_(True), User.role.in_(SELLING_ROLES))
+                .order_by(User.last_name, User.first_name)
+            )
+        )
     if actor.role == ROLE_MANAGER:
         return list(
             db.scalars(
