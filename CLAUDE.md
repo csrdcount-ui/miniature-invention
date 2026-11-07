@@ -33,6 +33,14 @@ prowizje, umowy, zespół, a docelowo lejek sprzedaży, rezerwacje NIP i BOK.
    PostgreSQL 16 (lokalny klaster: `pg_ctlcluster 16 main start`) bazą utworzoną
    poprzednią wersją kodu, np. przez `git worktree` i `python -m app.demo`.
 
+7. **Koszt klikania w panelach.** Panele GitHuba i Rendera słabo współpracują z
+   czytnikiem ekranu, a właścicielka traci na nich pół dnia (zrzuty ekranu,
+   przeklikiwanie menu). Zanim zaproponujesz cokolwiek, co wymaga jej ręcznych zmian
+   w GitHubie lub Renderze, ostrzeż o tym wprost, na początku odpowiedzi: co to
+   jest, ile kroków, czy jest konieczne. Domyślnie wybieraj rozwiązania w kodzie i w
+   repozytorium. Nie dawaj takich kroków jako „zadań do zrobienia”, jeśli aplikacja
+   działa bez nich. Zrób sam wszystko, co da się przez dostępne narzędzia.
+
 ## Przypomnienie przed pilotażem
 
 Darmowa baza Render wygasa po 30 dniach (utworzona ok. 5.11.2026). Przed pierwszym
@@ -42,8 +50,9 @@ w Renderze — tylko za zgodą.
 
 ## Wdrożenie
 
-- GitHub `csrdcount-ui/miniature-invention`, gałąź `main` (domyślną w GitHubie
-  ustawia właścicielka ręcznie).
+- GitHub `csrdcount-ui/miniature-invention`, gałąź `main`. Domyślna gałąź w GitHubie
+  to nadal stara `ccr-fcf28ba4-j6eqkl`; zmiana wymaga klikania w ustawieniach i jest
+  opcjonalna, aplikacja działa bez niej. Nie ponaglaj.
 - Render, region Frankfurt, Blueprint „Aplikacja” (`exs-dbmc5cgae00c738urihg`),
   serwis `platforma-brokerska` (`srv-dbmc7cetlv9c73duncgg`),
   baza `platforma-brokerska-db`. Adres: https://platforma-brokerska.onrender.com
