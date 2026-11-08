@@ -642,3 +642,9 @@ def test_wersja_lokalnie_bez_numeru(client, monkeypatch):
     monkeypatch.delenv("RENDER_GIT_COMMIT", raising=False)
     r = client.get("/wersja")
     assert r.status_code == 200 and "Numer wersji jest nieznany" in r.text
+
+
+def test_nieistniejacy_adres_po_polsku(client):
+    r = client.get("/nie-ma-takiej-strony")
+    assert r.status_code == 404
+    assert "Nie znaleziono strony." in r.text and 'lang="pl"' in r.text and '"detail"' not in r.text

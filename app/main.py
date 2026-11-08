@@ -15,6 +15,7 @@ import secrets
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import func, select
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
 
 from . import migrate
@@ -77,8 +78,10 @@ async def _login_required(request: Request, exc: LoginRequired):
     return redirect("/logowanie")
 
 
+@app.exception_handler(StarletteHTTPException)
 @app.exception_handler(HTTPException)
-async def _http_error(request: Request, exc: HTTPException):
+async def _http_error(request: Request, exc: StarletteHTTPException):
+    # Także nieistniejące adresy: polska strona zamiast {"detail":"Not Found"}.
     messages = {403: "Brak dostępu do tej strony.", 404: "Nie znaleziono strony."}
     return render(
         request,

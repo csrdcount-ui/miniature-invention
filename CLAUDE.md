@@ -64,8 +64,12 @@ w Renderze — tylko za zgodą.
 - Render, region Frankfurt, Blueprint „Aplikacja” (`exs-dbmc5cgae00c738urihg`),
   serwis `platforma-brokerska` (`srv-dbmc7cetlv9c73duncgg`),
   baza `platforma-brokerska-db`. Adres: https://platforma-brokerska.onrender.com
-- Narzędzia Render w sesji wymagają numeru przestrzeni roboczej (`tea-…`), którego
-  dotąd nie udało się ustalić. Sieć sesji w chmurze blokuje domeny Rendera.
+- Narzędzie `list_events` z serwisem `srv-dbmc7cetlv9c73duncgg` działa bez numeru
+  przestrzeni roboczej: tak sprawdzaj wdrożenia (deploy_started/ended, build_ended,
+  server_failed) zamiast prosić o zrzuty. Pozostałe narzędzia Render wymagają numeru
+  przestrzeni (`tea-…`), którego nie znamy. Sieć sesji blokuje domeny Rendera.
+- Stan 8.11.2026: wdrożenia były tylko przy utworzeniu (5.11) i po zmianie gałęzi
+  w Blueprincie (6.11, commit 1711fb8). Żaden push nie uruchomił wdrożenia.
 - W tej samej przestrzeni jest inny serwis, `energia-lublina-crm` — nie dotykać.
 
 ## Budowa kodu (modularny monolit, jedna baza)
