@@ -69,7 +69,13 @@
   </div>
   {% endif %}
   {% endif %}
-  {{ pole("nowe_haslo", "Nowe hasło", "", type="password", hint="Zostaw puste, żeby nie zmieniać. Co najmniej 10 znaków.", extra='autocomplete="new-password"') }}
   <button type="submit">Zapisz ustawienia</button>
+</form>
+
+<h2>Hasło</h2>
+<p>{{ p.name }} zapomniał(a) hasła albo zaczyna pracę? Nadaj nowe hasło. Poprzednie przestanie działać od razu.</p>
+<form method="post" action="/zespol/{{ p.id }}/reset-hasla">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <button type="submit">Nadaj nowe hasło</button>
 </form>
 {% endblock %}

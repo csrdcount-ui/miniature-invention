@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Nowe hasło{% endblock %}
+{% block content %}
+<h1>Nowe hasło dla {{ p.name }}</h1>
+<div role="status" class="flash"><p>Hasło zostało zmienione. Poprzednie hasło już nie działa.</p></div>
+<p><strong>To hasło widzisz tylko teraz.</strong> Platforma go nie przechowuje w czytelnej postaci. Przekaż je {{ p.name }} i poproś o zmianę przy pierwszym logowaniu, w zakładce Konto.</p>
+<p>Login: {{ p.email }}</p>
+<p>Hasło: <code>{{ password }}</code></p>
+<p><a href="/zespol/{{ p.id }}">Wróć do strony osoby</a></p>
+{% endblock %}

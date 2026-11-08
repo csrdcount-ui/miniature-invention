@@ -6,7 +6,6 @@ transakcji, którą na końcu wycofuje, więc raport pokazuje wynik bez zgadywan
 from __future__ import annotations
 
 import json
-import secrets
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
@@ -33,20 +32,12 @@ from ..models import (
     User,
     UserRate,
 )
-from ..security import hash_password
+from ..security import hash_password, new_password
 from .standard import SHEETS, STANDARD_VERSION, Col
 
 MAX_FILE_BYTES = 2 * 1024 * 1024
 MAX_ERRORS_SHOWN = 200
 RATES_FROM = date(2000, 1, 1)
-# bez znaków mylących się na ekranie i w czytniku (0/o, 1/l/i)
-PASSWORD_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789"
-
-
-def new_password() -> str:
-    """12 znaków w trzech grupach, np. k7mp-2qax-9tde: łatwe do odczytania czytnikiem ekranu."""
-    groups = ["".join(secrets.choice(PASSWORD_ALPHABET) for _ in range(4)) for _ in range(3)]
-    return "-".join(groups)
 
 
 class ImportError_(Exception):

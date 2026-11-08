@@ -2,7 +2,7 @@
 import re
 
 from app.db import SessionLocal
-from app.models import Contract
+from app.models import Contract, User
 
 from .conftest import login, post
 
@@ -648,3 +648,42 @@ def test_nieistniejacy_adres_po_polsku(client):
     r = client.get("/nie-ma-takiej-strony")
     assert r.status_code == 404
     assert "Nie znaleziono strony." in r.text and 'lang="pl"' in r.text and '"detail"' not in r.text
+
+
+# --------------------------------------------------------------------------
+# Reset hasła przez właściciela i wskazówka odzyskiwania na stronie logowania
+# --------------------------------------------------------------------------
+
+def test_logowanie_ma_wskazowke_odzyskiwania_hasla(client):
+    setup_company(client)
+    page = client.get("/logowanie").text
+    assert "Nie pamiętasz hasła?" in page and "właściciela" in page
+
+
+def test_wlasciciel_resetuje_haslo_osoby(client):
+    setup_company(client)
+    login(client, "kris@firma.pl")
+    with SessionLocal() as db:
+        hania_id = db.query(User).filter_by(email="hania@firma.pl").one().id
+    r = post(client, f"/zespol/{hania_id}", f"/zespol/{hania_id}/reset-hasla", {})
+    assert r.status_code == 200
+    assert "Nowe hasło zostało zmienione" in r.text or "Hasło zostało zmienione" in r.text
+    assert "Login: hania@firma.pl" in r.text
+    m = re.search(r"Hasło: <code>([^<]+)</code>", r.text)
+    assert m and re.fullmatch(r"[a-z2-9]{4}-[a-z2-9]{4}-[a-z2-9]{4}", m.group(1))
+    new_password = m.group(1)
+    # stare hasło już nie działa, nowe działa
+    r = post(client, "/logowanie", "/logowanie", {"email": "hania@firma.pl", "haslo": PW})
+    assert r.status_code == 401
+    r = post(client, "/logowanie", "/logowanie", {"email": "hania@firma.pl", "haslo": new_password})
+    assert r.status_code == 303 and r.headers["location"] == "/pulpit"
+
+
+def test_reset_hasla_tylko_dla_wlasciciela(client):
+    setup_company(client)
+    with SessionLocal() as db:
+        hania_id = db.query(User).filter_by(email="hania@firma.pl").one().id
+    for who in ["marek@firma.pl", "hania@firma.pl"]:
+        login(client, who)
+        r = post(client, "/umowy/nowa", f"/zespol/{hania_id}/reset-hasla", {})
+        assert r.status_code == 403

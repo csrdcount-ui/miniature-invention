@@ -25,7 +25,7 @@ from ..models import (
     User,
     UserRate,
 )
-from ..security import hash_password
+from ..security import hash_password, new_password
 from ..web.auth import owner_only
 from ..web.forms import (
     FormError,
@@ -185,3 +185,14 @@ async def person_update(uid: int, request: Request, user: User = Depends(owner_o
     db.commit()
     flash(request, f"Zapisano zmiany: {p.name}.")
     return redirect(f"/zespol/{p.id}")
+
+
+@router.post("/zespol/{uid}/reset-hasla")
+async def person_reset_password(uid: int, request: Request, user: User = Depends(owner_only), db: Session = Depends(get_db)):
+    """Nadaje osobie nowe, losowe hasło. Pokazuje je raz, w tej jednej odpowiedzi."""
+    p = _get_user(db, uid)
+    await form_data(request)
+    password = new_password()
+    p.password_hash = hash_password(password)
+    db.commit()
+    return render(request, "osoba_haslo.html", {"user": user, "p": p, "password": password})
