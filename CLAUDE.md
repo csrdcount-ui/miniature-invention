@@ -70,6 +70,7 @@ w Renderze — tylko za zgodą.
   przestrzeni (`tea-…`), którego nie znamy. Sieć sesji blokuje domeny Rendera.
 - Stan 8.11.2026: wdrożenia były tylko przy utworzeniu (5.11) i po zmianie gałęzi
   w Blueprincie (6.11, commit 1711fb8). Żaden push nie uruchomił wdrożenia.
+  Ręczne wdrożenie 8.11 o 13:37 UTC (commit ff2d070) zakończyło się sukcesem.
 - W tej samej przestrzeni jest inny serwis, `energia-lublina-crm` — nie dotykać.
 
 ## Budowa kodu (modularny monolit, jedna baza)
