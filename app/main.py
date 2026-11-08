@@ -21,7 +21,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from . import migrate
 from .db import Base, engine
 from .models import ROLE_OWNER, Company, User, split_full_name
-from .routes import konto, portfel, raporty, spolki, system, zespol
+from .routes import konto, portfel, raporty, spolki, system, wymiana, zespol
 from .security import hash_password
 from .web.auth import LoginRequired, ProfileIncomplete, COMPLETION_URL
 from .web.ui import BASE_DIR, redirect, render
@@ -39,7 +39,7 @@ app.add_middleware(
 )
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 
-for module in (konto, portfel, spolki, zespol, raporty, system):
+for module in (konto, wymiana, portfel, spolki, zespol, raporty, system):
     app.include_router(module.router)
 
 

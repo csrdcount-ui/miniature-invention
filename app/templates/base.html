@@ -35,6 +35,9 @@
   {% endif %}
   {% endif %}
   <main id="tresc" tabindex="-1">
+    {% if demo_active %}
+    <p class="demo-baner">Dane demonstracyjne. Osoby i klienci są zmyśleni, warunki umów agencyjnych ze spółkami są fikcyjne.</p>
+    {% endif %}
     {% if flashes %}
     <div role="status" class="flash">
       {% for f in flashes %}<p>{{ f }}</p>{% endfor %}

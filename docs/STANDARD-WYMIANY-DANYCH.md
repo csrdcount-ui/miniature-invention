@@ -1,6 +1,8 @@
 # Standard wymiany danych (import i eksport Excela), wersja robocza 0.1
 
-Stan: PROJEKT do akceptacji. Nic z tego nie jest jeszcze w kodzie.
+Stan: wersja 1.0 w kodzie dla arkuszy zespol, spolki, umowy, historia_statusow
+(app/exchange). Klienci, punkty poboru, wypłaty i korekty, konwerter z mapowaniem
+kolumn, lista braków i import przez BOK: kolejne kroki.
 Decyzje właścicielki z 8.11.2026 (sekcja na końcu) mają pierwszeństwo przed resztą pliku.
 Cel: jeden plik .xlsx, który (1) służy do wczytania portfela z innego CRM-u,
 (2) jest wynikiem eksportu z platformy, (3) zawiera dane przykładowe na pokaz.

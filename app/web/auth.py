@@ -50,6 +50,9 @@ def current_user(request: Request, db: Session = Depends(get_db)) -> User:
         raise LoginRequired()
     company = company_of(db)
     request.state.company_name = company.name if company else None
+    from ..exchange.importer import demo_active
+
+    request.state.demo_active = demo_active(db)
     if request.url.path not in COMPLETION_ALLOWED and needs_completion(user, company):
         raise ProfileIncomplete()
     return user

@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Raport importu{% endblock %}
+{% block content %}
+<h1>Raport importu</h1>
+<p>Plik: {{ b.filename }}{% if b.is_demo %}, dane demonstracyjne{% endif %}.</p>
+<p><a href="/konto/import">Wróć do importu</a></p>
+
+{% if b.status == "podglad" %}
+  {% if r.errors %}
+  <div role="alert" class="error"><p>Plik ma błędy ({{ r.errors|length }}). Nic nie zostało zapisane. Popraw plik i wgraj go ponownie.</p></div>
+  {% else %}
+  <div role="status" class="flash"><p>Plik jest poprawny. Nic jeszcze nie zostało zapisane.</p></div>
+  {% endif %}
+{% elif b.status == "zatwierdzony" %}
+  <p>Ten import jest zapisany w platformie.</p>
+{% elif b.status == "cofniety" %}
+  <p>Ten import został cofnięty: jego dane usunięto.</p>
+{% endif %}
+
+<h2>{{ "Zostanie zapisane" if b.status == "podglad" else "Zapisano" }}</h2>
+<ul>
+  <li>Osoby: {{ r.counts.osoby }}</li>
+  <li>Spółki obrotu: {{ r.counts.spolki }}, zestawy reguł prowizji: {{ r.counts.reguly }}</li>
+  <li>Umowy: {{ r.counts.umowy }}</li>
+  <li>Zmiany statusów z historii: {{ r.counts.zmiany_statusow }}</li>
+</ul>
+
+{% if r.errors %}
+<h2>Błędy</h2>
+<ol class="bledy">
+{% for e in r.errors[:max_errors] %}
+  <li>Arkusz {{ e.arkusz }}{% if e.wiersz %}, wiersz {{ e.wiersz }}{% endif %}{% if e.kolumna %}, kolumna {{ e.kolumna }}{% endif %}: {{ e.komunikat }}.</li>
+{% endfor %}
+</ol>
+{% if r.errors|length > max_errors %}<p>Pokazano pierwsze {{ max_errors }} błędów z {{ r.errors|length }}.</p>{% endif %}
+{% endif %}
+
+{% if r.warnings %}
+<h2>Ostrzeżenia</h2>
+<ol class="bledy">
+{% for e in r.warnings %}
+  <li>Arkusz {{ e.arkusz }}{% if e.wiersz %}, wiersz {{ e.wiersz }}{% endif %}{% if e.kolumna %}, kolumna {{ e.kolumna }}{% endif %}: {{ e.komunikat }}.</li>
+{% endfor %}
+</ol>
+{% endif %}
+
+{% if b.status == "podglad" %}
+  {% if not r.errors %}
+  <form method="post" action="/konto/import/{{ b.id }}/zatwierdz">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <button type="submit">Zatwierdź i zapisz dane</button>
+  </form>
+  {% endif %}
+  <form method="post" action="/konto/import/{{ b.id }}/odrzuc">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <button type="submit" class="drugi">Anuluj import</button>
+  </form>
+{% elif b.status == "zatwierdzony" %}
+  <h2>Cofnięcie importu</h2>
+  {% if blockers %}
+  <p>Tego importu nie można teraz cofnąć: {{ blockers|join("; ") }}.</p>
+  {% else %}
+  <p>Cofnięcie usuwa wszystkie osoby, spółki i umowy z tego importu. Pozostałe dane zostają bez zmian.</p>
+  <form method="post" action="/konto/import/{{ b.id }}/cofnij" class="stack">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="pole">
+      <label><input type="checkbox" name="potwierdzam" value="1" required>Rozumiem, że dane z tego importu zostaną usunięte</label>
+    </div>
+    <button type="submit">{{ "Usuń dane demonstracyjne" if b.is_demo else "Cofnij import" }}</button>
+  </form>
+  {% endif %}
+{% endif %}
+{% endblock %}

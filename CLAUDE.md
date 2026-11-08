@@ -103,7 +103,13 @@ w Renderze — tylko za zgodą.
   Nowy moduł = nowy plik z `router` dodany w `main.py`.
 - `app/services.py` — logika biznesowa i widoki przycięte do roli.
 - `app/engine.py` — silnik prowizji (czyste funkcje, Decimal).
-- `app/models.py`, `app/migrate.py`, `app/demo.py` (dane demo na pustej bazie).
+- `app/models.py`, `app/migrate.py`, `app/demo.py` (stare dane demo z wiersza poleceń).
+- `app/exchange/` — wymiana danych bez FastAPI: `standard.py` (arkusze, kolumny, README),
+  `importer.py` (odczyt, walidacja, zapis, cofnięcie; podgląd = ten sam zapis w
+  wycofanej transakcji), `demo.py` (dane demonstracyjne w standardzie).
+  Strony: `app/routes/wymiana.py` (/konto/import, tylko właściciel).
+- `migrate.run`: najpierw wszystkie kolumny (`_schema`), potem kroki danych. Odwrotnie
+  start wywraca się na bazie sprzed wdrożenia (wykryte na PostgreSQL 8.11.2026).
 - Test pilnuje, że `engine`, `services`, `models`, `migrate` nie importują FastAPI
   ani warstwy stron.
 
@@ -114,7 +120,10 @@ Kwoty formatowane z twardą spacją (U+00A0) — w testach używaj ` `.
 ## Stan prac
 
 Zrobione: nawigacja z zakładkami pod kciukiem, imię i nazwisko osobno, nazwa firmy
-w belce, historia statusów umów, podział kodu na moduły, rola BOK z przełącznikami.
+w belce, historia statusów umów, podział kodu na moduły, rola BOK z przełącznikami,
+strona /wersja, import z Excela (standard 1.0: zespol, spolki, umowy,
+historia_statusow) z podglądem, zatwierdzeniem i cofnięciem paczki, dane demo
+(12 spółek, 8 osób, 60 umów) usuwane cofnięciem paczki.
 
 Następne (w tej kolejności, po odpowiedziach na pytania niżej):
 1. Moduł sprzedażowy: klient i punkt poboru, rezerwacje NIP (karta spółki z częścią

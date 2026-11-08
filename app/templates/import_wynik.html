@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Import zapisany{% endblock %}
+{% block content %}
+<h1>Import zapisany</h1>
+<div role="status" class="flash"><p>Zapisano: osoby {{ r.counts.osoby }}, spółki {{ r.counts.spolki }}, umowy {{ r.counts.umowy }}, zmiany statusów {{ r.counts.zmiany_statusow }}.</p></div>
+
+{% if r.passwords %}
+<h2>Hasła do nowych kont</h2>
+<p><strong>Te hasła widzisz tylko teraz.</strong> Platforma ich nie przechowuje w czytelnej postaci. Zapisz je albo przekaż osobom. Jeśli je zgubisz, nadasz nowe hasło na stronie osoby w zakładce Zespół.</p>
+<ul class="karty">
+{% for p in r.passwords %}
+  <li>
+    <h3>{{ p.name }}</h3>
+    <p>{{ p.role }}</p>
+    <p>Login: {{ p.email }}</p>
+    <p>Hasło: <code>{{ p.password }}</code></p>
+  </li>
+{% endfor %}
+</ul>
+{% endif %}
+<p><a href="/konto/import/{{ b.id }}">Raport i cofnięcie tego importu</a></p>
+<p><a href="/pulpit">Przejdź do portfela</a></p>
+{% endblock %}

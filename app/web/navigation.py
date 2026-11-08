@@ -14,11 +14,15 @@ TABS = [
     ("konto", "Konto", "/konto", ("/konto", "/haslo"), False),
 ]
 
+# podsekcje widoczne tylko dla właściciela
+OWNER_ONLY_SUBTABS = {"/konto/import"}
+
 SUBTABS = {
     "portfel": [("Podsumowanie", "/pulpit"), ("Umowy", "/umowy"), ("Nowa umowa", "/umowy/nowa")],
     "spolki": [("Lista spółek", "/spolki"), ("Dodaj spółkę", "/spolki/nowa")],
     "zespol": [("Lista osób", "/zespol"), ("Dodaj osobę", "/zespol/nowa")],
-    "konto": [("Moje konto", "/konto"), ("Moje dane", "/konto/dane"), ("Zmiana hasła", "/haslo")],
+    "konto": [("Moje konto", "/konto"), ("Moje dane", "/konto/dane"), ("Zmiana hasła", "/haslo"),
+              ("Import danych", "/konto/import")],
 }
 
 
@@ -41,8 +45,9 @@ def navigation(user: Optional[User], path: str) -> dict:
     sub = []
     if active in SUBTABS:
         # najdłuższe pasujące dopasowanie wygrywa, np. /umowy/nowa przed /umowy
-        urls = [u for _, u in SUBTABS[active]]
+        items = [(lab, u) for lab, u in SUBTABS[active] if user.role == ROLE_OWNER or u not in OWNER_ONLY_SUBTABS]
+        urls = [u for _, u in items]
         match = max((u for u in urls if _belongs(path, u)), key=len, default=None)
-        sub = [{"label": lab, "url": u, "active": u == match} for lab, u in SUBTABS[active]]
+        sub = [{"label": lab, "url": u, "active": u == match} for lab, u in items]
     section = next((t["label"] for t in tabs if t["active"]), None)
     return {"tabs": tabs, "sub": sub, "section": section}

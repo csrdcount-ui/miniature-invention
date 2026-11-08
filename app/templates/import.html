@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% from "_makra.html" import pole %}
+{% block title %}Import danych{% endblock %}
+{% block content %}
+<h1>Import danych z Excela</h1>
+<p>Import przebiega w dwóch krokach. Najpierw platforma sprawdza plik i pokazuje raport, niczego nie zapisując. Dopiero po Twoim zatwierdzeniu dane trafiają do platformy. Każdy import można później cofnąć.</p>
+
+<h2>Dane demonstracyjne</h2>
+<p>Zespół 6 handlowców, menedżer i biuro obsługi, 12 spółek obrotu i 60 umów z historią statusów. Spółki mają prawdziwe nazwy, ale warunki umów agencyjnych są fikcyjne. Klienci i osoby są zmyśleni. Twoje konto i nazwa firmy zostają bez zmian.</p>
+<form method="post" action="/konto/import/demo">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <button type="submit">Sprawdź dane demonstracyjne</button>
+</form>
+<p><a href="/konto/import/demo.xlsx">Pobierz plik demonstracyjny (Excel)</a>, żeby go obejrzeć albo wgrać ręcznie poniżej.</p>
+
+<h2>Wgraj plik</h2>
+<p><a href="/konto/import/szablon.xlsx">Pobierz pusty szablon (Excel)</a>. Pierwszy arkusz, README, opisuje każdą kolumnę.</p>
+<form method="post" action="/konto/import" enctype="multipart/form-data" class="stack">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <div class="pole">
+    <label for="f-plik">Plik Excela (.xlsx, do 2 MB)</label>
+    <input id="f-plik" name="plik" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required>
+  </div>
+  <button type="submit">Sprawdź plik</button>
+</form>
+
+<h2>Historia importów</h2>
+{% if batches %}
+<ul class="karty">
+{% for b, r in batches %}
+  <li>
+    <h3><a href="/konto/import/{{ b.id }}">{{ b.filename or "Import" }}</a></h3>
+    <p>{{ b.created_at.strftime("%d.%m.%Y %H:%M") }}, {{ {"podglad": "sprawdzony, czeka na zatwierdzenie", "zatwierdzony": "zapisany", "cofniety": "cofnięty"}.get(b.status, b.status) }}{% if b.is_demo %}, dane demonstracyjne{% endif %}.</p>
+    <p>Osoby {{ r.counts.osoby }}, spółki {{ r.counts.spolki }}, umowy {{ r.counts.umowy }}{% if r.errors %}, błędy {{ r.errors|length }}{% endif %}.</p>
+  </li>
+{% endfor %}
+</ul>
+{% else %}
+<p>Nie było jeszcze żadnego importu.</p>
+{% endif %}
+{% endblock %}

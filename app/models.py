@@ -10,7 +10,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, LargeBinary, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
@@ -93,6 +93,9 @@ class User(Base):
     manager_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    # import: identyfikator ze starego systemu i paczka, z której rekord pochodzi
+    ext_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
+    import_batch_id: Mapped[Optional[int]] = mapped_column(ForeignKey("import_batches.id"), nullable=True, index=True)
 
     manager: Mapped[Optional["User"]] = relationship(remote_side="User.id")
     rates: Mapped[list["UserRate"]] = relationship(
@@ -176,6 +179,9 @@ class Supplier(Base):
     name: Mapped[str] = mapped_column(String(200), unique=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    # import: identyfikator ze starego systemu i paczka, z której rekord pochodzi
+    ext_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
+    import_batch_id: Mapped[Optional[int]] = mapped_column(ForeignKey("import_batches.id"), nullable=True, index=True)
 
     rule_sets: Mapped[list["SupplierRuleSet"]] = relationship(
         back_populates="supplier",
@@ -200,6 +206,9 @@ class SupplierRuleSet(Base):
     clawback_mode: Mapped[str] = mapped_column(String(30), default="proporcjonalna")
     note: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    # import: identyfikator ze starego systemu i paczka, z której rekord pochodzi
+    ext_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
+    import_batch_id: Mapped[Optional[int]] = mapped_column(ForeignKey("import_batches.id"), nullable=True, index=True)
 
     supplier: Mapped[Supplier] = relationship(back_populates="rule_sets")
 
@@ -234,6 +243,9 @@ class Contract(Base):
     manager_override_base: Mapped[str] = mapped_column(String(30), default="narzut")
 
     created_by_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    # import: identyfikator ze starego systemu i paczka, z której rekord pochodzi
+    ext_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
+    import_batch_id: Mapped[Optional[int]] = mapped_column(ForeignKey("import_batches.id"), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     supplier: Mapped[Supplier] = relationship()
@@ -273,3 +285,28 @@ class ContractStatusEvent(Base):
 
     contract: Mapped[Contract] = relationship(back_populates="events")
     changed_by: Mapped[Optional[User]] = relationship()
+
+
+class ImportBatch(Base):
+    """Jedna paczka importu z pliku Excela. Cofnięcie paczki usuwa wszystkie jej rekordy.
+
+    status: podglad (sprawdzona, czeka na zatwierdzenie), zatwierdzony, cofniety, odrzucony.
+    is_demo: dane demonstracyjne (na ekranie baner „warunki fikcyjne”).
+    """
+
+    __tablename__ = "import_batches"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    filename: Mapped[str] = mapped_column(String(300), default="")
+    status: Mapped[str] = mapped_column(String(20), default="podglad")
+    is_demo: Mapped[bool] = mapped_column(Boolean, default=False)
+    # use_alter: users wskazują paczkę, paczka wskazuje autora (cykl kluczy obcych)
+    created_by_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("users.id", use_alter=True, name="fk_import_batches_created_by"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    applied_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    reverted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    summary: Mapped[str] = mapped_column(Text, default="")
+    # treść pliku trzymana tylko do zatwierdzenia, potem kasowana
+    content: Mapped[Optional[bytes]] = mapped_column(LargeBinary, nullable=True)

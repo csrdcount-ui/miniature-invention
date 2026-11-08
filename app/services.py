@@ -106,7 +106,15 @@ def _initial_event_date(status: str, signed_date: date) -> date:
     return min(signed_date, today) if signed_or_later else today
 
 
-def create_contract(
+def create_contract(db: Session, **kw) -> Contract:
+    """Tworzy umowę i zatwierdza zapis."""
+    c = build_contract(db, **kw)
+    db.commit()
+    db.refresh(c)
+    return c
+
+
+def build_contract(
     db: Session,
     *,
     actor: User,
@@ -123,7 +131,9 @@ def create_contract(
     base_price_pln_mwh: Optional[Decimal],
     new_connection: bool,
     status: str,
+    initial_note: str = "Umowa wpisana do systemu.",
 ) -> Contract:
+    """Buduje umowę z regułami zamrożonymi na dzień podpisania. Bez zatwierdzania zapisu."""
     if not can_assign_trader(actor, trader):
         raise BusinessError("Nie możesz przypisać umowy do tej osoby.")
     rs = rule_set_on(db, supplier.id, signed_date)
@@ -179,17 +189,15 @@ def create_contract(
     )
     # Walidacja silnikiem zanim zapiszemy.
     calculate_contract(c)
-    db.add(c)
-    db.flush()
-    db.add(
+    c.events.append(
         ContractStatusEvent(
-            contract_id=c.id, from_status=None, to_status=status,
+            from_status=None, to_status=status,
             effective_date=_initial_event_date(status, signed_date), changed_by_id=actor.id,
-            note="Umowa wpisana do systemu.",
+            note=initial_note,
         )
     )
-    db.commit()
-    db.refresh(c)
+    db.add(c)
+    db.flush()
     return c
 
 
@@ -256,11 +264,18 @@ def can_edit_status(user: User, c: Contract, perms: BokPerms = DEFAULT_PERMS) ->
 HISTORY_MAX_YEARS_BACK = 5
 
 
-def change_status(
+def change_status(db: Session, **kw) -> ContractStatusEvent:
+    """Zmienia status umowy, zapisuje zdarzenie w historii i zatwierdza zapis."""
+    ev = apply_status_change(db, **kw)
+    db.commit()
+    return ev
+
+
+def apply_status_change(
     db: Session, *, actor: User, c: Contract, new_status: str, effective_date: date, note: str = "",
     perms: BokPerms = DEFAULT_PERMS,
 ) -> ContractStatusEvent:
-    """Zmienia status umowy i zapisuje zdarzenie w historii (w jednej transakcji)."""
+    """Zmienia status umowy i dodaje zdarzenie do historii. Bez zatwierdzania zapisu."""
     if new_status not in CONTRACT_STATUSES:
         raise BusinessError("Niepoprawny status.")
     if not can_edit_status(actor, c, perms):
@@ -287,7 +302,8 @@ def change_status(
     )
     c.status = new_status
     db.add(ev)
-    db.commit()
+    c.events.append(ev)
+    db.flush()
     return ev
 
 
