@@ -41,6 +41,14 @@ prowizje, umowy, zespół, a docelowo lejek sprzedaży, rezerwacje NIP i BOK.
    repozytorium. Nie dawaj takich kroków jako „zadań do zrobienia”, jeśli aplikacja
    działa bez nich. Zrób sam wszystko, co da się przez dostępne narzędzia.
 
+8. **Kod w repozytorium to nie wdrożenie.** Po wypchnięciu pisz „zmiana jest w
+   kodzie na main”, nigdy „wdrożone” ani „działa na serwerze”, dopóki nie ma
+   potwierdzenia. Potwierdzeniem jest strona https://platforma-brokerska.onrender.com/wersja
+   z numerem ostatniego commitu (Render podaje go w RENDER_GIT_COMMIT). Sesja w chmurze
+   nie ma dostępu do domen Rendera, więc numer z /wersja podaje właścicielka.
+   8.11.2026 na serwerze działała jeszcze wersja sprzed commitu 51e0182, mimo
+   późniejszych wypchnięć — podejrzenie: autoDeploy wyłączony w serwisie.
+
 ## Przypomnienie przed pilotażem
 
 Darmowa baza Render wygasa po 30 dniach (utworzona ok. 5.11.2026). Przed pierwszym
@@ -66,7 +74,8 @@ w Renderze — tylko za zgodą.
 - `app/web/` — `ui.py` (szablony, formatowanie, sesja, CSRF), `auth.py` (użytkownik,
   role, uprawnienia BOK, wymuszenie uzupełnienia danych), `forms.py` (walidacja),
   `navigation.py` (zakładki i podsekcje).
-- `app/routes/` — strony według modułów: konto, portfel, spolki, zespol, raporty.
+- `app/routes/` — strony według modułów: konto, portfel, spolki, zespol, raporty,
+  system (publiczna strona `/wersja`).
   Nowy moduł = nowy plik z `router` dodany w `main.py`.
 - `app/services.py` — logika biznesowa i widoki przycięte do roli.
 - `app/engine.py` — silnik prowizji (czyste funkcje, Decimal).

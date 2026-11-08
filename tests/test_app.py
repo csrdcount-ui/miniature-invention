@@ -623,3 +623,22 @@ def test_migracja_dodaje_przelaczniki_z_domyslnymi(client):
     from app.db import engine
     cols = {c["name"] for c in inspect(engine).get_columns("company")}
     assert {"bok_can_change_status", "bok_sees_commissions", "bok_can_reserve_nip", "bok_can_reassign_clients"} <= cols
+
+
+# --------------------------------------------------------------------------
+# Strona /wersja
+# --------------------------------------------------------------------------
+
+def test_wersja_bez_logowania_pokazuje_commit_z_rendera(client, monkeypatch):
+    monkeypatch.setenv("RENDER_GIT_COMMIT", "c500d79abcdef0123456789")
+    monkeypatch.setenv("RENDER_GIT_BRANCH", "main")
+    r = client.get("/wersja", follow_redirects=False)
+    assert r.status_code == 200
+    assert "Działa wersja <strong>c500d79</strong> z gałęzi main." in r.text
+    assert "Menu główne" not in r.text  # bez nawigacji dla niezalogowanych
+
+
+def test_wersja_lokalnie_bez_numeru(client, monkeypatch):
+    monkeypatch.delenv("RENDER_GIT_COMMIT", raising=False)
+    r = client.get("/wersja")
+    assert r.status_code == 200 and "Numer wersji jest nieznany" in r.text

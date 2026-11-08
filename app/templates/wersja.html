@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Wersja{% endblock %}
+{% block content %}
+<h1>Wersja aplikacji</h1>
+{% if v.commit %}
+<p>Działa wersja <strong>{{ v.commit }}</strong>{% if v.branch %} z gałęzi {{ v.branch }}{% endif %}.</p>
+{% else %}
+<p>Numer wersji jest nieznany. Ta kopia nie działa na serwerze Render, np. jest uruchomiona lokalnie.</p>
+{% endif %}
+<p>Uruchomiona {{ v.started_at.strftime("%d.%m.%Y o %H:%M") }} czasu UTC.</p>
+<p class="podpowiedz">Porównaj numer wersji z numerem ostatniej zmiany w repozytorium. Jeśli są różne, najnowsza zmiana nie została jeszcze wdrożona.</p>
+{% endblock %}
