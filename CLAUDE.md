@@ -20,7 +20,8 @@ prowizje, umowy, zespół, a docelowo lejek sprzedaży, rezerwacje NIP i BOK.
    napisz, co chcesz zrobić i dlaczego, i poczekaj na odpowiedź. Odczyty stanu są
    dozwolone.
 2. **Testy przed każdym wypchnięciem.** `python -m pytest -q` musi przejść w całości.
-   Push na `main` sam uruchamia wdrożenie (autoDeploy), więc main ma być zawsze zdrowy.
+   Push na `main` NIE uruchamia wdrożenia (patrz „Procedura wdrożenia”), ale main ma
+   być zawsze zdrowy, bo właścicielka wdraża z niego ręcznie.
 3. **Poufność warunków właściciela.** Udział brokera u spółki obrotu i marżę
    właściciela widzi wyłącznie właściciel. Nigdy menedżer, handlowiec ani BOK.
    Silnik prowizji liczy na serwerze.
@@ -48,6 +49,24 @@ prowizje, umowy, zespół, a docelowo lejek sprzedaży, rezerwacje NIP i BOK.
    nie ma dostępu do domen Rendera, więc numer z /wersja podaje właścicielka.
    8.11.2026 na serwerze działała jeszcze wersja sprzed commitu 51e0182, mimo
    późniejszych wypchnięć — podejrzenie: autoDeploy wyłączony w serwisie.
+
+## Procedura wdrożenia (ustalona 8.11.2026)
+
+Auto-Deploy nie działa, a właścicielce nie przeszkadza ręczne wdrażanie (kilka
+stuknięć, max minuta). Przy każdej większej porcji zmian daj jej na początku
+odpowiedzi tę instrukcję, z linkiem i wskazaniem sekcji:
+
+1. Otwórz stronę serwisu: https://dashboard.render.com/web/srv-dbmc7cetlv9c73duncgg
+   (adresu nie sprawdzono, jeśli nie działa: Render, lista serwisów, platforma-brokerska).
+2. Na górze strony, pod nazwą serwisu, są dwa przyciski: „Connect” i „Manual Deploy”.
+3. Stuknij „Manual Deploy”, potem „Deploy latest commit”.
+4. Napisz „zrobione”. Resztę sprawdza asystent przez `list_events` (deploy_ended
+   ze statusem succeeded, ok. 1–2 min po starcie).
+5. Potwierdzenie: https://platforma-brokerska.onrender.com/wersja pokazuje numer
+   ostatniego commitu.
+
+Nie proś o nic więcej w panelu. Sekcji „Auto-Deploy” właścicielka nie znalazła; nie
+wracaj do tego.
 
 ## Przypomnienie przed pilotażem
 
@@ -112,6 +131,8 @@ Następne (w tej kolejności, po odpowiedziach na pytania niżej):
 - `docs/WIEDZA-BRANZOWA.md` — potwierdzona wiedza: rezerwacja NIP, oferty, cenniki,
   dokumenty, BOK, karta spółki. Szkic sekcji do skilla „rynek-brokerski-energii-pl”.
 - `docs/RAPORT-etap-1.md` — raport z etapu 1.
+- `docs/STANDARD-WYMIANY-DANYCH.md` — projekt standardu Excela do importu i eksportu,
+  dane przykładowe (wersja robocza 0.1, do akceptacji).
 
 ## Otwarte pytania do właścicielki
 
