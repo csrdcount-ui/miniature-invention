@@ -131,8 +131,13 @@ historia_statusow) z podglądem, zatwierdzeniem i cofnięciem paczki, dane demo
 (12 spółek, 8 osób, 60 umów) usuwane cofnięciem paczki, reset hasła przez
 właściciela (hasło losowe, czytelne, pokazane raz) i wskazówka odzyskiwania
 na stronie logowania (`new_password()` w `app/security.py`, wspólna z importem).
-Samoobsługowe odzyskiwanie przez e-mail NIE jest zrobione — patrz żądanie
-właścicielki z 9.11.2026 niżej, wymaga wysyłki maili (brak dziś infrastruktury).
+Samoobsługowe odzyskiwanie przez e-mail NIE jest zrobione — właścicielka wycofała
+tę prośbę 9.11.2026, reset ma zostać ręczny (BOK/właściciel). Zrobione za to:
+dostęp BOK do zakładki Zespół (podgląd + reset hasła menedżerów/handlowców,
+nigdy właściciela ani innego BOK) włączony tylko gdy `bok_sees_commissions` jest
+`True` (`owner_or_bok_commissions` w `app/web/auth.py`); ostatnie logowanie
+widoczne na /konto i na stronie osoby; „Wyloguj wszystkie inne urządzenia”
+(`User.session_version` + klucz "sv" w sesji, sprawdzane w `current_user`).
 
 Następne (w tej kolejności, po odpowiedziach na pytania niżej):
 1. Moduł sprzedażowy: klient i punkt poboru, rezerwacje NIP (karta spółki z częścią
@@ -171,22 +176,21 @@ Odpowiedzi z 7.11.2026 są w `docs/WIEDZA-BRANZOWA.md`. Zostały:
 - Migracja: z jakich CRM-ów, zanonimizowany eksport, historia wypłat i korekt.
 - Zgoda na płatny magazyn plików w UE (Frankfurt) i okres przechowywania (RODO).
 
-## Żądania właścicielki z 9.11.2026 (do realizacji po jej potwierdzeniu)
+## Stan po rozmowie z 9.11.2026
 
-1. **Odzyskiwanie hasła przez e-mail.** Na stronie logowania: „zapomniałem hasła” →
-   podaje e-mail → jeśli istnieje konto z tym adresem (i odpowiednią rolą — do
-   ustalenia którą), wysyłany jest e-mail z linkiem do resetu. Wymaga wysyłki
-   maili (SMTP albo usługa typu Resend/Postmark) — dziś jej nie ma. Pytania
-   zadane właścicielce: czy dotyczy wszystkich ról łącznie z właścicielem, czy
-   e-mail ma ujawniać wprost, że konta nie ma (gorsze dla bezpieczeństwa, ale
-   prościej dla użytkownika), zgoda na usługę wysyłki i jej koszt.
-2. **Ceny i prowizja widoczne przy umowie.** Właścicielka zgłosiła, że brakuje
-   (dokładne miejsce i format do potwierdzenia — zobacz jej odpowiedź po mojej
-   prośbie o doprecyzowanie z 9.11.2026): ceny dla klienta, ceny bazowej
-   (nazwała ją „cennik”, możliwe że myśli już o przyszłym module cenników z
-   numerem i datą, którego dziś nie ma — jest tylko `cena_bazowa_pln_mwh`
-   wpisywana ręcznie przy umowie), narzutu i „mojego procentu” z wynikającą z
-   niego kwotą. To wszystko już jest liczone i pokazane na stronie szczegółów
-   umowy (`app/templates/umowa.html`); może brakować na liście umów
-   (`_lista_umow.html`, dziś pokazuje tylko narzut/MWh i wolumen, nie cenę dla
-   klienta ani procent/kwotę handlowca) albo chodzi o inny układ prezentacji.
+- **Ceny przy umowie:** potwierdzone, że strona szczegółów umowy wystarcza, nic
+  do zmiany. Temat zamknięty.
+- **Odzyskiwanie hasła e-mailem:** wycofane, zastąpione resetem ręcznym (wyżej).
+- **Filtry menedżera** (dowolny parametr umowy, w tym ryzyko zerwania przy spadku
+  cen na giełdzie — „fixing”/RDN) — zgłoszone, NIE zrobione. Blokery do
+  rozstrzygnięcia z właścicielką, zanim da się to zaprojektować:
+  1. Dziś `Contract` nie ma pola typu cenowego (stała/indeks/mix) — to wciąż
+     otwarte pytanie z `docs/WIEDZA-BRANZOWA.md` („Produkty w cennikach”), bez
+     niego nie da się filtrować po „umowach na fixing/RDN”.
+  2. „Czy opłaca się zerwać umowę, bo giełda spadła” wymaga danych o aktualnej
+     cenie rynkowej (TGE: fixing, RDN) — to osobna integracja z zewnętrznym
+     źródłem danych giełdowych, nie jest to sam filtr na istniejących polach.
+  3. Zwykłe filtry (spółka, handlowiec, status, zakres dat, wolumenu, narzutu,
+     medium, nowe przyłącze) da się zrobić od razu na `/umowy`, niezależnie od
+     punktów 1–2 — do zaprojektowania i potwierdzenia z właścicielką jako osobny,
+     mniejszy krok.

@@ -18,6 +18,7 @@ from .. import engine as eng
 from .. import services as svc
 from ..db import get_db
 from ..models import (
+    ROLE_BOK,
     ROLE_TRADER,
     SELLING_ROLES,
     ROLE_MANAGER,
@@ -26,7 +27,7 @@ from ..models import (
     UserRate,
 )
 from ..security import hash_password, new_password
-from ..web.auth import owner_only
+from ..web.auth import owner_only, owner_or_bok_commissions
 from ..web.forms import (
     FormError,
     names_error,
@@ -49,8 +50,11 @@ def _managers(db: Session) -> list[User]:
 
 
 @router.get("/zespol", response_class=HTMLResponse)
-def team_page(request: Request, user: User = Depends(owner_only), db: Session = Depends(get_db)):
-    people = list(db.scalars(select(User).order_by(User.role, User.last_name, User.first_name)))
+def team_page(request: Request, user: User = Depends(owner_or_bok_commissions), db: Session = Depends(get_db)):
+    q = select(User).order_by(User.role, User.last_name, User.first_name)
+    if user.role == ROLE_BOK:
+        q = q.where(User.role.in_((ROLE_MANAGER, ROLE_TRADER)))
+    people = list(db.scalars(q))
     rows = [(p, svc.current_rate(p)) for p in people]
     return render(request, "zespol.html", {"user": user, "rows": rows})
 
@@ -115,9 +119,18 @@ def _get_user(db: Session, uid: int) -> User:
     return u
 
 
+def _get_user_for_bok(db: Session, uid: int) -> User:
+    """BOK zarządza tylko menedżerami i handlowcami — nigdy właścicielem ani innym BOK
+    (nawet gdy widzi prowizje, nie powinien móc zresetować hasła właściciela)."""
+    u = _get_user(db, uid)
+    if u.role not in (ROLE_MANAGER, ROLE_TRADER):
+        raise HTTPException(status_code=404)
+    return u
+
+
 @router.get("/zespol/{uid}", response_class=HTMLResponse)
-def person_page(uid: int, request: Request, user: User = Depends(owner_only), db: Session = Depends(get_db)):
-    p = _get_user(db, uid)
+def person_page(uid: int, request: Request, user: User = Depends(owner_or_bok_commissions), db: Session = Depends(get_db)):
+    p = _get_user(db, uid) if user.role == ROLE_OWNER else _get_user_for_bok(db, uid)
     return render(
         request,
         "osoba.html",
@@ -188,9 +201,9 @@ async def person_update(uid: int, request: Request, user: User = Depends(owner_o
 
 
 @router.post("/zespol/{uid}/reset-hasla")
-async def person_reset_password(uid: int, request: Request, user: User = Depends(owner_only), db: Session = Depends(get_db)):
+async def person_reset_password(uid: int, request: Request, user: User = Depends(owner_or_bok_commissions), db: Session = Depends(get_db)):
     """Nadaje osobie nowe, losowe hasło. Pokazuje je raz, w tej jednej odpowiedzi."""
-    p = _get_user(db, uid)
+    p = _get_user(db, uid) if user.role == ROLE_OWNER else _get_user_for_bok(db, uid)
     await form_data(request)
     password = new_password()
     p.password_hash = hash_password(password)

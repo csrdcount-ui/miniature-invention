@@ -8,6 +8,8 @@ from fastapi.responses import HTMLResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from datetime import datetime
+
 from ..db import get_db
 from ..models import (
     BOK_PERMISSIONS,
@@ -53,8 +55,11 @@ async def login(request: Request, db: Session = Depends(get_db)):
         return render(
             request, "logowanie.html", {"error": "Nieprawidłowy e-mail lub hasło.", "email": email}, 401
         )
+    user.last_login_at = datetime.utcnow()
+    db.commit()
     request.session.clear()
     request.session["uid"] = user.id
+    request.session["sv"] = user.session_version
     return redirect("/pulpit")
 
 
@@ -63,6 +68,17 @@ async def logout(request: Request):
     await form_data(request)
     request.session.clear()
     return redirect("/logowanie")
+
+
+@router.post("/konto/wyloguj-wszystkie")
+async def logout_everywhere(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Unieważnia wszystkie inne sesje tej osoby (nie tylko na tym urządzeniu)."""
+    await form_data(request)
+    user.session_version += 1
+    db.commit()
+    request.session["sv"] = user.session_version  # ta sesja zostaje zalogowana
+    flash(request, "Wylogowano wszystkie inne urządzenia i przeglądarki. To urządzenie zostaje zalogowane.")
+    return redirect("/konto")
 
 
 @router.get("/start", response_class=HTMLResponse)

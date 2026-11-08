@@ -36,6 +36,8 @@ def run(engine: Engine) -> None:
 def _schema(engine: Engine) -> None:
     _add_column(engine, "users", "first_name", "VARCHAR(100) NOT NULL DEFAULT ''")
     _add_column(engine, "users", "last_name", "VARCHAR(100) NOT NULL DEFAULT ''")
+    _add_column(engine, "users", "last_login_at", "TIMESTAMP")
+    _add_column(engine, "users", "session_version", "INTEGER NOT NULL DEFAULT 0")
     # paczki importu: ext_id i import_batch_id w tabelach z importem
     if inspect(engine).has_table("import_batches"):
         for table in ("users", "suppliers", "supplier_rule_sets", "contracts"):

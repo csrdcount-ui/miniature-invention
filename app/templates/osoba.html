@@ -25,6 +25,7 @@
 <p>Brak stawek. Umowy tej osoby będą miały prowizję 0 zł.</p>
 {% endif %}
 
+{% if user.role == ROLE_OWNER %}
 <h2>Zmień stawki</h2>
 <p>Nowe stawki dotyczą umów podpisanych od podanej daty. Wcześniejsze umowy się nie zmieniają.</p>
 <form method="post" action="/zespol/{{ p.id }}/stawki" class="stack">
@@ -47,7 +48,9 @@
 </ul>
 {% endif %}
 {% endif %}
+{% endif %}
 
+{% if user.role == ROLE_OWNER %}
 <h2>Ustawienia konta</h2>
 <form method="post" action="/zespol/{{ p.id }}" class="stack">
   <input type="hidden" name="csrf" value="{{ csrf }}">
@@ -71,8 +74,10 @@
   {% endif %}
   <button type="submit">Zapisz ustawienia</button>
 </form>
+{% endif %}
 
 <h2>Hasło</h2>
+<p class="podpowiedz">Ostatnie logowanie: {{ p.last_login_at.strftime("%d.%m.%Y %H:%M") if p.last_login_at else "jeszcze się nie logował(a)" }}.</p>
 <p>{{ p.name }} zapomniał(a) hasła albo zaczyna pracę? Nadaj nowe hasło. Poprzednie przestanie działać od razu.</p>
 <form method="post" action="/zespol/{{ p.id }}/reset-hasla">
   <input type="hidden" name="csrf" value="{{ csrf }}">

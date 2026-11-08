@@ -50,7 +50,12 @@
 {% endif %}
 
 <h2>Bezpieczeństwo</h2>
+<p>Ostatnie logowanie: {{ user.last_login_at.strftime("%d.%m.%Y %H:%M") if user.last_login_at else "to Twoje pierwsze logowanie" }}. Jeśli ta data i godzina Ci nie pasują, ktoś inny mógł użyć Twojego hasła — zmień je i wyloguj wszystkie urządzenia poniżej.</p>
 <p><a href="/haslo">Zmień hasło</a></p>
+<form method="post" action="/konto/wyloguj-wszystkie">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <button type="submit" class="drugi">Wyloguj wszystkie inne urządzenia</button>
+</form>
 <form method="post" action="/wyloguj">
   <input type="hidden" name="csrf" value="{{ csrf }}">
   <button type="submit">Wyloguj</button>

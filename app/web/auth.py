@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..db import get_db
-from ..models import ROLE_OWNER, Company, User
+from ..models import ROLE_BOK, ROLE_OWNER, Company, User
 
 
 class LoginRequired(Exception):
@@ -48,8 +48,21 @@ def current_user(request: Request, db: Session = Depends(get_db)) -> User:
     if not user or not user.active:
         request.session.clear()
         raise LoginRequired()
+    # „Wyloguj wszystkie inne urządzenia” podbija session_version: cookie z inną
+    # wartością przestaje być ważne. Sesje sprzed wprowadzenia tej funkcji nie mają
+    # jeszcze klucza "sv" — przyjmują bieżącą wartość, zamiast wylogowywać wszystkich
+    # od razu po wdrożeniu.
+    sv = request.session.get("sv")
+    if sv is None:
+        request.session["sv"] = user.session_version
+    elif sv != user.session_version:
+        request.session.clear()
+        raise LoginRequired()
     company = company_of(db)
     request.state.company_name = company.name if company else None
+    from ..services import BokPerms
+
+    request.state.bok_sees_commissions = BokPerms.of(company).bok_sees_commissions
     from ..exchange.importer import demo_active
 
     request.state.demo_active = demo_active(db)
@@ -62,3 +75,13 @@ def owner_only(user: User = Depends(current_user)) -> User:
     if user.role != ROLE_OWNER:
         raise HTTPException(status_code=403)
     return user
+
+
+def owner_or_bok_commissions(user: User = Depends(current_user), db: Session = Depends(get_db)) -> User:
+    """Właściciel zawsze; BOK tylko gdy widzi prowizje handlowców (ta sama przesłanka:
+    kto już widzi zarobki, temu można powierzyć też reset hasła tej osoby)."""
+    if user.role == ROLE_OWNER:
+        return user
+    if user.role == ROLE_BOK and bok_perms(db).bok_sees_commissions:
+        return user
+    raise HTTPException(status_code=403)

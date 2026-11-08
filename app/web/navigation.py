@@ -3,19 +3,21 @@ from __future__ import annotations
 
 from typing import Optional
 
-from ..models import ROLE_OWNER, User
+from ..models import ROLE_BOK, ROLE_OWNER, User
 
-# (klucz, podpis, adres, prefiksy adresów należących do zakładki, tylko właściciel)
+# (klucz, podpis, adres, prefiksy adresów należących do zakładki, dostęp)
+# dostęp: False (każdy zalogowany), "owner" (tylko właściciel),
+#         "owner_or_bok_commissions" (właściciel, albo BOK gdy widzi prowizje)
 TABS = [
     ("portfel", "Portfel", "/pulpit", ("/pulpit", "/umowy"), False),
-    ("spolki", "Spółki", "/spolki", ("/spolki",), True),
-    ("zespol", "Zespół", "/zespol", ("/zespol",), True),
+    ("spolki", "Spółki", "/spolki", ("/spolki",), "owner"),
+    ("zespol", "Zespół", "/zespol", ("/zespol",), "owner_or_bok_commissions"),
     ("raporty", "Raporty", "/raporty", ("/raporty",), False),
     ("konto", "Konto", "/konto", ("/konto", "/haslo"), False),
 ]
 
 # podsekcje widoczne tylko dla właściciela
-OWNER_ONLY_SUBTABS = {"/konto/import"}
+OWNER_ONLY_SUBTABS = {"/konto/import", "/zespol/nowa"}
 
 SUBTABS = {
     "portfel": [("Podsumowanie", "/pulpit"), ("Umowy", "/umowy"), ("Nowa umowa", "/umowy/nowa")],
@@ -30,13 +32,17 @@ def _belongs(path: str, prefix: str) -> bool:
     return path == prefix or path.startswith(prefix + "/")
 
 
-def navigation(user: Optional[User], path: str) -> dict:
+def navigation(user: Optional[User], path: str, *, bok_sees_commissions: bool = False) -> dict:
     """Zakładki widoczne dla roli oraz podsekcje bieżącej zakładki."""
     if not user:
         return {"tabs": [], "sub": [], "section": None}
     tabs, active = [], None
-    for key, label, url, prefixes, owner_only_tab in TABS:
-        if owner_only_tab and user.role != ROLE_OWNER:
+    for key, label, url, prefixes, access in TABS:
+        if access == "owner" and user.role != ROLE_OWNER:
+            continue
+        if access == "owner_or_bok_commissions" and not (
+            user.role == ROLE_OWNER or (user.role == ROLE_BOK and bok_sees_commissions)
+        ):
             continue
         is_active = any(_belongs(path, pre) for pre in prefixes)
         if is_active:

@@ -93,6 +93,10 @@ class User(Base):
     manager_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    # podbite przy „Wyloguj wszystkie inne urządzenia”; stare sesje (z inną wartością
+    # zapisaną w cookie) przestają działać
+    session_version: Mapped[int] = mapped_column(Integer, default=0)
     # import: identyfikator ze starego systemu i paczka, z której rekord pochodzi
     ext_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True, index=True)
     import_batch_id: Mapped[Optional[int]] = mapped_column(ForeignKey("import_batches.id"), nullable=True, index=True)

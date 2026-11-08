@@ -687,3 +687,111 @@ def test_reset_hasla_tylko_dla_wlasciciela(client):
         login(client, who)
         r = post(client, "/umowy/nowa", f"/zespol/{hania_id}/reset-hasla", {})
         assert r.status_code == 403
+
+
+# --------------------------------------------------------------------------
+# Dostęp BOK do zespołu i resetu hasła zależny od uprawnienia bok_sees_commissions,
+# ostatnie logowanie, wylogowanie wszystkich innych urządzeń
+# --------------------------------------------------------------------------
+
+def _dodaj_bok(client) -> int:
+    login(client, "kris@firma.pl")
+    r = post(client, "/zespol/nowa", "/zespol", {
+        "imie": "Beata", "nazwisko": "Biuro", "email": "bok@firma.pl", "haslo": PW, "rola": "bok", "udzial": "",
+    })
+    assert r.status_code == 303, r.text
+    with SessionLocal() as db:
+        return db.query(User).filter_by(email="bok@firma.pl").one().id
+
+
+def _ustaw_bok_widzi_prowizje(client, on: bool):
+    from app.models import BOK_PERMISSIONS
+    login(client, "kris@firma.pl")
+    values = {k: d[2] for k, d in BOK_PERMISSIONS.items()} | {"bok_sees_commissions": on}
+    data = {k: "1" for k, v in values.items() if v}
+    r = post(client, "/konto", "/konto/uprawnienia-bok", data)
+    assert r.status_code == 303
+
+
+def test_bok_bez_prowizji_nie_widzi_zespolu_ani_nie_resetuje_hasel(client):
+    setup_company(client)
+    _dodaj_bok(client)
+    with SessionLocal() as db:
+        hania_id = db.query(User).filter_by(email="hania@firma.pl").one().id
+    login(client, "bok@firma.pl")
+    assert "Zespół" not in _menu(client.get("/pulpit").text)
+    assert client.get("/zespol").status_code == 403
+    assert client.get(f"/zespol/{hania_id}").status_code == 403
+    r = post(client, "/konto", f"/zespol/{hania_id}/reset-hasla", {})
+    assert r.status_code == 403
+
+
+def test_bok_z_prowizjami_resetuje_haslo_handlowca_ale_nie_wlasciciela(client):
+    setup_company(client)
+    bok_id = _dodaj_bok(client)
+    _ustaw_bok_widzi_prowizje(client, True)
+    with SessionLocal() as db:
+        hania_id = db.query(User).filter_by(email="hania@firma.pl").one().id
+        kris_id = db.query(User).filter_by(email="kris@firma.pl").one().id
+    login(client, "bok@firma.pl")
+    assert "Zespół" in _menu(client.get("/pulpit").text)
+    page = client.get("/zespol").text
+    assert "Hania Handlowiec" in page and "Kris Właściciel" not in page and "Beata Biuro" not in page
+    # reset handlowca: działa
+    r = post(client, f"/zespol/{hania_id}", f"/zespol/{hania_id}/reset-hasla", {})
+    assert r.status_code == 200 and "Login: hania@firma.pl" in r.text
+    # właściciela i siebie samego (innego BOK) BOK nie widzi i nie resetuje — 404, nie 403
+    assert client.get(f"/zespol/{kris_id}").status_code == 404
+    assert client.get(f"/zespol/{bok_id}").status_code == 404
+    r = post(client, "/konto", f"/zespol/{kris_id}/reset-hasla", {})
+    assert r.status_code == 404
+    # BOK nie widzi ani nie edytuje stawek/ustawień konta na stronie handlowca
+    page = client.get(f"/zespol/{hania_id}").text
+    assert "Zmień stawki" not in page and "Ustawienia konta" not in page
+    assert "Udział w całej masie narzutu" in page  # odczyt stawki zostaje
+
+
+def test_ostatnie_logowanie_i_wylogowanie_wszystkich_urzadzen(client):
+    setup_company(client)
+    with SessionLocal() as db:
+        hania = db.query(User).filter_by(email="hania@firma.pl").one()
+        assert hania.last_login_at is None
+    login(client, "hania@firma.pl")
+    with SessionLocal() as db:
+        assert db.query(User).filter_by(email="hania@firma.pl").one().last_login_at is not None
+    assert "Ostatnie logowanie:" in client.get("/konto").text
+    assert "to Twoje pierwsze logowanie" not in client.get("/konto").text
+
+    # drugie „urządzenie”: osobny klient tego samego konta
+    from fastapi.testclient import TestClient
+    from app.main import app
+    with TestClient(app) as drugie:
+        login(drugie, "hania@firma.pl")
+        assert drugie.get("/pulpit").status_code == 200
+
+        r = post(client, "/konto", "/konto/wyloguj-wszystkie", {})
+        assert r.status_code == 303
+        # to urządzenie (client) zostaje zalogowane
+        assert client.get("/pulpit").status_code == 200
+        # drugie urządzenie jest wylogowane
+        assert drugie.get("/pulpit", follow_redirects=False).headers["location"] == "/logowanie"
+
+
+def test_stare_sesje_bez_klucza_sv_nie_sa_wylogowywane(client):
+    """Cookie z wersji aplikacji sprzed tej zmiany nie ma klucza "sv" — taka sesja
+    ma działać dalej, a nie wylogowywać wszystkich od razu po wdrożeniu."""
+    import json
+    from base64 import b64decode, b64encode
+
+    import itsdangerous
+
+    setup_company(client)
+    login(client, "hania@firma.pl")
+    signer = itsdangerous.TimestampSigner("test-secret")
+    raw = client.cookies.get("session").encode()
+    payload = json.loads(b64decode(signer.unsign(raw, max_age=60 * 60 * 12)))
+    assert "sv" in payload
+    del payload["sv"]
+    stripped = signer.sign(b64encode(json.dumps(payload).encode())).decode()
+    client.cookies.set("session", stripped)
+    assert client.get("/pulpit").status_code == 200

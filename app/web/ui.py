@@ -139,7 +139,9 @@ def render(request: Request, name: str, ctx: Optional[dict] = None, status_code:
     ctx["csrf"] = csrf_token(request)
     ctx["flashes"] = request.session.pop("flash", [])
     ctx.setdefault("user", None)
-    ctx["nav"] = navigation(ctx["user"], request.url.path)
+    ctx["nav"] = navigation(
+        ctx["user"], request.url.path, bok_sees_commissions=bool(getattr(request.state, "bok_sees_commissions", False))
+    )
     ctx["brand"] = getattr(request.state, "company_name", None) or "Platforma brokerska"
     ctx["demo_active"] = bool(getattr(request.state, "demo_active", False)) and ctx["user"] is not None
     return templates.TemplateResponse(request, name, ctx, status_code=status_code)
