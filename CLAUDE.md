@@ -121,7 +121,9 @@ Następne (w tej kolejności, po odpowiedziach na pytania niżej):
    BOK i szablonami e-maili), szansa i etapy lejka, „Mój dzień”, oferty z cennikiem
    i kalkulatorem prowizji, wycena indywidualna.
 2. Analityka portfela, zespołu i raporty (propozycja w docs).
-3. Import i migracja danych z innych CRM-ów (standard Excela + mapowanie kolumn).
+3. Import danych z innych CRM-ów (standard Excela + mapowanie kolumn + lista braków
+   z rolą odpowiedzialną) oraz dane demo na pokazy. Eksport klientów odłożony
+   (decyzja 8.11.2026). Szczegóły: docs/STANDARD-WYMIANY-DANYCH.md.
 4. Treści podpowiedzi sprzedażowych — osobna rozmowa; w systemie tylko miejsca na treści.
    Bez nazwy „Sandler” (zastrzeżona marka).
 

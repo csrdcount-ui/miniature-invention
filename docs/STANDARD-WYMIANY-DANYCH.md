@@ -1,6 +1,7 @@
 # Standard wymiany danych (import i eksport Excela), wersja robocza 0.1
 
 Stan: PROJEKT do akceptacji. Nic z tego nie jest jeszcze w kodzie.
+Decyzje właścicielki z 8.11.2026 (sekcja na końcu) mają pierwszeństwo przed resztą pliku.
 Cel: jeden plik .xlsx, który (1) służy do wczytania portfela z innego CRM-u,
 (2) jest wynikiem eksportu z platformy, (3) zawiera dane przykładowe na pokaz.
 
@@ -95,3 +96,23 @@ Gotowe profile dla najpopularniejszych systemów po analizie prawdziwych eksport
 - Zestaw ma pokazywać funkcje: portfel zagrożony, zerwane umowy z korektami, różne
   spółki z różnymi regułami, handlowcy o różnej skuteczności, odnowienia w najbliższych
   miesiącach, nowe przyłącza, prognozę na 2028.
+
+## Decyzje właścicielki z 8.11.2026
+
+- **Eksport danych klientów jest odłożony** do czasu, aż system będzie dopracowany.
+  Pierwszy etap to import i dane przykładowe. Poufność eksportu opisana wyżej zostaje
+  jako założenie na później.
+- **Każdy broker ma inny zestaw danych.** Dlatego import przechodzi przez konwerter na
+  nasz standard (mapowanie kolumn z zapisywanymi profilami), a nie wymaga, żeby broker
+  przygotował plik w naszym układzie.
+- **Brakujące dane:** system nie zgaduje. Tworzy listę braków („do uzupełnienia”), a
+  każdy brak ma przypisaną rolę odpowiedzialną: właściciel (np. warunki ze spółkami,
+  zamrożone udziały) albo BOK (dane operacyjne).
+- **Kto importuje:** domyślnie wyłącznie właściciel. Właściciel może przekazać BOK
+  część zadań. BOK może importować i aktualizować: zespół, handlowców i menedżerów,
+  umowy oraz statusy obecnie obowiązujących umów. BOK nigdy nie importuje spółek
+  obrotu i ich reguł (umowy agencyjne): to zawsze tylko właściciel. Przełącznik
+  w ustawieniach konta, jak pozostałe uprawnienia BOK, z historią zmian.
+- **Dane przykładowe (demo)** służą do pokazów dla brokerów: spółki obrotu z prawdziwymi
+  nazwami rynkowymi, ale warunki umów agencyjnych są fikcyjne i tak oznaczone na ekranie.
+  Dane właściciela i nazwę firmy wpisuje właścicielka, demo ich nie dotyka.
