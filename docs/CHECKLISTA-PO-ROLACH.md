@@ -8,6 +8,15 @@ Role w aplikacji dziś: **Właściciel**, **Menedżer**, **Handlowiec**, **BOK**
 Zaloguj się do każdej przez dane demonstracyjne (zakładka Konto → Import danych →
 „Sprawdź dane demonstracyjne” → zatwierdź → hasła pokażą się raz na ekranie wyniku).
 
+## Nowość 9.11.2026 (wieczór) — dla wszystkich ról
+
+- Lista umów: przyciski „Filtry” i „Sortowanie” zwinięte, licznik „Pasuje: N umów” zmienia
+  się przy zaznaczaniu, przycisk „Pokaż N umów” zwija panel i zostawia same wyniki.
+- Pulpit: bieżący miesiąc i target na górze, „Oferty złożone” z podziałem na handlowców,
+  „Statystyki sprzedaży” zwinięte, z wyborem zakresu miesięcy.
+- Dane demonstracyjne: 100 umów + 14 ofert (np. „Wózki Widłowe Michalski”). Uwaga: demo
+  nie ustawia targetów — ustaw je w Zespół → osoba → „Target masy marży”.
+
 ## Właściciel
 
 ### Gotowe do testowania

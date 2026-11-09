@@ -259,3 +259,19 @@ Pierwotne zgłoszenia:
    okresów rozliczeniowych: „Transza I z okresu [miesiąc]: N umów, kwota” oraz
    „Transza B z wcześniejszych umów: N umów, kwota”. Zrozumienie i pytania
    przedstawione właścicielce, kod NIE zaczęty.
+
+## Pulpit sprzedażowy i widoki na telefon (9.11.2026, wieczór)
+
+ZROBIONE: lista umów z paskiem jak w aplikacjach rezerwacyjnych (Filtry (N) i Sortowanie w
+`<details>`, jeden „Wyczyść filtry”), licznik wyników na żywo (`/umowy/liczba`, JSON,
+`app/static/filtry.js` — postępowe ulepszenie, bez JS działa zwykły GET). Pulpit: najpierw
+bieżący miesiąc vs target (pasek postępu, „brakuje do targetu”), potem „Oferty złożone”
+(`offers_overview`: umowy w statusie „Oferta”, pogrupowane po handlowcach, prognoza masy
+marży; właściciel widzi przychód spółki, menedżer swój override, handlowiec swoją prowizję),
+potem zwijane „Statystyki sprzedaży” z zakresem miesięcy (`od_mies`, `do_mies`,
+`monthly_stats`, maks. 36 mies.) i portfelem. Właściciel ma portfel zawsze rozwinięty.
+Lead/Kontakt/Oferta NIE wchodzą już do sum portfela (`summary_for`, pole `offers`).
+Zwinięte sekcje drugorzędne: zmiana statusu, historia, tabela transz (umowa), stawki,
+target, ustawienia (osoba), reguły i historia (spółka), polityka i uprawnienia BOK (konto).
+Demo: 100 umów + 14 ofert (w tym „Wózki Widłowe Michalski”).
+Oferta to dziś umowa w statusie „Oferta” — rozwiązanie przejściowe do modułu sprzedażowego.

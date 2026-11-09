@@ -11,6 +11,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from .. import engine as eng
+from ..services import plural_oferty, plural_umowy
 from ..models import (
     POLICY_SETTINGS,
     PRICING_PRODUCTS,
@@ -86,7 +87,8 @@ def fmt_date(value) -> str:
     return value.strftime("%d.%m.%Y")
 
 
-templates.env.filters.update(zip=lambda a, b: list(zip(a, b)), zl=fmt_zl, pct=fmt_pct, mwh=fmt_mwh, data=fmt_date, num=fmt_num)
+templates.env.filters.update(zip=lambda a, b: list(zip(a, b)), zl=fmt_zl, pct=fmt_pct, mwh=fmt_mwh, data=fmt_date, num=fmt_num,
+                            umowy=plural_umowy, oferty=plural_oferty)
 templates.env.globals.update(
     ROLES=ROLES,
     TRIGGERS=TRIGGERS,

@@ -21,7 +21,9 @@
 </dl>
 <p><a href="/umowy?handlowiec={{ p.id }}">Umowy tej osoby</a></p>
 {% if can_target %}
-<h3>Target masy marży</h3>
+<details class="zwijane"{% if error %} open{% endif %}>
+<summary>Target masy marży: ustaw lub zmień</summary>
+<div class="wnetrze">
 <ul>
 {% for label, value, amount in targets %}<li>{{ label }}: {{ amount|zl if amount is not none else "nie ustawiony" }}</li>{% endfor %}
 </ul>
@@ -31,6 +33,8 @@
   {{ pole("kwota", "Target masy marży w zł", "", hint="Na przykład 150000.", required=true, extra='inputmode="decimal"') }}
   <button type="submit">Zapisz target</button>
 </form>
+</div>
+</details>
 {% endif %}
 {% endif %}
 
@@ -49,7 +53,9 @@
 {% endif %}
 
 {% if user.role == ROLE_OWNER %}
-<h2>Zmień stawki</h2>
+<details class="zwijane"{% if error %} open{% endif %}>
+<summary>Zmień stawki</summary>
+<div class="wnetrze">
 <p>Nowe stawki dotyczą umów podpisanych od podanej daty. Wcześniejsze umowy się nie zmieniają.</p>
 <form method="post" action="/zespol/{{ p.id }}/stawki" class="stack">
   <input type="hidden" name="csrf" value="{{ csrf }}">
@@ -61,20 +67,26 @@
   {% endif %}
   <button type="submit">Zapisz stawki</button>
 </form>
+</div>
+</details>
 
 {% if p.rates|length > 1 %}
-<h2>Historia stawek</h2>
-<ul>
+<details class="zwijane">
+<summary>Historia stawek ({{ p.rates|length }})</summary>
+<ul class="wnetrze">
 {% for r in p.rates %}
   <li>Od {{ r.valid_from|data if r.valid_from.year > 2000 else "początku" }}: udział {{ r.trader_share_pct|pct }}{% if p.role == ROLE_MANAGER %}, override {{ r.override_pct|pct }} {{ OVERRIDE_BASES.get(r.override_base) }}{% endif %}.</li>
 {% endfor %}
 </ul>
+</details>
 {% endif %}
 {% endif %}
 {% endif %}
 
 {% if user.role == ROLE_OWNER %}
-<h2>Ustawienia konta</h2>
+<details class="zwijane"{% if p.needs_last_name %} open{% endif %}>
+<summary>Ustawienia konta: imię, nazwisko, zespół, aktywność</summary>
+<div class="wnetrze">
 <form method="post" action="/zespol/{{ p.id }}" class="stack">
   <input type="hidden" name="csrf" value="{{ csrf }}">
   {% if p.needs_last_name %}<p class="warn">Brakuje nazwiska. Uzupełnij je poniżej.</p>{% endif %}
@@ -97,6 +109,8 @@
   {% endif %}
   <button type="submit">Zapisz ustawienia</button>
 </form>
+</div>
+</details>
 {% endif %}
 
 <h2>{{ "Hasło" if user.role in (ROLE_OWNER, ROLE_BOK) else "Logowanie" }}</h2>

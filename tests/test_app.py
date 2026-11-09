@@ -397,7 +397,7 @@ def test_nowa_umowa_zapisuje_pierwszy_wpis_historii(client):
     ev = _events(cid)
     assert ev == [(None, "Umowa podpisana", "2026-10-01", "Umowa wpisana do systemu.", False)]  # data podpisania
     page = client.get(f"/umowy/{cid}").text
-    assert "<h2>Historia statusów</h2>" in page and "Wpisał(a): Hania Handlowiec" in page
+    assert "Historia statusów (" in page and "Wpisał(a): Hania Handlowiec" in page
 
 
 def test_zmiana_statusu_z_data_i_notatka(client):
@@ -939,7 +939,7 @@ def test_handlowiec_widzi_sprzedaz_miesiaca_i_target(client):
     assert r.status_code == 303, r.text
     login(client, "hania@firma.pl")
     page = client.get("/pulpit").text
-    assert "<strong>25%</strong>" in page  # 50 000 z 200 000
+    assert "<strong>25% targetu</strong>" in page  # 50 000 z 200 000
     assert "Twoja transza A z tych umów" in page
 
 
@@ -1022,3 +1022,88 @@ def test_wlasciciel_nie_resetuje_wlasnego_hasla_losowym_przyciskiem(client):
     # hasło nie zostało zmienione: stare dalej działa
     login(client, "kris@firma.pl")
     assert client.get("/pulpit").status_code == 200
+
+
+# --------------------------------------------------------------------------
+# Pulpit sprzedażowy: oferty złożone, statystyki po miesiącach, filtry z licznikiem
+# --------------------------------------------------------------------------
+
+def test_oferty_zlozone_na_pulpicie_menedzera_i_poza_portfelem(client):
+    setup_company(client)
+    login(client, "hania@firma.pl")
+    _dzis_umowa(client)  # podpisana: 50 000 zł masy marży
+    _dzis_umowa(client, klient="Wózki Widłowe Michalski", status="Oferta", wolumen="200")  # 100 000 zł
+    page = client.get("/pulpit").text.replace("\u00a0", " ")
+    assert "Oferty złożone" in page and "Twoje oferty: 1 oferta" in page and "Wózki Widłowe Michalski" in page
+    # oferta nie zawyża sprzedaży miesiąca ani portfela
+    sales = page.split("Sprzedaż:", 1)[1].split("Oferty złożone", 1)[0]
+    assert "50 000,00 zł" in sales and "150 000" not in sales
+    assert "Masa marży, jeśli wszystkie się zamkną</dt><dd>100 000,00 zł" in page
+    # menedżer widzi oferty zespołu pogrupowane po handlowcach, ale bez przychodu spółki
+    login(client, "marek@firma.pl")
+    page = client.get("/pulpit").text
+    assert "Hania Handlowiec: 1 oferta" in page and "Wózki Widłowe Michalski" in page
+    assert "Przychód spółki" not in page
+    # właściciel widzi przychód spółki z ofert
+    login(client, "kris@firma.pl")
+    page = client.get("/pulpit").text
+    assert "Przychód spółki, jeśli wszystkie się zamkną" in page
+
+
+def test_oferty_handlowca_niewidoczne_dla_innego_handlowca(client):
+    setup_company(client)
+    login(client, "hania@firma.pl")
+    _dzis_umowa(client, klient="Wózki Widłowe Michalski", status="Oferta")
+    login(client, "olek@firma.pl")
+    page = client.get("/pulpit").text
+    assert "Wózki Widłowe Michalski" not in page and "Brak otwartych ofert" in page
+
+
+def test_statystyki_sprzedazy_po_miesiacach(client):
+    from datetime import date
+    setup_company(client)
+    login(client, "hania@firma.pl")
+    _dzis_umowa(client)
+    page = client.get("/pulpit").text
+    assert 'id="statystyki"' in page and "Statystyki sprzedaży" in page
+    assert '<details class="zwijane" id="statystyki">' in page  # domyślnie zwinięte
+    m = date.today().strftime("%Y-%m")
+    page = client.get(f"/pulpit?od_mies={m}&do_mies={m}").text.replace("\u00a0", " ")
+    assert '<details class="zwijane" id="statystyki" open>' in page  # po filtrowaniu rozwinięte
+    assert "Razem: 1 umowa, masa marży 50 000,00 zł" in page
+    # śmieci w adresie nie wywracają strony
+    assert client.get("/pulpit?od_mies=abc&do_mies=2026-99").status_code == 200
+
+
+def test_licznik_wynikow_filtra_respektuje_widocznosc(client):
+    setup_company(client)
+    login(client, "hania@firma.pl")
+    _dzis_umowa(client)
+    _dzis_umowa(client, klient="Druga", status="Oferta")
+    r = client.get("/umowy/liczba")
+    assert r.json() == {"count": 2, "text": "2 umowy"} and r.headers["cache-control"] == "no-store"
+    assert client.get("/umowy/liczba?status=Oferta").json()["count"] == 1
+    assert client.get("/umowy/liczba?produkt=spot").json()["text"] == "0 umów"
+    login(client, "olek@firma.pl")  # cudze umowy się nie liczą
+    assert client.get("/umowy/liczba").json()["count"] == 0
+    client.cookies.clear()
+    assert client.get("/umowy/liczba", follow_redirects=False).status_code in (303, 401)
+
+
+def test_lista_umow_filtry_zwiniete_z_licznikiem_i_czyszczeniem(client):
+    setup_company(client)
+    login(client, "hania@firma.pl")
+    _dzis_umowa(client)
+    page = client.get("/umowy").text
+    assert '<details class="panel" id="panel-filtrow">' in page and "Pasuje: 1 umowa." in page
+    assert "Wyczyść filtry" not in page
+    page = client.get("/umowy?produkt=fix&medium=energia").text
+    assert "Filtry (2)" in page and "Wyczyść filtry" in page
+    assert '<details class="panel" id="panel-filtrow">' in page  # po filtrowaniu panel zwinięty, widać wyniki
+    assert "/static/filtry.js" in page
+
+
+def test_odmiana_liczebnikow():
+    from app.services import plural_oferty, plural_umowy
+    assert [plural_umowy(n) for n in (0, 1, 2, 5, 12, 22, 25)] == ["0 umów", "1 umowa", "2 umowy", "5 umów", "12 umów", "22 umowy", "25 umów"]
+    assert plural_oferty(1) == "1 oferta" and plural_oferty(3) == "3 oferty" and plural_oferty(14) == "14 ofert"

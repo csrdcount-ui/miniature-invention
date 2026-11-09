@@ -11,7 +11,7 @@ from fastapi import (
     HTTPException,
     Request,
 )
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -51,15 +51,21 @@ router = APIRouter()
 
 @router.get("/pulpit", response_class=HTMLResponse)
 def dashboard(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Pulpit nastawiony na bieżącą sprzedaż: miesiąc i target, oferty złożone, a statystyki zwinięte."""
     contracts = list(db.scalars(svc.visible_contracts_query(user)))
     perms = bok_perms(db)
     show_b = svc.tranche_b_visible(user, company_of(db))
     summary = svc.summary_for(user, contracts, perms)
     month = svc.month_start()
+    qp = request.query_params
+    stats_from, stats_to = svc.month_range(qp.get("od_mies", ""), qp.get("do_mies", ""))
     ctx = {
         "user": user, "summary": summary, "show_b": show_b,
         "recent": [svc.contract_view(user, c, perms, show_b) for c in contracts[:5]],
         "month_label": svc.month_label(month),
+        "offers": svc.offers_overview(user, contracts, show_b),
+        "stats": svc.monthly_stats(contracts, stats_from, stats_to),
+        "stats_open": "od_mies" in qp or "do_mies" in qp,
     }
     if user.role in (ROLE_TRADER, ROLE_MANAGER):
         ctx["mine"] = svc.month_sales(db, [user.id], month)
@@ -131,7 +137,20 @@ def contracts_page(request: Request, user: User = Depends(current_user), db: Ses
         "traders": svc.assignable_traders(db, user) if user.role != ROLE_TRADER else [],
         "sort_options": svc.SORT_LABELS,
     }
+    ctx["count_text"] = svc.plural_umowy(len(views))
     return render(request, "umowy.html", ctx)
+
+
+@router.get("/umowy/liczba")
+def contracts_count(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Licznik wyników na żywo podczas zaznaczania filtrów (te same filtry i ta sama widoczność co lista)."""
+    filters = _filters_from_query(request.query_params)
+    q = svc.apply_contract_filters(svc.visible_contracts_query(user), filters)
+    n = len(list(db.scalars(q)))
+    return JSONResponse(
+        {"count": n, "text": svc.plural_umowy(n)},
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 def _new_contract_ctx(db: Session, user: User, **extra) -> dict:

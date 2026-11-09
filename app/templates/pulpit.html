@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_makra.html" import produkt_plakietka %}
 {% block title %}Pulpit{% endblock %}
 {% block content %}
 <h1>Pulpit</h1>
@@ -14,60 +15,107 @@
 {% endif %}
 
 {% macro miesiac(m, tytul, z_transza=false) -%}
+<section class="karta-miesiaca">
 <h3>{{ tytul }}</h3>
+{% if m.target is not none %}
+<p class="wynik"><strong>{{ m.pct if m.pct is not none else 0 }}% targetu</strong></p>
+<div class="postep" aria-hidden="true"><span style="width: {{ [m.pct or 0, 100]|min }}%"></span></div>
+{% endif %}
 <dl>
-  <dt>Umowy podpisane w tym miesiącu</dt><dd>{{ m.count }}</dd>
   <dt>Masa marży</dt><dd>{{ m.markup|zl }}</dd>
   {% if m.target is not none %}
   <dt>Target</dt><dd>{{ m.target|zl }}</dd>
-  <dt>Wykonanie</dt><dd><strong>{{ m.pct if m.pct is not none else 0 }}%</strong></dd>
+  {% if m.target > m.markup %}<dt>Brakuje do targetu</dt><dd>{{ (m.target - m.markup)|zl }}</dd>{% endif %}
   {% else %}
   <dt>Target</dt><dd>nie ustawiony</dd>
   {% endif %}
+  <dt>Umowy podpisane</dt><dd>{{ m.count }}</dd>
   {% if z_transza %}<dt>Twoja transza A z tych umów</dt><dd>{{ m.tranche_a|zl }}</dd>{% endif %}
 </dl>
+</section>
 {%- endmacro %}
 
 <h2>Sprzedaż: {{ month_label }}</h2>
 {% if mine is defined %}{{ miesiac(mine, "Twoja sprzedaż", true) }}{% endif %}
 {% if team is defined %}{{ miesiac(team, "Twój zespół (" ~ team_size ~ " os.)") }}{% endif %}
 {% if company_month is defined %}{{ miesiac(company_month, "Całe biuro") }}{% endif %}
-<p class="podpowiedz">Liczą się umowy podpisane w bieżącym miesiącu, bez zerwanych.</p>
+<p class="podpowiedz">Liczą się umowy podpisane w bieżącym miesiącu, bez zerwanych i bez ofert.</p>
 
-<h2>Podsumowanie portfela</h2>
+<h2>Oferty złożone</h2>
+{% if offers.count %}
 <dl>
-  <dt>Liczba umów</dt><dd>{{ summary.count }}</dd>
-  <dt>Wolumen z całych okresów umów</dt><dd>{{ summary.total_volume_mwh|mwh }}</dd>
-  <dt>Całkowita masa marży</dt><dd>{{ summary.total_markup|zl }}</dd>
-  {% if user.role == ROLE_OWNER %}
-  <dt>Udział brokera od spółek</dt><dd>{{ summary.broker_total|zl }}</dd>
-  <dt>Prowizje handlowców</dt><dd>{{ summary.trader_total|zl }}</dd>
-  <dt>Przychód spółki</dt><dd>{{ summary.owner_total|zl }}</dd>
-  {% endif %}
-  {% if user.role == ROLE_BOK and summary.trader_total is defined %}
-  <dt>Prowizje handlowców</dt><dd>{{ summary.trader_total|zl }}</dd>
-  <dt>Override menedżerów</dt><dd>{{ (summary.override_all_total or 0)|zl }}</dd>
-  {% endif %}
-  {% if summary.mine_total %}
-  <dt>Transza A z Twoich umów</dt><dd>{{ summary.mine_tranche1|zl }}</dd>
-  {% endif %}
-  {% if user.role == ROLE_MANAGER %}
-  <dt>Twój override od zespołu</dt><dd>{{ summary.override_total|zl }}</dd>
-  {% endif %}
+  <dt>Otwarte oferty</dt><dd>{{ offers.count }}</dd>
+  <dt>Masa marży, jeśli wszystkie się zamkną</dt><dd>{{ offers.markup|zl }}</dd>
+  {% if user.role == ROLE_OWNER %}<dt>Przychód spółki, jeśli wszystkie się zamkną</dt><dd>{{ offers.owner|zl }}</dd>{% endif %}
+  {% if user.role == ROLE_MANAGER and offers.override %}<dt>Twój override, jeśli zespół je zamknie</dt><dd>{{ offers.override|zl }}</dd>{% endif %}
+  {% if offers.mine %}<dt>{{ offers.mine_label }} z Twoich ofert</dt><dd>{{ offers.mine|zl }}</dd>{% endif %}
 </dl>
-<p class="podpowiedz">Kwoty to prognoza z pełnego okresu umów, a nie pieniądze już wypłacone.</p>
-{% if summary.mine_total and show_b %}
-<details>
-  <summary>Prognoza transzy B z Twoich umów</summary>
-  <p>{{ (summary.mine_total - summary.mine_tranche1)|zl }}</p>
-  <p class="podpowiedz"><strong>To tylko prognoza.</strong> Transza B może się zmienić albo nie zostać wypłacona: spółka obrotu może skorygować prowizję, klient może zerwać umowę albo upaść, zużycie może spaść. Liczy się bieżąca sprzedaż.</p>
+{% for g in offers.groups %}
+<details class="zwijane">
+  <summary>{% if not offers.show_mine_only %}{{ g.trader_name }}: {% else %}Twoje oferty: {% endif %}{{ g.count|oferty }}, {{ g.markup|zl }}</summary>
+  <ul class="karty wnetrze">
+  {% for o in g.lista %}
+    <li>
+      <h3><a href="/umowy/{{ o.id }}">{{ o.client_name }}</a> {{ produkt_plakietka(o.pricing_product) }}</h3>
+      <p>Złożona {{ o.date|data }} ({{ o.days }} {{ "dzień" if o.days == 1 else "dni" }} temu), {{ o.supplier_name }}, {{ MEDIA[o.medium]|lower }}</p>
+      <p>{{ o.annual_volume_mwh|mwh }} rocznie, {{ o.term_months }} mies., marża {{ o.markup_pln_mwh|zl }}/MWh</p>
+      <p>Masa marży po podpisaniu: <strong>{{ o.markup|zl }}</strong></p>
+    </li>
+  {% endfor %}
+  </ul>
 </details>
+{% endfor %}
+<p class="podpowiedz">Oferta to umowa w statusie „Oferta”. Gdy klient podpisze, zmień status na „Umowa podpisana”. <a href="/umowy?status=Oferta">Wszystkie oferty na liście umów</a>.</p>
+{% else %}
+<p>Brak otwartych ofert. Ofertę zapiszesz jako umowę w statusie „Oferta”: <a href="/umowy/nowa">dodaj ofertę</a>.</p>
 {% endif %}
 
-<h2>Ostatnie umowy</h2>
+{% if user.role == ROLE_OWNER %}
+{# Właściciel widzi wszystko, co wpływa na płynność biura — bez zwijania. #}
+<h2>Podsumowanie portfela</h2>
+{% include "_portfel.html" with context %}
+{% endif %}
+
+<details class="zwijane" id="statystyki"{% if stats_open %} open{% endif %}>
+  <summary>Statystyki sprzedaży</summary>
+  <div class="wnetrze">
+    <form method="get" action="/pulpit#statystyki" class="stack">
+      <div class="pole">
+        <label for="f-od_mies">Od miesiąca</label>
+        <input id="f-od_mies" name="od_mies" type="month" value="{{ stats.from.strftime('%Y-%m') }}" aria-describedby="h-mies">
+      </div>
+      <div class="pole">
+        <label for="f-do_mies">Do miesiąca</label>
+        <input id="f-do_mies" name="do_mies" type="month" value="{{ stats.to.strftime('%Y-%m') }}" aria-describedby="h-mies">
+      </div>
+      <p class="podpowiedz" id="h-mies">Format RRRR-MM, np. 2026-05. Najwyżej 36 miesięcy.</p>
+      <button type="submit">Pokaż</button>
+    </form>
+    <p><strong>Razem: {{ stats.count|umowy }}, masa marży {{ stats.markup|zl }}.</strong></p>
+    <ul class="miesiace">
+    {% for r in stats.months %}
+      <li>
+        <p><strong>{{ r.label }}</strong>: {{ r.count|umowy }}, {{ r.markup|zl }}</p>
+        <div class="postep" aria-hidden="true"><span style="width: {{ r.share }}%"></span></div>
+      </li>
+    {% endfor %}
+    </ul>
+    <p class="podpowiedz">Umowy podpisane w danym miesiącu, bez zerwanych i bez ofert.{% if user.role == ROLE_MANAGER %} Twoje i Twojego zespołu.{% elif user.role == ROLE_TRADER %} Tylko Twoje.{% endif %}</p>
+    {% if user.role != ROLE_OWNER %}
+    <h3>Cały portfel</h3>
+    {% include "_portfel.html" with context %}
+    {% endif %}
+  </div>
+</details>
+
 {% if recent %}
-{% include "_lista_umow.html" with context %}
-<p><a href="/umowy">Wszystkie umowy</a></p>
+<details class="zwijane">
+  <summary>Ostatnio dodane umowy</summary>
+  <div class="wnetrze">
+    {% include "_lista_umow.html" with context %}
+    <p><a href="/umowy">Wszystkie umowy</a></p>
+  </div>
+</details>
 {% else %}
 <p>Brak umów. <a href="/umowy/nowa">Dodaj pierwszą umowę</a>.</p>
 {% endif %}

@@ -60,13 +60,13 @@ def test_demo_podglad_niczego_nie_zapisuje_a_zatwierdzenie_tak(client):
     before = _counts()
     bid = _demo_preview(client)
     page = client.get(f"/konto/import/{bid}").text
-    assert "Plik jest poprawny" in page and "Umowy: 100" in page and "Osoby: 9" in page
+    assert "Plik jest poprawny" in page and "Umowy: 114" in page and "Osoby: 9" in page
     assert _counts() == before
     r = _commit(client, bid)
     assert r.status_code == 200 and r.headers["cache-control"] == "no-store"
     assert "Te hasła widzisz tylko teraz" in r.text
     after = _counts()
-    assert after["umowy"] == before["umowy"] + 100 and after["osoby"] == before["osoby"] + 9
+    assert after["umowy"] == before["umowy"] + 114 and after["osoby"] == before["osoby"] + 9
     assert after["spolki"] == before["spolki"] + 12
     # hasła czytelne: trzy grupy po cztery znaki
     passwords = re.findall(r"Login: ([^<]+)</p>\s*<p>Hasło: <code>([^<]+)</code>", r.text)
@@ -126,7 +126,7 @@ def test_cofniecie_demo_zostawia_prawdziwe_dane(client):
     _commit(client, bid)
     r = post(client, f"/konto/import/{bid}", f"/konto/import/{bid}/cofnij", {})
     assert r.status_code == 303  # bez potwierdzenia nic się nie dzieje
-    assert _counts()["umowy"] == before["umowy"] + 100
+    assert _counts()["umowy"] == before["umowy"] + 114
     r = post(client, f"/konto/import/{bid}", f"/konto/import/{bid}/cofnij", {"potwierdzam": "1"})
     assert r.status_code == 303
     assert _counts() == before
@@ -309,8 +309,10 @@ def test_demo_struktura_portfela_i_marze_w_widelkach(client):
     11% 300–1000 MWh, 23% powyżej 1 GWh; marże zależne od wolumenu."""
     from app.exchange.demo import demo_rows
     rows = demo_rows()
-    umowy = rows["umowy"]
-    assert len(umowy) == 100
+    oferty = [u for u in rows["umowy"] if u["status"] == "Oferta"]
+    umowy = [u for u in rows["umowy"] if u["status"] != "Oferta"]
+    assert len(umowy) == 100 and len(oferty) == 14  # 100 umów podpisanych + 14 ofert złożonych
+    assert any(o["klient_nazwa"] == "Wózki Widłowe Michalski" for o in oferty)
     vol = [float(u["wolumen_roczny_mwh"]) for u in umowy]
     assert sum(v <= 50 for v in vol) == 17
     assert sum(50 < v <= 300 for v in vol) == 49
@@ -329,7 +331,7 @@ def test_demo_struktura_portfela_i_marze_w_widelkach(client):
         else:
             assert 8 <= m <= 15, u
     assert sum(v > 10000 for v in vol) >= 1  # jest co najmniej jedna bardzo duża umowa
-    assert len({u["klient_nazwa"] for u in umowy}) == 100  # klienci się nie powtarzają
+    assert len({u["klient_nazwa"] for u in rows["umowy"]}) == 114  # klienci się nie powtarzają
     # zespół: menedżer Michał Lex, 6 handlowców, 2 osoby BOK (Jessica na pierwszym miejscu)
     team = rows["zespol"]
     assert [(p["imie"], p["nazwisko"]) for p in team if p["rola"] == "menedzer"] == [("Michał", "Lex")]

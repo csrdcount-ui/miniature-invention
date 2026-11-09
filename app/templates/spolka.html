@@ -21,7 +21,9 @@
 <p>Ta spółka nie ma jeszcze reguł obowiązujących dzisiaj.</p>
 {% endif %}
 
-<h2>{% if s.rule_sets %}Zmień reguły{% else %}Ustaw reguły{% endif %}</h2>
+<details class="zwijane"{% if error or not s.rule_sets %} open{% endif %}>
+<summary>{% if s.rule_sets %}Zmień reguły{% else %}Ustaw reguły{% endif %}</summary>
+<div class="wnetrze">
 <p>Nowe reguły dotyczą umów podpisanych od podanej daty. Umowy już zapisane zachowują reguły z dnia podpisania.</p>
 <form method="post" action="/spolki/{{ s.id }}/reguly" class="stack">
   <input type="hidden" name="csrf" value="{{ csrf }}">
@@ -38,14 +40,18 @@
   </div>
   <button type="submit">Zapisz reguły</button>
 </form>
+</div>
+</details>
 
 {% if s.rule_sets|length > 0 %}
-<h2>Historia reguł</h2>
-<ul>
+<details class="zwijane">
+<summary>Historia reguł ({{ s.rule_sets|length }})</summary>
+<ul class="wnetrze">
 {% for rs in s.rule_sets %}
   <li>Od {{ rs.valid_from|data }}: udział {{ rs.broker_share_pct|pct }}, transza {{ rs.first_tranche_pct|pct }}, limit {% if rs.max_markup_pln_mwh is not none %}{{ rs.max_markup_pln_mwh|zl }}/MWh{% else %}brak{% endif %}.</li>
 {% endfor %}
 </ul>
+</details>
 {% endif %}
 
 <h2>Status spółki</h2>

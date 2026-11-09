@@ -105,6 +105,25 @@ def _client_slots() -> list[dict]:
     return slots
 
 
+# Oferty złożone, jeszcze niepodpisane (status „Oferta”): klient, wolumen roczny MWh, marża zł/MWh.
+# Do rozmów na odprawie: „co z ofertą dla Wózki Widłowe Michalski?”.
+OFFERS = [
+    ("Wózki Widłowe Michalski", 180, 105),
+    ("Piekarnia Złoty Kłos", 95, 130),
+    ("Zajazd Pod Wiatrakiem", 260, 110),
+    ("Chłodnia Mrozik", 1400, 45),
+    ("Stolarnia Dębowy Dwór", 70, 140),
+    ("Warsztat Auto-Serwis Nowak", 40, 145),
+    ("Drukarnia Offsetowa Kolor", 320, 100),
+    ("Wspólnota Mieszkaniowa Słoneczna 12", 120, 115),
+    ("Odlewnia Żeliwa Kuźnia", 2200, 40),
+    ("Szkoła Językowa Lingwa", 30, 150),
+    ("Wytwórnia Lodów Sopel", 850, 65),
+    ("Kwiaciarnia Storczyk", 60, 135),
+    ("Myjnia Bezdotykowa Bąbel", 110, 120),
+    ("Centrum Logistyczne Węzeł", 3100, 35),
+]
+
 BREAK_REASONS = [
     "Klient wypowiedział umowę i przeszedł do innego sprzedawcy.",
     "Upadłość klienta.",
@@ -241,6 +260,22 @@ def demo_rows(today: Optional[date] = None) -> dict[str, list[dict]]:
             rows["historia_statusow"].append(
                 {"umowa_id_zewn": ext, "status": status, "data_zdarzenia": when.isoformat(), "notatka": note}
             )
+
+    for k, (client, volume, markup) in enumerate(OFFERS, start=1):
+        seller = sellers[(k - 1) % len(sellers)][0]
+        sup = rng.choice(SUPPLIERS)
+        sent = today - timedelta(days=rng.randint(1, 25))
+        ext = f"DEMO-O-{k:04d}"
+        rows["umowy"].append({
+            "id_zewn": ext, "klient_nazwa": client, "klient_nip": "", "medium": "energia",
+            "spolka": sup[0], "handlowiec_email": seller, "data_podpisania": sent.isoformat(), "start_dostaw": "",
+            "okres_miesiace": rng.choice([12, 24, 36]), "wolumen_roczny_mwh": volume,
+            "cena_bazowa_zl_mwh": rng.randrange(480, 621, 5), "narzut_zl_mwh": min(markup, sup[4]),
+            "nowe_przylacze": "nie", "status": "Oferta",
+        })
+        rows["historia_statusow"].append(
+            {"umowa_id_zewn": ext, "status": "Oferta", "data_zdarzenia": sent.isoformat(), "notatka": "Oferta wysłana klientowi."}
+        )
     return rows
 
 

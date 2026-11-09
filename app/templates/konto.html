@@ -29,7 +29,9 @@
 {% endif %}
 
 {% if policy_settings %}
-<h2 id="polityka">Polityka biura</h2>
+<details class="zwijane" id="polityka">
+<summary>Polityka biura</summary>
+<div class="wnetrze">
 <form method="post" action="/konto/polityka" class="stack">
   <input type="hidden" name="csrf" value="{{ csrf }}">
   {% for s in policy_settings %}
@@ -40,10 +42,14 @@
   {% endfor %}
   <button type="submit">Zapisz politykę</button>
 </form>
+</div>
+</details>
 {% endif %}
 
 {% if bok_settings %}
-<h2 id="uprawnienia-bok">Uprawnienia biura obsługi (BOK)</h2>
+<details class="zwijane" id="uprawnienia-bok">
+<summary>Uprawnienia biura obsługi (BOK)</summary>
+<div class="wnetrze">
 <p>Zaznacz, które zadania wykonuje biuro obsługi. Udziału brokera u spółek i Twojej marży BOK nie widzi nigdy, niezależnie od ustawień.</p>
 <form method="post" action="/konto/uprawnienia-bok" class="stack">
   <input type="hidden" name="csrf" value="{{ csrf }}">
@@ -58,13 +64,17 @@
   </fieldset>
   <button type="submit">Zapisz uprawnienia</button>
 </form>
+</div>
+</details>
 {% if bok_history %}
-<h3>Historia zmian uprawnień</h3>
-<ul>
+<details class="zwijane">
+<summary>Historia zmian uprawnień ({{ bok_history|length }})</summary>
+<ul class="wnetrze">
 {% for h in bok_history %}
   <li>{{ h.changed_at.strftime("%d.%m.%Y %H:%M") }}: {{ BOK_PERMISSIONS[h.setting][0] if h.setting in BOK_PERMISSIONS else (POLICY_SETTINGS[h.setting][0] if h.setting in POLICY_SETTINGS else h.setting) }}, {{ "włączone" if h.new_value else "wyłączone" }}, zmienił(a): {{ h.changed_by.name if h.changed_by else "system" }}.</li>
 {% endfor %}
 </ul>
+</details>
 {% endif %}
 {% endif %}
 

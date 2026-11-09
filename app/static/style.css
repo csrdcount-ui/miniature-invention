@@ -132,3 +132,34 @@ ol.bledy { padding-left: 1.5rem; }
 .produkt-fix { color: var(--fix); background: var(--fix-tlo); }
 .produkt-spot { color: var(--spot); background: var(--spot-tlo); }
 .produkt-tranza { color: var(--tranza); background: var(--tranza-tlo); }
+
+/* --- Sekcje zwijane: na telefonie na ekranie zostają wyniki, reszta pod przyciskiem --- */
+summary { cursor: pointer; min-height: 44px; padding: .55rem 0; font-weight: 600; }
+details.zwijane { border: 1px solid var(--ramka); border-radius: 8px; margin: 1rem 0; }
+details.zwijane > summary { padding: .7rem 1rem; font-weight: 700; }
+details.zwijane[open] > summary { border-bottom: 1px solid var(--ramka); }
+details.zwijane > .wnetrze { padding: .5rem 1rem 1rem; }
+ul.karty.wnetrze { padding: .75rem; margin: 0; }
+
+/* --- Pasek filtrów i sortowania (jak w aplikacjach rezerwacyjnych) --- */
+.pasek-filtrow { display: flex; flex-wrap: wrap; gap: .5rem; align-items: flex-start; margin: 1rem 0; }
+.pasek-filtrow > details.panel { flex: 0 0 auto; }
+.pasek-filtrow > details.panel > summary,
+.przycisk-drugi {
+  display: inline-flex; align-items: center; min-height: 44px; padding: 0 1rem;
+  border: 1px solid var(--marka); border-radius: 999px; color: var(--marka); text-decoration: none; font-weight: 700;
+}
+.pasek-filtrow > details.panel[open] { order: 10; flex: 1 1 100%; border: 1px solid var(--ramka); border-radius: 8px; padding: .5rem; }
+.pasek-filtrow > details.panel[open] > summary { background: var(--marka); color: var(--tlo); }
+.pasek-filtrow .wnetrze { padding: 1rem .25rem .25rem; max-width: 32rem; }
+.licznik { font-weight: 700; margin: 0; }
+.pasek-filtrow button[type=submit] { width: 100%; }
+
+/* --- Postęp względem targetu i porównanie miesięcy --- */
+.karta-miesiaca { border: 1px solid var(--ramka); border-radius: 8px; padding: .5rem 1rem; margin: .75rem 0; }
+.karta-miesiaca h3 { margin: .25rem 0; }
+.wynik { font-size: 1.3rem; margin: .25rem 0; }
+.postep { height: 10px; border-radius: 999px; background: var(--ramka); overflow: hidden; margin: .25rem 0 .5rem; }
+.postep span { display: block; height: 100%; background: var(--marka); }
+ul.miesiace { list-style: none; padding: 0; display: grid; gap: .5rem; }
+ul.miesiace p { margin: 0; }

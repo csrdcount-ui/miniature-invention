@@ -294,6 +294,17 @@ class ContractFilters:
     sort: str = DEFAULT_SORT
 
     @property
+    def active_count(self) -> int:
+        """Ile filtrów zawęża listę (zakres liczy się jako jeden filtr)."""
+        return sum(bool(x) for x in (
+            self.products, self.supplier_id, self.medium, self.trader_id, self.status,
+            self.signed_from or self.signed_to,
+            self.volume_min is not None or self.volume_max is not None,
+            self.markup_min is not None or self.markup_max is not None,
+            self.new_connection is not None,
+        ))
+
+    @property
     def active(self) -> bool:
         """Czy choć jeden filtr zawęża listę (nie licząc samego sortowania)."""
         return bool(
@@ -515,9 +526,16 @@ def contract_view(viewer: User, c: Contract, perms: BokPerms = DEFAULT_PERMS, sh
 
 
 def summary_for(viewer: User, contracts: list[Contract], perms: BokPerms = DEFAULT_PERMS) -> dict:
-    """Sumy na pulpit — tylko kolumny dozwolone dla roli."""
+    """Sumy na pulpit — tylko kolumny dozwolone dla roli.
+
+    Lead, Kontakt i Oferta to jeszcze nie sprzedaż: nie wchodzą do portfela ani do prognoz.
+    Liczy je osobno pole „offers”.
+    """
+    offers = sum(1 for c in contracts if c.status in PIPELINE_STATUSES)
+    contracts = [c for c in contracts if c.status not in PIPELINE_STATUSES]
     sums = {
         "count": len(contracts),
+        "offers": offers,
         "total_volume_mwh": Decimal(0),
         "total_markup": Decimal(0),
         "mine_total": Decimal(0),
@@ -650,3 +668,119 @@ def month_sales(db: Session, user_ids: list[int], month: date) -> dict:
         if out["target"] > 0:
             out["pct"] = int((out["markup"] / out["target"] * 100).quantize(Decimal(1)))
     return out
+
+
+# --------------------------------------------------------------------------
+# Oferty złożone i statystyki sprzedaży po miesiącach
+# --------------------------------------------------------------------------
+
+PIPELINE_STATUSES = ("Lead", "Kontakt", "Oferta")
+OFFER_STATUS = "Oferta"
+
+
+def offers_overview(viewer: User, contracts: list[Contract], show_tranche_b: bool = True) -> dict:
+    """Oferty złożone (status „Oferta”) pogrupowane po handlowcach, z prognozą, gdyby wszystkie się zamknęły.
+
+    Prognoza tylko w kolumnach dozwolonych dla roli: właściciel widzi przychód spółki, menedżer swój
+    override, handlowiec swoją prowizję (transzę A, gdy biuro ukrywa transzę B). Masa marży — wszyscy.
+    """
+    today = date.today()
+    out = {"count": 0, "markup": Decimal(0), "owner": Decimal(0), "override": Decimal(0), "mine": Decimal(0), "groups": []}
+    groups: dict[int, dict] = {}
+    for c in contracts:
+        if c.status != OFFER_STATUS:
+            continue
+        b = calculate_contract(c)
+        out["count"] += 1
+        out["markup"] += b.total_markup
+        if viewer.role == ROLE_OWNER:
+            out["owner"] += b.owner_margin.total
+        if c.manager_id == viewer.id:
+            out["override"] += b.manager_override.total
+        if c.trader_id == viewer.id:
+            out["mine"] += b.trader.total if show_tranche_b else b.trader.tranche1
+        g = groups.setdefault(c.trader_id, {"trader_name": c.trader.name, "count": 0, "markup": Decimal(0), "lista": []})
+        g["count"] += 1
+        g["markup"] += b.total_markup
+        g["lista"].append({
+            "id": c.id, "client_name": c.client_name, "supplier_name": c.supplier.name, "medium": c.medium,
+            "pricing_product": c.pricing_product, "annual_volume_mwh": c.annual_volume_mwh,
+            "markup_pln_mwh": c.markup_pln_mwh, "term_months": c.term_months, "markup": b.total_markup,
+            "date": c.signed_date, "days": (today - c.signed_date).days,
+        })
+    for g in groups.values():
+        g["lista"].sort(key=lambda i: i["date"])
+    out["groups"] = sorted(groups.values(), key=lambda g: (-g["markup"], g["trader_name"]))
+    out["show_mine_only"] = viewer.role == ROLE_TRADER
+    out["mine_label"] = "Twoja prowizja" if show_tranche_b else "Twoja transza A"
+    return out
+
+
+def parse_month(raw: str) -> Optional[date]:
+    """„2026-11” → 1.11.2026; śmieci → None (bez wyjątków, bo to parametr adresu)."""
+    try:
+        y, m = raw.split("-")
+        return date(int(y), int(m), 1)
+    except (ValueError, AttributeError):
+        return None
+
+
+def add_months(m: date, n: int) -> date:
+    y, mm = divmod(m.month - 1 + n, 12)
+    return date(m.year + y, mm + 1, 1)
+
+
+STATS_MAX_MONTHS = 36
+
+
+def month_range(raw_from: str, raw_to: str, default_months: int = 6) -> tuple[date, date]:
+    """Zakres miesięcy statystyk: domyślnie ostatnie pół roku, najwyżej 36 miesięcy, od ≤ do."""
+    end = parse_month(raw_to) or month_start()
+    start = parse_month(raw_from) or add_months(end, -(default_months - 1))
+    if start > end:
+        start, end = end, start
+    if add_months(start, STATS_MAX_MONTHS - 1) < end:
+        start = add_months(end, -(STATS_MAX_MONTHS - 1))
+    return start, end
+
+
+def monthly_stats(contracts: list[Contract], start: date, end: date) -> dict:
+    """Sprzedaż w każdym miesiącu zakresu: umowy podpisane i masa marży (bez ofert i zerwanych)."""
+    months = []
+    m = start
+    while m <= end:
+        months.append({"month": m, "label": month_label(m), "count": 0, "markup": Decimal(0)})
+        m = _next_month(m)
+    index = {row["month"]: row for row in months}
+    for c in contracts:
+        if c.status in NOT_SALE_STATUSES:
+            continue
+        row = index.get(month_start(c.signed_date))
+        if row:
+            row["count"] += 1
+            row["markup"] += calculate_contract(c).total_markup
+    best = max((r["markup"] for r in months), default=Decimal(0))
+    for r in months:
+        r["share"] = int(r["markup"] / best * 100) if best > 0 else 0
+    return {
+        "months": months[::-1],  # najnowszy miesiąc na górze
+        "count": sum(r["count"] for r in months),
+        "markup": sum((r["markup"] for r in months), Decimal(0)),
+        "from": start, "to": end,
+    }
+
+
+def plural_umowy(n: int) -> str:
+    if n == 1:
+        return "1 umowa"
+    if n % 10 in (2, 3, 4) and n % 100 not in (12, 13, 14):
+        return f"{n} umowy"
+    return f"{n} umów"
+
+
+def plural_oferty(n: int) -> str:
+    if n == 1:
+        return "1 oferta"
+    if n % 10 in (2, 3, 4) and n % 100 not in (12, 13, 14):
+        return f"{n} oferty"
+    return f"{n} ofert"

@@ -15,7 +15,7 @@
   <dt>Produkt cenowy</dt><dd>{{ produkt_plakietka(c.pricing_product) }}</dd>
   <dt>Handlowiec</dt><dd>{{ c.trader_name }}</dd>
   {% if c.manager_name %}<dt>Menedżer</dt><dd>{{ c.manager_name }}</dd>{% endif %}
-  <dt>Podpisana</dt><dd>{{ c.signed_date|data }}</dd>
+  <dt>{{ "Data oferty" if c.status in ("Lead", "Kontakt", "Oferta") else "Podpisana" }}</dt><dd>{{ c.signed_date|data }}</dd>
   <dt>Start dostaw</dt><dd>{{ c.start_date|data }}</dd>
   <dt>Okres</dt><dd>{{ c.term_months }} mies.</dd>
   <dt>Wolumen roczny</dt><dd>{{ c.annual_volume_mwh|mwh }}</dd>
@@ -46,7 +46,15 @@
 </dl>
 <p class="podpowiedz">Dalsze wypłaty z tej umowy rozlicza biuro zgodnie z rozliczeniami spółki obrotu.</p>
 {% elif c.rows %}
+<dl>
+{% for label, p in c.rows %}<dt>{{ label }}</dt><dd>{{ p.total|zl }}</dd>{% endfor %}
+</dl>
+<details class="zwijane">
+  <summary>Podział na transze</summary>
+  <div class="wnetrze">
 {{ tabela_prowizji(c.rows, "Podział prowizji z całego okresu umowy", c.new_connection, c.new_connection_months) }}
+  </div>
+</details>
 <p class="podpowiedz">To prognoza od wolumenu z umowy. Wypłata z góry jest zaliczką: przy zerwaniu umowy lub niższym zużyciu spółka może ją skorygować, a korekta przechodzi proporcjonalnie na handlowca i menedżera.</p>
 {% else %}
 <p>Nie masz udziału w prowizji z tej umowy.</p>
@@ -55,6 +63,9 @@
 <h2>Status w lejku</h2>
 <p>Obecny status: <strong>{{ c.status }}</strong>{% if since %}{% if since.baseline %}, co najmniej od {{ since.date|data }}{% else %}, od {{ since.date|data }}{% endif %} ({{ since.days }} {{ "dzień" if since.days == 1 else "dni" }}){% endif %}.</p>
 {% if can_edit_status %}
+<details class="zwijane"{% if error %} open{% endif %}>
+<summary>Zmień status</summary>
+<div class="wnetrze">
 <form method="post" action="/umowy/{{ c.id }}/status" class="stack">
   <input type="hidden" name="csrf" value="{{ csrf }}">
   {{ wybor("status", "Nowy status", STATUSES|zip(STATUSES), form.status or c.status) }}
@@ -66,13 +77,16 @@
   </div>
   <button type="submit">Zmień status</button>
 </form>
+</div>
+</details>
 {% else %}
 <p>Zmiana statusu jest wyłączona dla Twojej roli. Może ją włączyć właściciel w ustawieniach konta.</p>
 {% endif %}
 
-<h2>Historia statusów</h2>
 {% if history %}
-<ol class="historia">
+<details class="zwijane">
+<summary>Historia statusów ({{ history|length }})</summary>
+<ol class="historia wnetrze">
 {% for e in history %}
   <li>
     <p><strong>{{ e.effective_date|data }}</strong>: {% if e.from_status %}{{ e.from_status }} → {{ e.to_status }}{% else %}{{ e.to_status }}{% endif %}</p>
@@ -81,7 +95,8 @@
   </li>
 {% endfor %}
 </ol>
+</details>
 {% else %}
-<p>Brak zapisanej historii.</p>
+<p>Brak zapisanej historii statusów.</p>
 {% endif %}
 {% endblock %}

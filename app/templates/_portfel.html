@@ -1,0 +1,28 @@
+<dl>
+  <dt>Liczba umów</dt><dd>{{ summary.count }}</dd>
+  <dt>Wolumen z całych okresów umów</dt><dd>{{ summary.total_volume_mwh|mwh }}</dd>
+  <dt>Całkowita masa marży</dt><dd>{{ summary.total_markup|zl }}</dd>
+  {% if user.role == ROLE_OWNER %}
+  <dt>Udział brokera od spółek</dt><dd>{{ summary.broker_total|zl }}</dd>
+  <dt>Prowizje handlowców</dt><dd>{{ summary.trader_total|zl }}</dd>
+  <dt>Przychód spółki</dt><dd>{{ summary.owner_total|zl }}</dd>
+  {% endif %}
+  {% if user.role == ROLE_BOK and summary.trader_total is defined %}
+  <dt>Prowizje handlowców</dt><dd>{{ summary.trader_total|zl }}</dd>
+  <dt>Override menedżerów</dt><dd>{{ (summary.override_all_total or 0)|zl }}</dd>
+  {% endif %}
+  {% if summary.mine_total %}
+  <dt>Transza A z Twoich umów</dt><dd>{{ summary.mine_tranche1|zl }}</dd>
+  {% endif %}
+  {% if user.role == ROLE_MANAGER %}
+  <dt>Twój override od zespołu</dt><dd>{{ summary.override_total|zl }}</dd>
+  {% endif %}
+</dl>
+<p class="podpowiedz">Kwoty to prognoza z pełnego okresu umów (bez ofert), a nie pieniądze już wypłacone.</p>
+{% if summary.mine_total and show_b %}
+<details>
+  <summary>Prognoza transzy B z Twoich umów</summary>
+  <p>{{ (summary.mine_total - summary.mine_tranche1)|zl }}</p>
+  <p class="podpowiedz"><strong>To tylko prognoza.</strong> Transza B może się zmienić albo nie zostać wypłacona: spółka obrotu może skorygować prowizję, klient może zerwać umowę albo upaść, zużycie może spaść. Liczy się bieżąca sprzedaż.</p>
+</details>
+{% endif %}
