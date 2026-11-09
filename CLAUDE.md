@@ -65,10 +65,12 @@ odpowiedzi tę instrukcję, z linkiem i wskazaniem sekcji:
 5. Potwierdzenie: https://platforma-brokerska.onrender.com/wersja pokazuje numer
    ostatniego commitu.
 
-Zawsze kończ tę instrukcję i każde "sprawdź, czy wdrożenie się udało" linkiem
-do aplikacji, jako osobna linia na końcu wiadomości (prosiła o to 8.11.2026,
-bo ciągle gubi link wklejony gdzie indziej):
-https://platforma-brokerska.onrender.com
+Zawsze kończ tę instrukcję i każde "sprawdź, czy wdrożenie się udało" DWOMA linkami,
+każdy jako osobna linia na samym końcu wiadomości (prosiła o to 8.11.2026 i 10.11.2026:
+ciągle gubi linki wklejone gdzie indziej, a czyta koniec wiadomości; link do Rendera
+w środku listy kroków jej nie wystarcza):
+Panel wdrożenia (Render): https://dashboard.render.com/web/srv-dbmc7cetlv9c73duncgg
+Aplikacja: https://platforma-brokerska.onrender.com
 
 Nie proś o nic więcej w panelu. Sekcji „Auto-Deploy” właścicielka nie znalazła; nie
 wracaj do tego.

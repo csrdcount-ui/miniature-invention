@@ -7,6 +7,14 @@
 {% if r.passwords %}
 <h2>Hasła do nowych kont</h2>
 <p><strong>Te hasła widzisz tylko teraz.</strong> Platforma ich nie przechowuje w czytelnej postaci. Zapisz je albo przekaż osobom. Jeśli je zgubisz, nadasz nowe hasło na stronie osoby w zakładce Zespół.</p>
+{% set plik %}Hasła do kont, import z {{ b.created_at.strftime("%d.%m.%Y") }}. Zmień je po pierwszym logowaniu.
+
+{% for p in r.passwords %}{{ p.name }} ({{ p.role }})
+Login: {{ p.email }}
+Hasło: {{ p.password }}
+
+{% endfor %}{% endset %}
+<p><a download="hasla-kont-{{ b.id }}.txt" href="data:text/plain;charset=utf-8,{{ plik|urlencode }}">Pobierz hasła jako plik tekstowy</a></p>
 <ul class="karty">
 {% for p in r.passwords %}
   <li>

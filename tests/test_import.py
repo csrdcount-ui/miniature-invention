@@ -342,3 +342,21 @@ def test_demo_struktura_portfela_i_marze_w_widelkach(client):
     assert all(len(v) >= 1 for v in per.values()) and len(per) == 7
     worst = max(per, key=lambda e: per[e].count("Zerwana"))
     assert worst.startswith("pawel.kaminski")
+
+
+def test_wynik_importu_ma_plik_z_haslami_do_pobrania(client):
+    """Hasła pokazują się raz, ale właścicielka może je od razu zapisać do pliku
+    (link z danymi w samej stronie, serwer niczego nie przechowuje)."""
+    from urllib.parse import unquote
+    setup_company(client)
+    login(client, "kris@firma.pl")
+    bid = _demo_preview(client)
+    r = _commit(client, bid)
+    m = re.search(r'<a download="hasla-kont-\d+\.txt" href="data:text/plain;charset=utf-8,([^"]+)">Pobierz hasła', r.text)
+    assert m, "brak linku do pobrania haseł"
+    plik = unquote(m.group(1))
+    for email, pw in re.findall(r"Login: ([^<]+)</p>\s*<p>Hasło: <code>([^<]+)</code>", r.text):
+        assert f"Login: {email}\nHasło: {pw}\n" in plik
+    assert "jessica.kowal@demo.invalid" in plik and "michal.lex@demo.invalid" in plik
+    # po odświeżeniu haseł nie ma nigdzie na serwerze
+    assert "Hasło:" not in client.get(f"/konto/import/{bid}").text
