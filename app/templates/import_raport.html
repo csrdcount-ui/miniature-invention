@@ -23,6 +23,7 @@
   <li>Spółki obrotu: {{ r.counts.spolki }}, zestawy reguł prowizji: {{ r.counts.reguly }}</li>
   <li>Umowy: {{ r.counts.umowy }}</li>
   <li>Zmiany statusów z historii: {{ r.counts.zmiany_statusow }}</li>
+  <li>Targety miesięczne: {{ r.counts.get("targety", 0) }}</li>
 </ul>
 
 {% if r.errors %}

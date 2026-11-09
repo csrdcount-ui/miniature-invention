@@ -17,6 +17,15 @@ Zaloguj się do każdej przez dane demonstracyjne (zakładka Konto → Import da
 - Dane demonstracyjne: 100 umów + 14 ofert (np. „Wózki Widłowe Michalski”). Uwaga: demo
   nie ustawia targetów — ustaw je w Zespół → osoba → „Target masy marży”.
 
+## Nowość 10.11.2026 — do sprawdzenia po wdrożeniu
+
+- Dane demo mają targety (junior 150 000, senior 200 000, pro 250 000 zł) — paski na
+  pulpicie od razu. Trzeba cofnąć starą paczkę demo i wczytać nową.
+- Zespół: ranking miesiąca i „Rytm: umowy w N z ostatnich 6 miesięcy”.
+- Strona osoby: „Statystyki sprzedaży” po miesiącach. Porównaj Annę Kowalczyk
+  (regularna), Piotra Nowickiego (zrywami) i Michała Wójcika (przestój od 2 miesięcy).
+- Pulpit: oferty czekające ponad 14 dni są wyróżnione.
+
 ## Właściciel
 
 ### Gotowe do testowania

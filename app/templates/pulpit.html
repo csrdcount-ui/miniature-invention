@@ -52,11 +52,12 @@
 </dl>
 {% for g in offers.groups %}
 <details class="zwijane">
-  <summary>{% if not offers.show_mine_only %}{{ g.trader_name }}: {% else %}Twoje oferty: {% endif %}{{ g.count|oferty }}, {{ g.markup|zl }}</summary>
+  <summary>{% if not offers.show_mine_only %}{{ g.trader_name }}: {% else %}Twoje oferty: {% endif %}{{ g.count|oferty }}, {{ g.markup|zl }}{% if g.stale %}, czeka ponad {{ OFFER_STALE_DAYS }} dni: {{ g.stale }}{% endif %}</summary>
   <ul class="karty wnetrze">
   {% for o in g.lista %}
     <li>
       <h3><a href="/umowy/{{ o.id }}">{{ o.client_name }}</a> {{ produkt_plakietka(o.pricing_product) }}</h3>
+      {% if o.days > OFFER_STALE_DAYS %}<p><strong class="uwaga">Czeka {{ o.days }} dni — zapytaj o decyzję klienta.</strong></p>{% endif %}
       <p>Złożona {{ o.date|data }} ({{ o.days }} {{ "dzień" if o.days == 1 else "dni" }} temu), {{ o.supplier_name }}, {{ MEDIA[o.medium]|lower }}</p>
       <p>{{ o.annual_volume_mwh|mwh }} rocznie, {{ o.term_months }} mies., marża {{ o.markup_pln_mwh|zl }}/MWh</p>
       <p>Masa marży po podpisaniu: <strong>{{ o.markup|zl }}</strong></p>

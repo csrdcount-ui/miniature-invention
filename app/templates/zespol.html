@@ -4,6 +4,15 @@
 <h1>{{ "Mój zespół" if user.role == ROLE_MANAGER else "Zespół i stawki" }}</h1>
 <p>Sprzedaż w miesiącu: {{ month_label }}.</p>
 
+{% if ranking %}
+<h2>Ranking: {{ month_label }}</h2>
+<ol class="ranking">
+{% for p, m in ranking %}
+  <li><a href="/zespol/{{ p.id }}">{{ p.name }}</a>: {% if m.pct is not none %}<strong>{{ m.pct }}% targetu</strong>, {% endif %}{{ m.markup|zl }}, {{ m.count|umowy }}</li>
+{% endfor %}
+</ol>
+{% endif %}
+
 <h2>Osoby</h2>
 <ul class="karty">
 {% for p, r, m in rows %}
@@ -14,6 +23,7 @@
     {% if m %}
     <p>W tym miesiącu: {{ m.count }} umów, masa marży {{ m.markup|zl }}{% if m.target is not none %}, target {{ m.target|zl }}, wykonanie <strong>{{ m.pct if m.pct is not none else 0 }}%</strong>{% else %}, target nie ustawiony{% endif %}.</p>
     {% endif %}
+    {% if p.id in rhythm %}<p>Rytm: umowy w {{ rhythm[p.id] }} z ostatnich 6 miesięcy{% if rhythm[p.id] <= 3 %} — <strong class="uwaga">nieregularnie</strong>{% endif %}.</p>{% endif %}
     {% if p.role in (ROLE_MANAGER, ROLE_TRADER) %}<p>Ostatnie logowanie: {{ p.last_login_at.strftime("%d.%m.%Y %H:%M") if p.last_login_at else "jeszcze nie" }}.</p>{% endif %}
     {% if r and p.role in (ROLE_MANAGER, ROLE_TRADER) %}
     <p>Udział w całej masie marży: {{ r.trader_share_pct|pct }}{% if p.role == ROLE_MANAGER %}, override {{ r.override_pct|pct }} {{ OVERRIDE_BASES.get(r.override_base) }}{% endif %}</p>

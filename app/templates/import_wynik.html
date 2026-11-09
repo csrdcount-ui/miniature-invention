@@ -2,7 +2,7 @@
 {% block title %}Import zapisany{% endblock %}
 {% block content %}
 <h1>Import zapisany</h1>
-<div role="status" class="flash"><p>Zapisano: osoby {{ r.counts.osoby }}, spółki {{ r.counts.spolki }}, umowy {{ r.counts.umowy }}, zmiany statusów {{ r.counts.zmiany_statusow }}.</p></div>
+<div role="status" class="flash"><p>Zapisano: osoby {{ r.counts.osoby }}, spółki {{ r.counts.spolki }}, umowy {{ r.counts.umowy }}, zmiany statusów {{ r.counts.zmiany_statusow }}, targety {{ r.counts.get("targety", 0) }}.</p></div>
 
 {% if r.passwords %}
 <h2>Hasła do nowych kont</h2>

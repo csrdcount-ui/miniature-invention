@@ -23,6 +23,7 @@ from ..models import (
     SELLING_ROLES,
     ROLE_MANAGER,
     ROLE_OWNER,
+    Contract,
     User,
     UserRate,
 )
@@ -63,7 +64,15 @@ def team_page(request: Request, user: User = Depends(team_viewer), db: Session =
         (p, svc.current_rate(p), svc.month_sales(db, [p.id], month) if p.role in SELLING_ROLES else None)
         for p in people
     ]
-    return render(request, "zespol.html", {"user": user, "rows": rows, "month_label": svc.month_label(month)})
+    start = svc.add_months(month, -5)
+    rhythm = {
+        p.id: svc.monthly_stats(list(db.scalars(select(Contract).where(Contract.trader_id == p.id))), start, month)["active"]
+        for p, _, m in rows if m is not None
+    }
+    return render(request, "zespol.html", {
+        "user": user, "rows": rows, "month_label": svc.month_label(month),
+        "ranking": svc.team_ranking(rows), "rhythm": rhythm,
+    })
 
 
 @router.get("/zespol/nowa", response_class=HTMLResponse)
@@ -147,7 +156,7 @@ def _get_user_for_bok(db: Session, uid: int) -> User:
     return u
 
 
-def _person_ctx(db: Session, user: User, p: User, **extra) -> dict:
+def _person_ctx(db: Session, user: User, p: User, qp=None, **extra) -> dict:
     month = svc.month_start()
     nxt = date(month.year + (month.month == 12), month.month % 12 + 1, 1)
     ctx = {
@@ -157,6 +166,11 @@ def _person_ctx(db: Session, user: User, p: User, **extra) -> dict:
         "can_target": svc.can_set_target(user, p),
         "targets": [(svc.month_label(m), m.strftime("%Y-%m"), svc.target_of(db, p.id, m)) for m in (month, nxt)],
     }
+    if p.role in SELLING_ROLES:
+        qp = qp or {}
+        start, end = svc.month_range(qp.get("od_mies", ""), qp.get("do_mies", ""), default_months=12)
+        ctx["stats"] = svc.person_stats(db, p, start, end)
+        ctx["stats_open"] = "od_mies" in qp or "do_mies" in qp
     ctx.update(extra)
     return ctx
 
@@ -164,7 +178,7 @@ def _person_ctx(db: Session, user: User, p: User, **extra) -> dict:
 @router.get("/zespol/{uid}", response_class=HTMLResponse)
 def person_page(uid: int, request: Request, user: User = Depends(team_viewer), db: Session = Depends(get_db)):
     p = _get_user_for_viewer(db, user, uid)
-    return render(request, "osoba.html", _person_ctx(db, user, p))
+    return render(request, "osoba.html", _person_ctx(db, user, p, request.query_params))
 
 
 @router.post("/zespol/{uid}/target")

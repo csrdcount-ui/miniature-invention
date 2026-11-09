@@ -22,6 +22,7 @@ from ..models import (
     CONTRACT_STATUSES,
     ROLE_MANAGER,
     ROLE_OWNER,
+    ROLE_TRADER,
     SELLING_ROLES,
     Contract,
     ContractStatusEvent,
@@ -56,7 +57,7 @@ class RowError(Exception):
 class Report:
     errors: list[dict] = field(default_factory=list)
     warnings: list[dict] = field(default_factory=list)
-    counts: dict = field(default_factory=lambda: {"osoby": 0, "spolki": 0, "reguly": 0, "umowy": 0, "zmiany_statusow": 0})
+    counts: dict = field(default_factory=lambda: {"osoby": 0, "spolki": 0, "reguly": 0, "umowy": 0, "zmiany_statusow": 0, "targety": 0})
     demo: bool = False
     passwords: list[dict] = field(default_factory=list)  # tylko po zatwierdzeniu, nie zapisywane
 
@@ -376,6 +377,28 @@ def _apply(db: Session, data: dict, actor: User, batch: ImportBatch, report: Rep
             db.flush()
             report.counts["umowy"] += 1
         _row(db, report, "umowy", rownum, add_contract)
+
+    # 4. Targety miesięczne (arkusz opcjonalny). Istniejący target na ten miesiąc zostaje nadpisany.
+    for rownum, v in data.get("targety", []):
+        def add_target(v=v):
+            person = user_by_email(v["email"])
+            if not person:
+                raise RowError("email", f"nie ma osoby {v['email']} w pliku ani w platformie")
+            if person.role not in (ROLE_MANAGER, ROLE_TRADER):
+                raise RowError("email", "target można ustawić tylko menedżerowi albo handlowcowi")
+            month = svc.parse_month(v["miesiac"][:7])  # Excel potrafi zamienić 2026-11 na datę
+            if not month:
+                raise RowError("miesiac", f"niepoprawny miesiąc „{v['miesiac']}”, użyj RRRR-MM")
+            if v["kwota_zl"] < 0:
+                raise RowError("kwota_zl", "target nie może być ujemny")
+            t = db.scalar(select(SalesTarget).where(SalesTarget.user_id == person.id, SalesTarget.month == month))
+            if t:
+                t.amount, t.set_by_id = v["kwota_zl"], actor.id
+            else:
+                db.add(SalesTarget(user_id=person.id, month=month, amount=v["kwota_zl"], set_by_id=actor.id))
+            db.flush()
+            report.counts["targety"] += 1
+        _row(db, report, "targety", rownum, add_target)
 
 
 def svc_valid_nip(nip: str) -> bool:

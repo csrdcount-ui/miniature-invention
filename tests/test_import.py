@@ -49,8 +49,8 @@ def test_szablon_ma_readme_i_arkusze(client):
     r = client.get("/konto/import/szablon.xlsx")
     assert r.status_code == 200 and "attachment" in r.headers["content-disposition"]
     wb = load_workbook(BytesIO(r.content))
-    assert wb.sheetnames == ["README", "zespol", "spolki", "umowy", "historia_statusow"]
-    assert wb["README"]["A1"].value == "standard" and wb["README"]["B1"].value == "1.0"
+    assert wb.sheetnames == ["README", "zespol", "spolki", "umowy", "historia_statusow", "targety"]
+    assert wb["README"]["A1"].value == "standard" and wb["README"]["B1"].value == "1.1"
     assert [c.value for c in wb["umowy"][1]][:3] == ["id_zewn", "klient_nazwa", "klient_nip"]
 
 
@@ -95,8 +95,10 @@ def test_demo_scenariusze_i_historia(client):
     with SessionLocal() as db:
         demo = db.query(Contract).filter(Contract.import_batch_id.isnot(None)).all()
         statuses = [c.status for c in demo]
-        assert statuses.count("Zerwana") == 9 and statuses.count("Weryfikacja spółki") == 6
-        assert statuses.count("Zakończona") == 5 and statuses.count("Umowa podpisana") == 8
+        # scenariusze z góry; świeże umowy z bieżącego rytmu sprzedaży też bywają w weryfikacji
+        assert statuses.count("Zerwana") == 9 and statuses.count("Weryfikacja spółki") >= 6
+        assert statuses.count("Zakończona") == 5 and statuses.count("Umowa podpisana") >= 8
+        assert statuses.count("Oferta") == 14
         # najgorszy portfel: Paweł Kamiński ma co najmniej 4 zerwania
         pawel = db.query(User).filter(User.last_name == "Kamiński").one()
         assert sum(1 for c in demo if c.trader_id == pawel.id and c.status == "Zerwana") >= 4
@@ -267,41 +269,22 @@ def test_migracja_najpierw_kolumny_potem_dane(client, monkeypatch):
     assert ("schemat", "users", "import_batch_id") in calls and ("schemat", "contracts", "ext_id") in calls
 
 
-def test_czysty_start_kasuje_wszystko_raz_a_potem_nie_rusza_danych(client):
-    """Symulacja wdrożenia na bazie z danymi: pierwszy start po wdrożeniu czyści,
-    drugi (kolejne wdrożenie) już nie."""
+def test_migracja_nie_kasuje_danych(client):
+    """Jednorazowy czysty start (10.11.2026) został usunięty: start aplikacji nigdy nie czyści
+    danych, nawet bez znacznika w system_flags."""
     from app import migrate
     from app.db import engine
-    from app.models import Company, SystemFlag
+    from app.models import SystemFlag
     setup_company(client)
     login(client, "kris@firma.pl")
     post(client, "/umowy/nowa", "/umowy/nowa", CONTRACT)
-    assert _counts()["umowy"] == 1 and _counts()["osoby"] >= 2
-    # cofamy znacznik, jakby to był serwer sprzed tego wdrożenia
+    before = _counts()
     with SessionLocal() as db:
         db.query(SystemFlag).delete()
         db.commit()
     migrate.run(engine)
-    c = _counts()
-    assert c == {"umowy": 0, "osoby": 0, "spolki": 0, "zdarzenia": 0}
-    with SessionLocal() as db:
-        assert db.query(Company).count() == 0
-        assert db.get(SystemFlag, migrate.CLEAN_START_FLAG) is not None
-    # drugie uruchomienie nic nie kasuje: tworzymy konto od zera i sprawdzamy, że przetrwa
-    client.cookies.clear()
-    r = post(client, "/start", "/start", {"firma": "Nowa Firma sp. z o.o.", "imie": "Ewa", "nazwisko": "Nowa", "email": "ewa@firma.pl", "haslo": "haslo-testowe-123"})
-    assert r.status_code == 303
-    migrate.run(engine)
-    with SessionLocal() as db:
-        assert db.query(User).count() == 1 and db.query(Company).count() == 1
-    # pierwsze uruchomienie przebiega od nowa: /logowanie przy braku kont odsyła na /start
-    with SessionLocal() as db:
-        db.query(User).delete()
-        db.query(Company).delete()
-        db.commit()
-    client.cookies.clear()
-    r = client.get("/logowanie", follow_redirects=False)
-    assert r.status_code == 303 and r.headers["location"] == "/start"
+    assert _counts() == before and before["umowy"] == 1
+    assert not hasattr(migrate, "_one_time_clean_start")
 
 
 def test_demo_struktura_portfela_i_marze_w_widelkach(client):
@@ -373,3 +356,59 @@ def test_import_ma_widoczny_link_na_stronie_konto_tylko_dla_wlasciciela(client):
         login(client, who)
         assert "<h2>Import danych</h2>" not in client.get("/konto").text
         assert client.get("/konto/import").status_code == 403
+
+
+# --------------------------------------------------------------------------
+# Targety w Excelu (standard 1.1) i rytm sprzedaży w danych demo
+# --------------------------------------------------------------------------
+
+def test_arkusz_targety_zapisuje_i_raportuje_bledy(client):
+    from datetime import date
+    from app.models import SalesTarget
+    setup_company(client)
+    login(client, "kris@firma.pl")
+    content = _xlsx({"targety": [
+        ["email", "miesiac", "kwota_zl"],
+        ["hania@firma.pl", "2026-11", "150000"],
+        ["hania@firma.pl", date(2026, 12, 1), "160000"],  # Excel zamienił miesiąc na datę
+        ["kris@firma.pl", "2026-11", "1"],  # właściciel nie dostaje targetu
+        ["nikt@firma.pl", "2026-11", "1"],
+        ["hania@firma.pl", "listopad", "1"],
+    ]})
+    r = _upload(client, content)
+    page = client.get(r.headers["location"]).text
+    assert "Targety miesięczne: 2" in page
+    assert "kolumna email: target można ustawić tylko menedżerowi albo handlowcowi" in page
+    assert "nie ma osoby nikt@firma.pl" in page and "niepoprawny miesiąc" in page
+    with SessionLocal() as db:
+        assert db.query(SalesTarget).count() == 0  # podgląd niczego nie zapisuje
+
+
+def test_demo_ma_targety_wg_poziomu_i_rytm_sprzedazy(client):
+    from datetime import date
+    from app.exchange.demo import demo_rows
+    from app.models import SalesTarget
+    rows = demo_rows(date(2026, 11, 9))
+    by_email = {}
+    for t in rows["targety"]:
+        by_email.setdefault(t["email"], set()).add(t["kwota_zl"])
+    assert by_email["agnieszka.lewandowska@demo.invalid"] == {150_000}  # junior 35%
+    assert by_email["katarzyna.mazur@demo.invalid"] == {200_000}  # senior 40%
+    assert by_email["anna.kowalczyk@demo.invalid"] == {250_000}  # pro 50%
+    assert len(rows["targety"]) == 7 * 12
+
+    def months_of(email):
+        return {date.fromisoformat(u["data_podpisania"]).replace(day=1) for u in rows["umowy"]
+                if u["handlowiec_email"] == email and u["status"] != "Oferta"}
+    window = [date(2026 + (11 - k - 1) // 12, (11 - k - 1) % 12 + 1, 1) for k in range(12)]
+    anna = months_of("anna.kowalczyk@demo.invalid")
+    assert all(m in anna for m in window)  # regularna: umowa w każdym z 12 miesięcy
+    piotr = months_of("piotr.nowicki@demo.invalid")
+    assert date(2026, 9, 1) not in piotr and date(2026, 8, 1) not in piotr  # zrywami: dwa miesiące przerwy
+    assert date(2026, 11, 1) in piotr and date(2026, 10, 1) in piotr
+
+    setup_company(client)
+    login(client, "kris@firma.pl")
+    _commit(client, _demo_preview(client))
+    with SessionLocal() as db:
+        assert db.query(SalesTarget).count() == 7 * 12

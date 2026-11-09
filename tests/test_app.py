@@ -1107,3 +1107,30 @@ def test_odmiana_liczebnikow():
     from app.services import plural_oferty, plural_umowy
     assert [plural_umowy(n) for n in (0, 1, 2, 5, 12, 22, 25)] == ["0 umów", "1 umowa", "2 umowy", "5 umów", "12 umów", "22 umowy", "25 umów"]
     assert plural_oferty(1) == "1 oferta" and plural_oferty(3) == "3 oferty" and plural_oferty(14) == "14 ofert"
+
+
+def test_statystyki_osoby_ranking_i_rytm_w_zespole(client):
+    from datetime import date
+    setup_company(client)
+    login(client, "hania@firma.pl")
+    _dzis_umowa(client)
+    login(client, "marek@firma.pl")
+    with SessionLocal() as db:
+        hania = db.query(User).filter_by(email="hania@firma.pl").one().id
+    post(client, f"/zespol/{hania}", f"/zespol/{hania}/target", {"miesiac": date.today().strftime("%Y-%m"), "kwota": "100000"})
+    page = client.get("/zespol").text
+    assert "Ranking:" in page and "<strong>50% targetu</strong>" in page
+    assert "Rytm: umowy w 1 z ostatnich 6 miesięcy" in page and "nieregularnie" in page
+    page = client.get(f"/zespol/{hania}").text
+    assert "Statystyki sprzedaży: umowy w 1 z 12 miesięcy" in page and "brak umów" in page
+    assert "50% targetu" in page
+    assert client.get(f"/zespol/{hania}?od_mies=xx").status_code == 200
+
+
+def test_stara_oferta_jest_wyrozniona(client):
+    from datetime import date, timedelta
+    setup_company(client)
+    login(client, "hania@firma.pl")
+    _umowa(client, klient="Stara oferta", status="Oferta", podpisana=(date.today() - timedelta(days=20)).isoformat())
+    page = client.get("/pulpit").text
+    assert "Czeka 20 dni" in page and "czeka ponad 14 dni: 1" in page

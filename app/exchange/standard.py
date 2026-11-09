@@ -11,7 +11,7 @@ from openpyxl.styles import Font
 from .. import engine as eng
 from ..models import CONTRACT_STATUSES, MEDIA, TRIGGERS
 
-STANDARD_VERSION = "1.0"
+STANDARD_VERSION = "1.1"  # 1.1: opcjonalny arkusz targety
 
 
 @dataclass(frozen=True)
@@ -78,6 +78,11 @@ SHEETS: dict[str, list[Col]] = {
         Col("data_zdarzenia", "Kiedy umowa weszła w ten status.", "date", True, example="2025-03-20"),
         Col("notatka", "Notatka. Przy statusie Zerwana wymagany powód.", example=""),
     ],
+    "targety": [
+        Col("email", "E-mail menedżera albo handlowca (z arkusza zespol albo z platformy).", "email", True, example="anna.kowalczyk@firma.pl"),
+        Col("miesiac", "Miesiąc targetu w formacie RRRR-MM.", required=True, example="2026-11"),
+        Col("kwota_zl", "Target masy marży w zł na ten miesiąc.", "dec", True, example="150000"),
+    ],
 }
 
 SHEET_TITLES = {
@@ -85,6 +90,7 @@ SHEET_TITLES = {
     "spolki": "Spółki obrotu i reguły prowizji (umowy agencyjne)",
     "umowy": "Umowy z klientami",
     "historia_statusow": "Historia statusów umów",
+    "targety": "Miesięczne targety masy marży (arkusz opcjonalny)",
 }
 
 

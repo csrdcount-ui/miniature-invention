@@ -10,7 +10,7 @@ from sqlalchemy import inspect, select, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
-from .models import BOK_PERMISSIONS, POLICY_SETTINGS, SystemFlag, Contract, ContractStatusEvent, User, split_full_name
+from .models import BOK_PERMISSIONS, POLICY_SETTINGS, Contract, ContractStatusEvent, User, split_full_name
 
 
 def _add_column(engine: Engine, table: str, column: str, ddl: str) -> None:
@@ -31,7 +31,6 @@ def run(engine: Engine) -> None:
     _schema(engine)
     _split_names(engine)
     _baseline_status_history(engine)
-    _one_time_clean_start(engine)
 
 
 def _schema(engine: Engine) -> None:
@@ -86,32 +85,3 @@ def _baseline_status_history(engine: Engine) -> None:
             )
         if missing:
             db.commit()
-
-
-# Jednorazowy czysty start na życzenie właścicielki (10.11.2026): konto testowe Boss01 i dane
-# demonstracyjne mają zniknąć, a po wdrożeniu aplikacja ma przejść pełne pierwsze uruchomienie.
-# Kasowanie wykona się RAZ — znacznik w tabeli system_flags blokuje powtórzenie przy kolejnych
-# wdrożeniach. Po potwierdzeniu, że poszło, ten kod można usunąć.
-CLEAN_START_FLAG = "czysty-start-2026-11-10"
-
-
-def _one_time_clean_start(engine: Engine) -> None:
-    with Session(engine) as db:
-        if db.get(SystemFlag, CLEAN_START_FLAG):
-            return
-    from .db import Base
-
-    names = [t.name for t in Base.metadata.sorted_tables if t.name != SystemFlag.__tablename__]
-    existing = set(inspect(engine).get_table_names())
-    names = [n for n in names if n in existing]
-    with engine.begin() as conn:
-        if engine.dialect.name == "postgresql":
-            if names:
-                conn.execute(text("TRUNCATE TABLE " + ", ".join(f'"{n}"' for n in names) + " RESTART IDENTITY CASCADE"))
-        else:
-            for n in reversed(names):
-                conn.execute(text(f'DELETE FROM "{n}"'))
-    with Session(engine) as db:
-        db.add(SystemFlag(key=CLEAN_START_FLAG))
-        db.commit()
-    print(f"[migrate] Czysty start wykonany ({CLEAN_START_FLAG}): wyczyszczono tabele {', '.join(names)}.", flush=True)

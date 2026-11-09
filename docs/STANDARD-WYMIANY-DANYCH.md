@@ -1,6 +1,7 @@
 # Standard wymiany danych (import i eksport Excela), wersja robocza 0.1
 
-Stan: wersja 1.0 w kodzie dla arkuszy zespol, spolki, umowy, historia_statusow
+Stan: wersja 1.1 w kodzie dla arkuszy zespol, spolki, umowy, historia_statusow
+i opcjonalnego targety (od 10.11.2026; pliki 1.0 dalej się wczytują)
 (app/exchange). Klienci, punkty poboru, wypłaty i korekty, konwerter z mapowaniem
 kolumn, lista braków i import przez BOK: kolejne kroki.
 Decyzje właścicielki z 8.11.2026 (sekcja na końcu) mają pierwszeństwo przed resztą pliku.
@@ -60,6 +61,11 @@ według obecnych reguł.
 `umowa_id_zewn`, `status`, `data_zdarzenia`, `notatka`, `kto_email`.
 Pozwala przenieść prawdziwą historię lejka. Bez tego arkusza umowa dostaje jeden wpis
 „stan w chwili importu”.
+
+### 6a. `targety` (opcjonalny, w kodzie od wersji 1.1)
+`email` (menedżer albo handlowiec), `miesiac` (RRRR-MM), `kwota_zl` (target masy marży).
+Istniejący target na ten miesiąc jest nadpisywany. Cofnięcie paczki usuwa targety osób
+z tej paczki.
 
 ### 7. `wyplaty_i_korekty` (opcjonalny)
 `umowa_id_zewn`, `typ` (transza / faktura / korekta), `strona` (broker / handlowiec /

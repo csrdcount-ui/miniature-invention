@@ -20,6 +20,36 @@
   {% if sales.target is not none %}<dt>Wykonanie</dt><dd><strong>{{ sales.pct if sales.pct is not none else 0 }}%</strong></dd>{% endif %}
 </dl>
 <p><a href="/umowy?handlowiec={{ p.id }}">Umowy tej osoby</a></p>
+
+{% if stats %}
+<details class="zwijane" id="statystyki"{% if stats_open %} open{% endif %}>
+  <summary>Statystyki sprzedaży: umowy w {{ stats.active }} z {{ stats.n }} miesięcy</summary>
+  <div class="wnetrze">
+    <form method="get" action="/zespol/{{ p.id }}#statystyki" class="stack">
+      <div class="pole">
+        <label for="f-od_mies">Od miesiąca</label>
+        <input id="f-od_mies" name="od_mies" type="month" value="{{ stats.from.strftime('%Y-%m') }}" aria-describedby="h-mies">
+      </div>
+      <div class="pole">
+        <label for="f-do_mies">Do miesiąca</label>
+        <input id="f-do_mies" name="do_mies" type="month" value="{{ stats.to.strftime('%Y-%m') }}" aria-describedby="h-mies">
+      </div>
+      <p class="podpowiedz" id="h-mies">Format RRRR-MM, np. 2026-05. Najwyżej 36 miesięcy.</p>
+      <button type="submit">Pokaż</button>
+    </form>
+    <p><strong>Razem: {{ stats.count|umowy }}, masa marży {{ stats.markup|zl }}. Miesiące z co najmniej jedną umową: {{ stats.active }} z {{ stats.n }}.</strong></p>
+    <ul class="miesiace">
+    {% for r in stats.months %}
+      <li>
+        <p><strong>{{ r.label }}</strong>: {% if r.count %}{{ r.count|umowy }}, {{ r.markup|zl }}{% else %}<strong class="uwaga">brak umów</strong>{% endif %}{% if r.pct is not none %}, {{ r.pct }}% targetu{% endif %}</p>
+        <div class="postep" aria-hidden="true"><span style="width: {{ [r.pct, 100]|min if r.pct is not none else r.share }}%"></span></div>
+      </li>
+    {% endfor %}
+    </ul>
+    <p class="podpowiedz">Umowy podpisane w danym miesiącu, bez zerwanych i bez ofert. Pasek pokazuje wykonanie targetu (do 100%), a bez targetu porównanie z najlepszym miesiącem.</p>
+  </div>
+</details>
+{% endif %}
 {% if can_target %}
 <details class="zwijane"{% if error %} open{% endif %}>
 <summary>Target masy marży: ustaw lub zmień</summary>

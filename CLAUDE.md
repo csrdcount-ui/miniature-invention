@@ -209,15 +209,11 @@ Odpowiedzi z 7.11.2026 są w `docs/WIEDZA-BRANZOWA.md`. Zostały:
      Punkty 1–2 (prawdziwa ocena opłacalności zerwania wobec giełdy) wciąż
      NIE zrobione — osobna integracja z danymi rynkowymi.
 
-## Czysty start 10.11.2026 (jednorazowy, zaplanowany na wdrożenie)
+## Czysty start 10.11.2026 (wykonany, kod usunięty)
 
-Właścicielka zablokowała się na koncie Boss01 (najpewniej przez przycisk „Nadaj nowe
-hasło” na własnym koncie — losowe hasło pokazane raz; przycisk na własnym koncie jest
-już zablokowany) i poprosiła o skasowanie wszystkiego. `_one_time_clean_start` w
-`app/migrate.py` czyści wszystkie tabele przy pierwszym starcie po wdrożeniu i ustawia
-znacznik `czysty-start-2026-11-10` w `system_flags`, więc kolejne wdrożenia niczego nie
-kasują. Po potwierdzeniu przez nią, że poszło (`/logowanie` odesłało na `/start`),
-USUNĄĆ ten kod i znacznik z migrate.py. Uwaga na przyszłość: właściciel nie ma dziś
+Jednorazowe czyszczenie bazy po zablokowaniu konta Boss01 zadziałało (właścicielka
+założyła konto od nowa i wczytała demo). Kod `_one_time_clean_start` usunięty z
+`app/migrate.py`; tabela `system_flags` zostaje (pusta lub ze starym znacznikiem). Uwaga na przyszłość: właściciel nie ma dziś
 odzyskiwania dostępu, gdy zapomni hasło (BOK nie resetuje właściciela, e-maila brak) —
 propozycja: jednorazowy kod odzyskiwania pokazywany przy tworzeniu konta; nie zrobione.
 
@@ -275,3 +271,18 @@ Zwinięte sekcje drugorzędne: zmiana statusu, historia, tabela transz (umowa), 
 target, ustawienia (osoba), reguły i historia (spółka), polityka i uprawnienia BOK (konto).
 Demo: 100 umów + 14 ofert (w tym „Wózki Widłowe Michalski”).
 Oferta to dziś umowa w statusie „Oferta” — rozwiązanie przejściowe do modułu sprzedażowego.
+
+## Demo z rytmem sprzedaży i targetami (10.11.2026)
+
+- Standard Excela 1.1: opcjonalny arkusz `targety` (email, miesiac RRRR-MM, kwota_zl).
+- Demo: daty umów wg `RHYTHM` w `app/exchange/demo.py` (12 miesięcy): Anna, Katarzyna
+  regularne; Piotr Nowicki zrywami (2 miesiące sprzedaje, 2 nie); Michał Wójcik zrywami,
+  od 2 miesięcy przestój; Agnieszka od 9 miesięcy; Paweł słabnący. Bieżący miesiąc ma
+  tylko świeże (małe/średnie) umowy, żeby % targetu był realny w trakcie miesiąca.
+- Targety demo wg udziału: 35% junior 150 000 zł, 40% senior 200 000 zł, 45%+ pro
+  250 000 zł (menedżer 45% też 250 000 — założenie, do potwierdzenia), na 12 miesięcy.
+  „Ci, którzy mają juniora: 200 000” z dyktowanej wiadomości zinterpretowane jako senior.
+- Zespół: ranking miesiąca (wykonanie targetu), „Rytm: umowy w N z ostatnich 6 miesięcy”
+  (≤3 = „nieregularnie”). Strona osoby: zwijane statystyki po miesiącach z targetem
+  i % w każdym miesiącu, „brak umów” wyróżnione. Pulpit: oferty starsze niż 14 dni
+  wyróżnione („Czeka N dni”).

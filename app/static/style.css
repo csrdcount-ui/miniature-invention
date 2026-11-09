@@ -163,3 +163,5 @@ ul.karty.wnetrze { padding: .75rem; margin: 0; }
 .postep span { display: block; height: 100%; background: var(--marka); }
 ul.miesiace { list-style: none; padding: 0; display: grid; gap: .5rem; }
 ul.miesiace p { margin: 0; }
+.uwaga { color: var(--blad); }
+ol.ranking { padding-left: 1.75rem; display: grid; gap: .35rem; }

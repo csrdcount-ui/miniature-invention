@@ -11,7 +11,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
 from .. import engine as eng
-from ..services import plural_oferty, plural_umowy
+from ..services import OFFER_STALE_DAYS, plural_oferty, plural_umowy
 from ..models import (
     POLICY_SETTINGS,
     PRICING_PRODUCTS,
@@ -103,6 +103,7 @@ templates.env.globals.update(
     BOK_PERMISSIONS=BOK_PERMISSIONS,
     PRICING_PRODUCTS=PRICING_PRODUCTS,
     POLICY_SETTINGS=POLICY_SETTINGS,
+    OFFER_STALE_DAYS=OFFER_STALE_DAYS,
     OVERRIDE_BASES={
         eng.OVERRIDE_OD_NARZUTU: "od całej masy marży",
         eng.OVERRIDE_OD_HANDLOWCA: "od prowizji handlowca",

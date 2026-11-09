@@ -675,6 +675,7 @@ def month_sales(db: Session, user_ids: list[int], month: date) -> dict:
 # --------------------------------------------------------------------------
 
 PIPELINE_STATUSES = ("Lead", "Kontakt", "Oferta")
+OFFER_STALE_DAYS = 14  # oferta bez decyzji dłużej niż tyle dni jest wyróżniona na pulpicie
 OFFER_STATUS = "Oferta"
 
 
@@ -702,6 +703,7 @@ def offers_overview(viewer: User, contracts: list[Contract], show_tranche_b: boo
         g = groups.setdefault(c.trader_id, {"trader_name": c.trader.name, "count": 0, "markup": Decimal(0), "lista": []})
         g["count"] += 1
         g["markup"] += b.total_markup
+        g["stale"] = g.get("stale", 0) + ((today - c.signed_date).days > OFFER_STALE_DAYS)
         g["lista"].append({
             "id": c.id, "client_name": c.client_name, "supplier_name": c.supplier.name, "medium": c.medium,
             "pricing_product": c.pricing_product, "annual_volume_mwh": c.annual_volume_mwh,
@@ -763,11 +765,29 @@ def monthly_stats(contracts: list[Contract], start: date, end: date) -> dict:
     for r in months:
         r["share"] = int(r["markup"] / best * 100) if best > 0 else 0
     return {
+        "active": sum(1 for r in months if r["count"]),  # w ilu miesiącach była choć jedna umowa
+        "n": len(months),
         "months": months[::-1],  # najnowszy miesiąc na górze
         "count": sum(r["count"] for r in months),
         "markup": sum((r["markup"] for r in months), Decimal(0)),
         "from": start, "to": end,
     }
+
+
+def person_stats(db: Session, person: User, start: date, end: date) -> dict:
+    """Statystyki jednej osoby po miesiącach, z targetem i wykonaniem w każdym miesiącu."""
+    contracts = list(db.scalars(select(Contract).where(Contract.trader_id == person.id)))
+    stats = monthly_stats(contracts, start, end)
+    for r in stats["months"]:
+        r["target"] = target_of(db, person.id, r["month"])
+        r["pct"] = int((r["markup"] / r["target"] * 100).quantize(Decimal(1))) if r["target"] else None
+    return stats
+
+
+def team_ranking(rows: list) -> list:
+    """Ranking miesiąca: osoby z targetem według wykonania, potem bez targetu według masy marży."""
+    sellers = [(p, m) for p, _, m in rows if m is not None and p.active]
+    return sorted(sellers, key=lambda pm: (pm[1]["pct"] is None, -(pm[1]["pct"] or 0), -pm[1]["markup"]))
 
 
 def plural_umowy(n: int) -> str:
