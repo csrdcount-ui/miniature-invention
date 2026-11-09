@@ -795,3 +795,110 @@ def test_stare_sesje_bez_klucza_sv_nie_sa_wylogowywane(client):
     stripped = signer.sign(b64encode(json.dumps(payload).encode())).decode()
     client.cookies.set("session", stripped)
     assert client.get("/pulpit").status_code == 200
+
+
+# --------------------------------------------------------------------------
+# Produkt cenowy (SPOT/FIX/TRANZA) i filtry na liście umów
+# --------------------------------------------------------------------------
+
+def _umowa(client, **over):
+    data = {**CONTRACT, **over}
+    r = post(client, "/umowy/nowa", "/umowy/nowa", data)
+    assert r.status_code == 303, r.text
+    return int(r.headers["location"].rsplit("/", 1)[1])
+
+
+def test_nowa_umowa_bez_produktu_dostaje_domyslnie_fix(client):
+    setup_company(client)
+    login(client, "hania@firma.pl")
+    cid = _umowa(client)
+    page = client.get(f"/umowy/{cid}").text
+    assert '<span class="produkt produkt-fix">FIX</span>' in page
+    assert client.get("/umowy").text.count('class="produkt produkt-fix"') == 1
+
+
+def test_wybor_produktu_zapisuje_sie_i_pokazuje_plakietke(client):
+    setup_company(client)
+    login(client, "hania@firma.pl")
+    cid = _umowa(client, produkt="spot", klient="Firma SPOT")
+    page = client.get(f"/umowy/{cid}").text
+    assert '<span class="produkt produkt-spot">SPOT (RDN)</span>' in page
+    with SessionLocal() as db:
+        assert db.get(Contract, cid).pricing_product == "spot"
+
+
+def test_niepoprawny_produkt_z_formularza_zostaje_fix(client):
+    setup_company(client)
+    login(client, "hania@firma.pl")
+    cid = _umowa(client, produkt="ropa-naftowa")
+    with SessionLocal() as db:
+        assert db.get(Contract, cid).pricing_product == "fix"
+
+
+def test_filtr_po_produkcie_zaweza_liste(client):
+    setup_company(client)
+    login(client, "hania@firma.pl")
+    _umowa(client, produkt="spot", klient="Klient SPOT")
+    _umowa(client, produkt="fix", klient="Klient FIX")
+    _umowa(client, produkt="tranza", klient="Klient Transza")
+    client.get("/umowy")  # strąca komunikat „Zapisano umowę…” po ostatnim zapisie
+
+    page = client.get("/umowy?produkt=spot").text
+    assert "Klient SPOT" in page and "Klient FIX" not in page and "Klient Transza" not in page
+
+    page = client.get("/umowy?produkt=spot&produkt=tranza").text
+    assert "Klient SPOT" in page and "Klient Transza" in page and "Klient FIX" not in page
+
+    page = client.get("/umowy").text
+    assert all(k in page for k in ("Klient SPOT", "Klient FIX", "Klient Transza"))
+    assert "Wyczyść filtry" not in page
+
+
+def test_filtry_zakresow_dat_i_wolumenu_oraz_sortowanie(client):
+    setup_company(client)
+    login(client, "hania@firma.pl")
+    _umowa(client, klient="Mala", wolumen="10", podpisana="2026-01-05")
+    _umowa(client, klient="Duza", wolumen="900", podpisana="2026-06-01")
+
+    page = client.get("/umowy?wolumen_min=500").text
+    assert "Duza" in page and "Mala" not in page
+
+    page = client.get("/umowy?od=2026-05-01").text
+    assert "Duza" in page and "Mala" not in page
+
+    page = client.get("/umowy?sort=wolumen_asc").text
+    assert page.index("Mala") < page.index("Duza")
+    page = client.get("/umowy?sort=wolumen_desc").text
+    assert page.index("Duza") < page.index("Mala")
+
+    assert "Wyczyść filtry" in client.get("/umowy?wolumen_min=500").text
+
+
+def test_filtr_po_niepoprawnej_wartosci_nie_wywraca_strony(client):
+    setup_company(client)
+    login(client, "hania@firma.pl")
+    _umowa(client)
+    r = client.get("/umowy?wolumen_min=abc&od=nie-data&spolka=xyz&sort=cokolwiek&produkt=benzyna")
+    assert r.status_code == 200
+    assert "Wyczyść filtry" not in r.text  # żaden filtr się nie przyjął
+
+
+def test_handlowiec_nie_widzi_filtra_po_handlowcu(client):
+    setup_company(client)
+    login(client, "hania@firma.pl")
+    _umowa(client)
+    assert 'id="f-handlowiec"' not in client.get("/umowy").text
+    login(client, "marek@firma.pl")
+    assert 'id="f-handlowiec"' in client.get("/umowy").text
+
+
+def test_demo_umowy_maja_produkt_fix_domyslnie(client):
+    setup_company(client)
+    login(client, "kris@firma.pl")
+    from .test_import import _demo_preview
+    bid = _demo_preview(client)
+    r = post(client, f"/konto/import/{bid}", f"/konto/import/{bid}/zatwierdz", {})
+    assert r.status_code == 200
+    with SessionLocal() as db:
+        demo = db.query(Contract).filter(Contract.import_batch_id.isnot(None)).all()
+        assert all(c.pricing_product == "fix" for c in demo)

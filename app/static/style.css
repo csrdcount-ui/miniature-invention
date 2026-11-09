@@ -8,6 +8,12 @@
   --blad-tlo: #fdecea;
   --blad: #a1150b;
   --fokus: #ffbf00;
+  --fix: #1e7a34;
+  --fix-tlo: #e3f6e9;
+  --spot: var(--marka);
+  --spot-tlo: #e4eef7;
+  --tranza: #8a6d00;
+  --tranza-tlo: #fff6d9;
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -19,6 +25,12 @@
     --ok-tlo: #17351f;
     --blad-tlo: #3d1512;
     --blad: #ffb4ab;
+    --fix: #7fd99a;
+    --fix-tlo: #163a22;
+    --spot: var(--marka);
+    --spot-tlo: #15283a;
+    --tranza: #ffd866;
+    --tranza-tlo: #4a3c05;
   }
 }
 * { box-sizing: border-box; }
@@ -112,3 +124,11 @@ ol.historia { padding-left: 1.5rem; display: grid; gap: .5rem; }
 ol.historia p { margin: .1rem 0; }
 .demo-baner { border: 2px dashed var(--marka); border-radius: 8px; padding: .5rem 1rem; font-weight: 600; }
 ol.bledy { padding-left: 1.5rem; }
+
+.produkt {
+  display: inline-block; padding: .15rem .6rem; border-radius: 999px; font-weight: 700;
+  font-size: .85rem; border: 1px solid currentColor; white-space: nowrap;
+}
+.produkt-fix { color: var(--fix); background: var(--fix-tlo); }
+.produkt-spot { color: var(--spot); background: var(--spot-tlo); }
+.produkt-tranza { color: var(--tranza); background: var(--tranza-tlo); }

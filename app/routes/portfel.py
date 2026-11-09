@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from datetime import date
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Optional
 
 from fastapi import (
@@ -21,7 +21,9 @@ from ..db import get_db
 from ..models import (
     CONTRACT_STATUSES,
     MEDIA,
+    PRICING_PRODUCTS,
     ROLE_OWNER,
+    ROLE_TRADER,
     Contract,
     Supplier,
     User,
@@ -57,12 +59,60 @@ def dashboard(request: Request, user: User = Depends(current_user), db: Session 
     return render(request, "pulpit.html", ctx)
 
 
+def _opt_decimal(raw: str) -> Optional[Decimal]:
+    try:
+        return eng.D(raw.replace(",", ".")) if raw else None
+    except (InvalidOperation, ValueError):
+        return None
+
+
+def _opt_date(raw: str) -> Optional[date]:
+    try:
+        return date.fromisoformat(raw) if raw else None
+    except ValueError:
+        return None
+
+
+def _filters_from_query(qp) -> svc.ContractFilters:
+    """Parsowanie bez wyjątków: adres z literówką pokazuje po prostu pustą listę, nie błąd."""
+    supplier_id = qp.get("spolka", "")
+    trader_id = qp.get("handlowiec", "")
+    nowe = qp.get("nowe", "")
+    return svc.ContractFilters(
+        products=tuple(p for p in qp.getlist("produkt") if p in PRICING_PRODUCTS),
+        supplier_id=int(supplier_id) if supplier_id.isdigit() else None,
+        medium=qp.get("medium") if qp.get("medium") in MEDIA else None,
+        trader_id=int(trader_id) if trader_id.isdigit() else None,
+        status=qp.get("status") if qp.get("status") in CONTRACT_STATUSES else None,
+        signed_from=_opt_date(qp.get("od", "")),
+        signed_to=_opt_date(qp.get("do", "")),
+        volume_min=_opt_decimal(qp.get("wolumen_min", "")),
+        volume_max=_opt_decimal(qp.get("wolumen_max", "")),
+        markup_min=_opt_decimal(qp.get("narzut_min", "")),
+        markup_max=_opt_decimal(qp.get("narzut_max", "")),
+        new_connection={"tak": True, "nie": False}.get(nowe),
+        sort=qp.get("sort") if qp.get("sort") in svc.SORT_OPTIONS else svc.DEFAULT_SORT,
+    )
+
+
 @router.get("/umowy", response_class=HTMLResponse)
 def contracts_page(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    contracts = list(db.scalars(svc.visible_contracts_query(user)))
+    filters = _filters_from_query(request.query_params)
+    q = svc.apply_contract_filters(svc.visible_contracts_query(user), filters)
+    contracts = list(db.scalars(q))
     perms = bok_perms(db)
     views = [svc.contract_view(user, c, perms) for c in contracts]
-    return render(request, "umowy.html", {"user": user, "contracts": views, "summary": svc.summary_for(user, contracts, perms)})
+    ctx = {
+        "user": user,
+        "contracts": views,
+        "summary": svc.summary_for(user, contracts, perms),
+        "filters": filters,
+        "qp": request.query_params,
+        "suppliers": list(db.scalars(select(Supplier).order_by(Supplier.name))),
+        "traders": svc.assignable_traders(db, user) if user.role != ROLE_TRADER else [],
+        "sort_options": svc.SORT_LABELS,
+    }
+    return render(request, "umowy.html", ctx)
 
 
 def _new_contract_ctx(db: Session, user: User, **extra) -> dict:
@@ -114,6 +164,7 @@ async def contract_create(request: Request, user: User = Depends(current_user), 
             base_price_pln_mwh=p_dec(form, "cena_bazowa", "Cena bazowa spółki", required=False, minimum=0),
             new_connection=form.get("nowe_przylacze") == "1",
             status=form.get("status") if form.get("status") in CONTRACT_STATUSES else "Umowa podpisana",
+            pricing_product=form.get("produkt") if form.get("produkt") in PRICING_PRODUCTS else None,
         )
     except (FormError, svc.BusinessError, eng.EngineError) as e:
         return render(request, "umowa_nowa.html", _new_contract_ctx(db, user, error=str(e), form=form), 400)

@@ -192,7 +192,15 @@ Odpowiedzi z 7.11.2026 są w `docs/WIEDZA-BRANZOWA.md`. Zostały:
   2. „Czy opłaca się zerwać umowę, bo giełda spadła” wymaga danych o aktualnej
      cenie rynkowej (TGE: fixing, RDN) — to osobna integracja z zewnętrznym
      źródłem danych giełdowych, nie jest to sam filtr na istniejących polach.
-  3. Zwykłe filtry (spółka, handlowiec, status, zakres dat, wolumenu, narzutu,
-     medium, nowe przyłącze) da się zrobić od razu na `/umowy`, niezależnie od
-     punktów 1–2 — do zaprojektowania i potwierdzenia z właścicielką jako osobny,
-     mniejszy krok.
+  3. ZROBIONE 9.11.2026: `Contract.pricing_product` (spot/fix/tranza,
+     `app/models.py`, domyślnie fix — silnik liczy stały narzut, strukturalnie
+     odpowiada FIX), wybór przy zapisie umowy, plakietka z kolorem (WCAG AA
+     sprawdzony, `.produkt-*` w `app/static/style.css`) wszędzie, gdzie widać
+     umowę. Filtry na `/umowy` (GET, w adresie, więc link do widoku można
+     zapisać): produkt (kilka naraz), spółka, medium, handlowiec (ukryty dla
+     handlowca — zawsze tylko on), status, zakres dat podpisania, zakres
+     wolumenu i narzutu, nowe przyłącze, sortowanie — `ContractFilters` i
+     `apply_contract_filters` w `app/services.py`, parsowanie bez wyjątków
+     (literówka w adresie = pusty filtr, nie błąd) w `app/routes/portfel.py`.
+     Punkty 1–2 (prawdziwa ocena opłacalności zerwania wobec giełdy) wciąż
+     NIE zrobione — osobna integracja z danymi rynkowymi.

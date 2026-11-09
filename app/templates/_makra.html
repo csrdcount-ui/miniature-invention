@@ -1,3 +1,7 @@
+{% macro produkt_plakietka(kod) -%}
+<span class="produkt produkt-{{ kod }}">{{ PRICING_PRODUCTS.get(kod, kod) }}</span>
+{%- endmacro %}
+
 {% macro pole(name, label, value="", type="text", hint="", required=false, extra="") -%}
 <div class="pole">
   <label for="f-{{ name }}">{{ label }}{% if required %} (wymagane){% endif %}</label>

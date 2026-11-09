@@ -17,6 +17,8 @@ from sqlalchemy.orm import Session
 from . import engine as eng
 from .models import (
     CONTRACT_STATUSES,
+    DEFAULT_PRICING_PRODUCT,
+    PRICING_PRODUCTS,
     STATUSES_REQUIRING_NOTE,
     BOK_PERMISSIONS,
     ROLE_BOK,
@@ -131,6 +133,7 @@ def build_contract(
     base_price_pln_mwh: Optional[Decimal],
     new_connection: bool,
     status: str,
+    pricing_product: str = DEFAULT_PRICING_PRODUCT,
     initial_note: str = "Umowa wpisana do systemu.",
 ) -> Contract:
     """Buduje umowę z regułami zamrożonymi na dzień podpisania. Bez zatwierdzania zapisu."""
@@ -174,6 +177,7 @@ def build_contract(
         annual_volume_mwh=annual_volume_mwh,
         base_price_pln_mwh=base_price_pln_mwh,
         markup_pln_mwh=markup_pln_mwh,
+        pricing_product=pricing_product if pricing_product in PRICING_PRODUCTS else DEFAULT_PRICING_PRODUCT,
         new_connection=new_connection,
         status=status,
         rule_set_id=rs.id,
@@ -245,6 +249,86 @@ def visible_contracts_query(user: User):
     if user.role == ROLE_MANAGER:
         return q.where(or_(Contract.trader_id == user.id, Contract.manager_id == user.id))
     return q.where(Contract.trader_id == user.id)
+
+
+SORT_OPTIONS = {
+    "podpisana_desc": (Contract.signed_date.desc(), Contract.id.desc()),
+    "podpisana_asc": (Contract.signed_date.asc(), Contract.id.asc()),
+    "wolumen_desc": (Contract.annual_volume_mwh.desc(), Contract.id.desc()),
+    "wolumen_asc": (Contract.annual_volume_mwh.asc(), Contract.id.asc()),
+    "narzut_desc": (Contract.markup_pln_mwh.desc(), Contract.id.desc()),
+    "narzut_asc": (Contract.markup_pln_mwh.asc(), Contract.id.asc()),
+    "klient_asc": (Contract.client_name.asc(),),
+    "klient_desc": (Contract.client_name.desc(),),
+}
+SORT_LABELS = {
+    "podpisana_desc": "Data podpisania: najnowsze najpierw",
+    "podpisana_asc": "Data podpisania: najstarsze najpierw",
+    "wolumen_desc": "Wolumen roczny: od największego",
+    "wolumen_asc": "Wolumen roczny: od najmniejszego",
+    "narzut_desc": "Narzut: od największego",
+    "narzut_asc": "Narzut: od najmniejszego",
+    "klient_asc": "Nazwa klienta: A–Z",
+    "klient_desc": "Nazwa klienta: Z–A",
+}
+DEFAULT_SORT = "podpisana_desc"
+
+
+@dataclass(frozen=True)
+class ContractFilters:
+    """Filtry listy umów. Pusta (domyślna) instancja nic nie zawęża."""
+
+    products: tuple = ()
+    supplier_id: Optional[int] = None
+    medium: Optional[str] = None
+    trader_id: Optional[int] = None
+    status: Optional[str] = None
+    signed_from: Optional[date] = None
+    signed_to: Optional[date] = None
+    volume_min: Optional[Decimal] = None
+    volume_max: Optional[Decimal] = None
+    markup_min: Optional[Decimal] = None
+    markup_max: Optional[Decimal] = None
+    new_connection: Optional[bool] = None
+    sort: str = DEFAULT_SORT
+
+    @property
+    def active(self) -> bool:
+        """Czy choć jeden filtr zawęża listę (nie licząc samego sortowania)."""
+        return bool(
+            self.products or self.supplier_id or self.medium or self.trader_id or self.status
+            or self.signed_from or self.signed_to or self.volume_min is not None or self.volume_max is not None
+            or self.markup_min is not None or self.markup_max is not None or self.new_connection is not None
+        )
+
+
+def apply_contract_filters(q, f: ContractFilters):
+    """Dokłada WHERE dla każdego ustawionego filtru i podmienia sortowanie."""
+    if f.products:
+        q = q.where(Contract.pricing_product.in_(f.products))
+    if f.supplier_id:
+        q = q.where(Contract.supplier_id == f.supplier_id)
+    if f.medium:
+        q = q.where(Contract.medium == f.medium)
+    if f.trader_id:
+        q = q.where(Contract.trader_id == f.trader_id)
+    if f.status:
+        q = q.where(Contract.status == f.status)
+    if f.signed_from:
+        q = q.where(Contract.signed_date >= f.signed_from)
+    if f.signed_to:
+        q = q.where(Contract.signed_date <= f.signed_to)
+    if f.volume_min is not None:
+        q = q.where(Contract.annual_volume_mwh >= f.volume_min)
+    if f.volume_max is not None:
+        q = q.where(Contract.annual_volume_mwh <= f.volume_max)
+    if f.markup_min is not None:
+        q = q.where(Contract.markup_pln_mwh >= f.markup_min)
+    if f.markup_max is not None:
+        q = q.where(Contract.markup_pln_mwh <= f.markup_max)
+    if f.new_connection is not None:
+        q = q.where(Contract.new_connection.is_(f.new_connection))
+    return q.order_by(None).order_by(*SORT_OPTIONS.get(f.sort, SORT_OPTIONS[DEFAULT_SORT]))
 
 
 def can_view_contract(user: User, c: Contract) -> bool:
@@ -341,6 +425,8 @@ def contract_view(viewer: User, c: Contract, perms: BokPerms = DEFAULT_PERMS) ->
         "client_name": c.client_name,
         "client_nip": c.client_nip,
         "medium": c.medium,
+        "pricing_product": c.pricing_product,
+        "pricing_product_label": PRICING_PRODUCTS.get(c.pricing_product, c.pricing_product),
         "supplier_name": c.supplier.name,
         "trader_name": c.trader.name,
         "trader_id": c.trader_id,

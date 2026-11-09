@@ -23,6 +23,7 @@
       </select>
     </div>
     {{ wybor("medium", "Medium", MEDIA.items(), form.medium or "energia") }}
+    {{ wybor("produkt", "Produkt cenowy", PRICING_PRODUCTS.items(), form.produkt or "fix", hint="FIX — cena stała, zahedowana przez spółkę. SPOT (RDN) — cena zmienna, spółka zwykle nie hedguje z wyprzedzeniem. Transza — cena ustalana etapami.") }}
     {% if traders|length > 1 or user.role == ROLE_BOK %}
     <div class="pole">
       <label for="f-handlowiec">Handlowiec</label>

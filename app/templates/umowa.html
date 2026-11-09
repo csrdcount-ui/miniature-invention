@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% from "_makra.html" import tabela_prowizji, wybor, pole %}
+{% from "_makra.html" import tabela_prowizji, wybor, pole, produkt_plakietka %}
 {% block title %}{{ c.client_name }}{% endblock %}
 {% block content %}
-<h1>Umowa: {{ c.client_name }}</h1>
+<h1>Umowa: {{ c.client_name }} {{ produkt_plakietka(c.pricing_product) }}</h1>
 <p><a href="/umowy">Wróć do listy umów</a></p>
 
 {% for w in c.warnings %}<div role="alert" class="warn"><p>Uwaga: {{ w }}</p></div>{% endfor %}
@@ -12,6 +12,7 @@
   <dt>Klient</dt><dd>{{ c.client_name }}{% if c.client_nip %}, NIP {{ c.client_nip }}{% endif %}</dd>
   <dt>Spółka obrotu</dt><dd>{{ c.supplier_name }}</dd>
   <dt>Medium</dt><dd>{{ MEDIA[c.medium] }}</dd>
+  <dt>Produkt cenowy</dt><dd>{{ produkt_plakietka(c.pricing_product) }}</dd>
   <dt>Handlowiec</dt><dd>{{ c.trader_name }}</dd>
   {% if c.manager_name %}<dt>Menedżer</dt><dd>{{ c.manager_name }}</dd>{% endif %}
   <dt>Podpisana</dt><dd>{{ c.signed_date|data }}</dd>

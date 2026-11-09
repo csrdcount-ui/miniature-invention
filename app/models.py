@@ -59,6 +59,15 @@ TRIGGERS = {
     "start_dostaw": "Po starcie dostaw",
 }
 
+# Produkt cenowy umowy. Kolor to tylko dodatek do etykiety tekstowej — nigdy
+# jedyny nośnik informacji (dostępność).
+PRICING_PRODUCTS = {
+    "spot": "SPOT (RDN)",
+    "fix": "FIX",
+    "tranza": "Transza",
+}
+DEFAULT_PRICING_PRODUCT = "fix"  # silnik liczy stały narzut zł/MWh — strukturalnie odpowiada FIX
+
 MEDIA = {"energia": "Energia elektryczna", "gaz": "Paliwo gazowe"}
 
 CONTRACT_STATUSES = [
@@ -232,6 +241,7 @@ class Contract(Base):
     annual_volume_mwh: Mapped[Decimal] = mapped_column(Numeric(14, 3))
     base_price_pln_mwh: Mapped[Optional[Decimal]] = mapped_column(MONEY, nullable=True)
     markup_pln_mwh: Mapped[Decimal] = mapped_column(MONEY)
+    pricing_product: Mapped[str] = mapped_column(String(10), default=DEFAULT_PRICING_PRODUCT)
     new_connection: Mapped[bool] = mapped_column(Boolean, default=False)
     status: Mapped[str] = mapped_column(String(40), default="Umowa podpisana")
 
