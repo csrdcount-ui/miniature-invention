@@ -206,3 +206,19 @@ Odpowiedzi z 7.11.2026 są w `docs/WIEDZA-BRANZOWA.md`. Zostały:
      (literówka w adresie = pusty filtr, nie błąd) w `app/routes/portfel.py`.
      Punkty 1–2 (prawdziwa ocena opłacalności zerwania wobec giełdy) wciąż
      NIE zrobione — osobna integracja z danymi rynkowymi.
+
+## Zgłoszenia właścicielki z 9.11.2026 (po teście demo) — czekają na jej potwierdzenie
+
+1. **Terminologia:** w branży brokerskiej mówi się „marża”, nie „narzut”. Zamienić
+   wszędzie („masa narzutu” → „całkowita masa marży”, „narzut zł/MWh” → „marża
+   zł/MWh”, także w imporcie). Konflikt nazw: dzisiejsza „Marża właściciela” —
+   nowa nazwa do ustalenia z właścicielką.
+2. **Menedżer nie ma zakładki Zespół** — potwierdzone, nie ma też przełącznika
+   (zakładka jest tylko dla właściciela i BOK z uprawnieniem). Menedżer ma zarządzać
+   zespołem: zaprojektować widok zespołu menedżera (tylko jego ludzie).
+3. **Harmonogram rozliczeń prowizji** w karcie spółki (nie tylko wysokość i transza,
+   ale terminy: np. umowy z miesiąca M rozliczane przez spółkę do 25. dnia M+1,
+   wypłata 10. dnia M+2; różnie w spółkach) i podsumowanie w portfelu według
+   okresów rozliczeniowych: „Transza I z okresu [miesiąc]: N umów, kwota” oraz
+   „Transza B z wcześniejszych umów: N umów, kwota”. Zrozumienie i pytania
+   przedstawione właścicielce, kod NIE zaczęty.
