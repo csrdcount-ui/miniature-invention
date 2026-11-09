@@ -160,6 +160,8 @@ Następne (w tej kolejności, po odpowiedziach na pytania niżej):
 - `docs/RAPORT-etap-1.md` — raport z etapu 1.
 - `docs/STANDARD-WYMIANY-DANYCH.md` — projekt standardu Excela do importu i eksportu,
   dane przykładowe (wersja robocza 0.1, do akceptacji).
+- `docs/PROJEKT-DZIEN-HANDLOWCA.md` — projekt ekranu „Mój dzień”, lejka, kalendarza i
+  podpowiedzi (10.11.2026, do akceptacji). Następny temat: uporządkowanie BOK.
 - `docs/CHECKLISTA-PO-ROLACH.md` — co wdrożone a co nie, po każdej roli (właściciel,
   menedżer, handlowiec, BOK), do aktualizacji po każdym większym kroku.
 
