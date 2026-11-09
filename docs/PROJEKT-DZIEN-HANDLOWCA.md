@@ -19,7 +19,8 @@ Kolejność od góry, na telefonie tylko listy, reszta zwinięta:
    - zaległe kroki i zadania;
    - rezerwacje NIP wygasające w ciągu 7 dni (przedłużenie wymaga dowodów rozmów);
    - nowy cennik spółki: oferta z poprzedniego ważna tylko do końca doby;
-   - oferty bez decyzji klienta dłużej niż 14 dni;
+   - oferty bez odpowiedzi klienta od 3 dni (telefon: jak oferta, czy poprawić)
+     i oferty, którym kończy się ważność (zwykle tydzień);
    - szanse bez następnego kroku.
 3. **Dziś**: spotkania i telefony z godziną, potem zadania bez godziny.
    Przy każdej pozycji: „Zrobione, zapisz wynik”, „Przełóż”.
@@ -107,3 +108,34 @@ Dzisiejsze umowy w statusie Lead, Kontakt i Oferta przechodzą do szans przy mig
    i potrzebna jest synchronizacja w obie strony?
 4. Źródło leada (polecenie, zimny telefon, kampania, strona): zbierać do statystyk?
 5. Czy próg „oferta bez decyzji” 14 dni i „rezerwacja wygasa” 7 dni są właściwe?
+
+## Wdrożenie 1 (propozycja z 10.11.2026, po uwagach właścicielki)
+
+Zakres:
+1. Karta klienta: NIP z kontrolą sumy i jednym opiekunem w biurze (drugi raz ten sam
+   NIP: „klient jest już u [handlowiec]”), nazwa, osoba kontaktowa, telefon, e-mail,
+   źródło leada, etap, następny krok z datą, oś zdarzeń (kto, co, kiedy).
+2. Zlecenie sprawdzenia NIP do BOK: handlowiec wybiera spółki (domyślnie wszystkie
+   aktywne), BOK w kolejce „Do sprawdzenia” wpisuje dla każdej spółki: zarezerwowany
+   dla nas do [data], zajęty, scoring negatywny. Handlowiec widzi wynik na karcie
+   i w „Od BOK”.
+3. Oferta na karcie: spółka (tylko z wolnym NIP-em), produkt, cena bazowa, marża,
+   wolumen, okres; ważna do = +7 dni; automatyczne zadanie „zapytaj o ofertę” po 3 dniach.
+   Kalkulator porównania spółek: przy tej samej cenie dla klienta pokazuje marżę
+   możliwą w każdej spółce (cena bazowa, limit marży), prowizję handlowca i pierwszą
+   transzę. Prowizja handlowca nie zależy od spółki przy tej samej marży (silnik),
+   różnicę robi cena bazowa, limit i transza.
+4. Listy „do złożenia oferty” i „do przygotowania umowy” (dwa etapy), edytowane
+   przez właściciela, z wersją startową z WIEDZA-BRANZOWA.md.
+5. Wygrana: przycisk „Zapisz umowę” z wypełnionym formularzem umowy.
+   Przegrana: z powodem.
+6. „Mój dzień” handlowca + alarm prospectingu: nowe NIP-y przekazane do BOK
+   w ostatnich 7 dniach wobec normy tygodniowej (ustawia właściciel) i podział
+   uwagi z ostatnich 7 dni: nowe leady vs procesy w toku.
+7. Zakładki: handlowiec — Mój dzień, Klienci, Umowy, Konto; BOK — „Do sprawdzenia”.
+8. Dane demo: klienci na wszystkich etapach, zlecenia u BOK, handlowiec bez nowych leadów.
+
+Poza wdrożeniem 1: rezerwacje z przedłużeniami i dowodami, karta spółki dla BOK
+(szablony e-maili), wersje cenników, punkty poboru, kalendarz w telefonie (ICS),
+podpowiedzi rozmów, automatyczne pobieranie nazwy firmy po NIP (wykaz podatników VAT),
+przeniesienie dzisiejszych umów w statusie „Oferta” do kart klientów.

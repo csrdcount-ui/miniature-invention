@@ -220,3 +220,21 @@ Marża brokera w zł/MWh maleje z wielkością umowy (wolumen roczny):
 Stare dane demonstracyjne miały marże sprzed ok. czterech lat, dziś nieosiągalne.
 Struktura portfela demo (liczba umów): 17% do 50 MWh, 49% 50–300 MWh, 11% 300–1000 MWh,
 23% powyżej 1 GWh.
+
+## Ważność oferty i kontakt po ofercie (potwierdzone 10.11.2026)
+
+- Oferta jest ważna zwykle do tygodnia. 14 dni to za długo: ceny na giełdzie
+  zmieniają się zbyt szybko.
+- Po 3–4 dniach bez odpowiedzi klienta handlowiec dzwoni: jak oferta się podoba,
+  czy wszystko jest zrozumiałe, czy trzeba ją poprawić.
+- Wymagania do złożenia oferty i do przygotowania umowy to dwa różne etapy
+  z dwiema różnymi listami.
+
+## Prospecting: stały dopływ nowych leadów (potwierdzone 10.11.2026)
+
+- Typowy błąd: handlowiec zajmuje się tylko procesami już w lejku i przestaje
+  pozyskiwać nowych klientów. Część procesów się zamyka, część odpada i handlowiec
+  zostaje bez lejka; pół następnego miesiąca generuje leady od zera.
+- Miarą „czystych” nowych leadów jest liczba nowych NIP-ów przekazanych do BOK do
+  sprawdzenia (wolny NIP, scoring) w danym okresie.
+- Aplikacja ma pilnować proporcji uwagi: przypominać, gdy brakuje nowych leadów.
