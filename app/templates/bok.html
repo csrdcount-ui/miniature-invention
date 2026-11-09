@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Do sprawdzenia{% endblock %}
+{% block content %}
+<h1>Do sprawdzenia: {{ count }}</h1>
+<p>NIP-y przesłane przez handlowców. Sprawdź tylko wskazane spółki: czy NIP jest wolny, zarezerwuj go i sprawdź scoring. Handlowiec zobaczy wynik od razu na swoim ekranie dnia.</p>
+
+{% if groups %}
+{% for g in groups %}
+<section class="karta-miesiaca">
+  <h2>{{ g.c.name }}</h2>
+  <p>NIP {{ g.c.nip }}, handlowiec: {{ g.c.owner.name }}, zlecono {{ g.since.strftime("%d.%m.%Y") }}</p>
+  {% for k in g.checks %}
+  <details class="zwijane">
+    <summary>{{ k.supplier.name }}: wpisz wynik</summary>
+    <div class="wnetrze">
+    <form method="post" action="/bok/{{ k.id }}" class="stack">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <fieldset>
+        <legend>Wynik w {{ k.supplier.name }}</legend>
+        {% for code, label in NIP_CHECK_RESULTS.items() if code != "do_sprawdzenia" %}
+        <div class="pole"><label><input type="radio" name="wynik" value="{{ code }}" {% if loop.first %}checked{% endif %}>{{ label }}</label></div>
+        {% endfor %}
+      </fieldset>
+      <div class="pole">
+        <label for="f-do-{{ k.id }}">Rezerwacja ważna do (przy wolnym NIP-ie)</label>
+        <input id="f-do-{{ k.id }}" name="do" type="date" value="{{ default_until.isoformat() }}">
+      </div>
+      <div class="pole">
+        <label for="f-uwagi-{{ k.id }}">Uwagi dla handlowca</label>
+        <input id="f-uwagi-{{ k.id }}" name="uwagi" maxlength="500">
+      </div>
+      <button type="submit">Zapisz wynik</button>
+    </form>
+    </div>
+  </details>
+  {% endfor %}
+</section>
+{% endfor %}
+{% else %}
+<p>Nic nie czeka na sprawdzenie.</p>
+{% endif %}
+
+{% if recent %}
+<details class="zwijane">
+  <summary>Ostatnio sprawdzone ({{ recent|length }})</summary>
+  <ul class="wnetrze">
+    {% for k in recent %}<li>{{ k.checked_at.strftime("%d.%m.%Y") }}: <a href="/klienci/{{ k.client_id }}">{{ k.client.name }}</a>, {{ k.supplier.name }}: {{ NIP_CHECK_RESULTS[k.result]|lower }}{% if k.checked_by %} ({{ k.checked_by.name }}){% endif %}</li>{% endfor %}
+  </ul>
+</details>
+{% endif %}
+{% endblock %}

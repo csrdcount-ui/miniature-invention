@@ -13,6 +13,10 @@ from fastapi.templating import Jinja2Templates
 from .. import engine as eng
 from ..services import OFFER_STALE_DAYS, plural_oferty, plural_umowy
 from ..models import (
+    EVENT_KINDS,
+    NIP_CHECK_RESULTS,
+    OPEN_STAGES,
+    STAGES,
     POLICY_SETTINGS,
     PRICING_PRODUCTS,
     BOK_PERMISSIONS,
@@ -104,6 +108,10 @@ templates.env.globals.update(
     PRICING_PRODUCTS=PRICING_PRODUCTS,
     POLICY_SETTINGS=POLICY_SETTINGS,
     OFFER_STALE_DAYS=OFFER_STALE_DAYS,
+    STAGES=STAGES,
+    OPEN_STAGES=OPEN_STAGES,
+    NIP_RESULTS=NIP_CHECK_RESULTS,
+    EVENT_KINDS=EVENT_KINDS,
     OVERRIDE_BASES={
         eng.OVERRIDE_OD_NARZUTU: "od całej masy marży",
         eng.OVERRIDE_OD_HANDLOWCA: "od prowizji handlowca",

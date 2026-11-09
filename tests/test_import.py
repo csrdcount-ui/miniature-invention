@@ -5,7 +5,7 @@ from io import BytesIO
 from openpyxl import Workbook, load_workbook
 
 from app.db import SessionLocal
-from app.models import Contract, ContractStatusEvent, ImportBatch, Supplier, User
+from app.models import Client, ClientOffer, Contract, ContractStatusEvent, ImportBatch, NipCheck, Supplier, User
 
 from .conftest import login, post
 from .test_app import CONTRACT, setup_company
@@ -26,6 +26,8 @@ def _counts():
         return {
             "umowy": db.query(Contract).count(), "osoby": db.query(User).count(),
             "spolki": db.query(Supplier).count(), "zdarzenia": db.query(ContractStatusEvent).count(),
+            "klienci": db.query(Client).count(), "sprawdzenia": db.query(NipCheck).count(),
+            "oferty": db.query(ClientOffer).count(),
         }
 
 
@@ -49,8 +51,8 @@ def test_szablon_ma_readme_i_arkusze(client):
     r = client.get("/konto/import/szablon.xlsx")
     assert r.status_code == 200 and "attachment" in r.headers["content-disposition"]
     wb = load_workbook(BytesIO(r.content))
-    assert wb.sheetnames == ["README", "zespol", "spolki", "umowy", "historia_statusow", "targety"]
-    assert wb["README"]["A1"].value == "standard" and wb["README"]["B1"].value == "1.1"
+    assert wb.sheetnames == ["README", "zespol", "spolki", "umowy", "historia_statusow", "targety", "klienci", "sprawdzenia_nip", "oferty"]
+    assert wb["README"]["A1"].value == "standard" and wb["README"]["B1"].value == "1.2"
     assert [c.value for c in wb["umowy"][1]][:3] == ["id_zewn", "klient_nazwa", "klient_nip"]
 
 
@@ -60,13 +62,13 @@ def test_demo_podglad_niczego_nie_zapisuje_a_zatwierdzenie_tak(client):
     before = _counts()
     bid = _demo_preview(client)
     page = client.get(f"/konto/import/{bid}").text
-    assert "Plik jest poprawny" in page and "Umowy: 114" in page and "Osoby: 9" in page
+    assert "Plik jest poprawny" in page and "Umowy: 100" in page and "Klienci w lejku: 41, sprawdzenia NIP: 26, oferty: 14" in page and "Osoby: 9" in page
     assert _counts() == before
     r = _commit(client, bid)
     assert r.status_code == 200 and r.headers["cache-control"] == "no-store"
     assert "Te hasła widzisz tylko teraz" in r.text
     after = _counts()
-    assert after["umowy"] == before["umowy"] + 114 and after["osoby"] == before["osoby"] + 9
+    assert after["umowy"] == before["umowy"] + 100 and after["osoby"] == before["osoby"] + 9
     assert after["spolki"] == before["spolki"] + 12
     # hasła czytelne: trzy grupy po cztery znaki
     passwords = re.findall(r"Login: ([^<]+)</p>\s*<p>Hasło: <code>([^<]+)</code>", r.text)
@@ -98,7 +100,7 @@ def test_demo_scenariusze_i_historia(client):
         # scenariusze z góry; świeże umowy z bieżącego rytmu sprzedaży też bywają w weryfikacji
         assert statuses.count("Zerwana") == 9 and statuses.count("Weryfikacja spółki") >= 6
         assert statuses.count("Zakończona") == 5 and statuses.count("Umowa podpisana") >= 8
-        assert statuses.count("Oferta") == 14
+        assert statuses.count("Oferta") == 0  # oferty są na kartach klientów
         # najgorszy portfel: Paweł Kamiński ma co najmniej 4 zerwania
         pawel = db.query(User).filter(User.last_name == "Kamiński").one()
         assert sum(1 for c in demo if c.trader_id == pawel.id and c.status == "Zerwana") >= 4
@@ -128,7 +130,7 @@ def test_cofniecie_demo_zostawia_prawdziwe_dane(client):
     _commit(client, bid)
     r = post(client, f"/konto/import/{bid}", f"/konto/import/{bid}/cofnij", {})
     assert r.status_code == 303  # bez potwierdzenia nic się nie dzieje
-    assert _counts()["umowy"] == before["umowy"] + 114
+    assert _counts()["umowy"] == before["umowy"] + 100
     r = post(client, f"/konto/import/{bid}", f"/konto/import/{bid}/cofnij", {"potwierdzam": "1"})
     assert r.status_code == 303
     assert _counts() == before
@@ -292,10 +294,10 @@ def test_demo_struktura_portfela_i_marze_w_widelkach(client):
     11% 300–1000 MWh, 23% powyżej 1 GWh; marże zależne od wolumenu."""
     from app.exchange.demo import demo_rows
     rows = demo_rows()
-    oferty = [u for u in rows["umowy"] if u["status"] == "Oferta"]
-    umowy = [u for u in rows["umowy"] if u["status"] != "Oferta"]
-    assert len(umowy) == 100 and len(oferty) == 14  # 100 umów podpisanych + 14 ofert złożonych
-    assert any(o["klient_nazwa"] == "Wózki Widłowe Michalski" for o in oferty)
+    umowy = rows["umowy"]
+    assert len(umowy) == 100 and len(rows["oferty"]) == 14  # 100 umów + 14 ofert na kartach klientów
+    klienci = {k["id_zewn"]: k["nazwa"] for k in rows["klienci"]}
+    assert "Wózki Widłowe Michalski" in {klienci[o["klient_id_zewn"]] for o in rows["oferty"]}
     vol = [float(u["wolumen_roczny_mwh"]) for u in umowy]
     assert sum(v <= 50 for v in vol) == 17
     assert sum(50 < v <= 300 for v in vol) == 49
@@ -314,7 +316,7 @@ def test_demo_struktura_portfela_i_marze_w_widelkach(client):
         else:
             assert 8 <= m <= 15, u
     assert sum(v > 10000 for v in vol) >= 1  # jest co najmniej jedna bardzo duża umowa
-    assert len({u["klient_nazwa"] for u in rows["umowy"]}) == 114  # klienci się nie powtarzają
+    assert len({u["klient_nazwa"] for u in rows["umowy"]} | {k["nazwa"] for k in rows["klienci"]}) == 141  # klienci się nie powtarzają
     # zespół: menedżer Michał Lex, 6 handlowców, 2 osoby BOK (Jessica na pierwszym miejscu)
     team = rows["zespol"]
     assert [(p["imie"], p["nazwisko"]) for p in team if p["rola"] == "menedzer"] == [("Michał", "Lex")]

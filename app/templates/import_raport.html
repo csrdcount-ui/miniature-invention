@@ -24,6 +24,7 @@
   <li>Umowy: {{ r.counts.umowy }}</li>
   <li>Zmiany statusów z historii: {{ r.counts.zmiany_statusow }}</li>
   <li>Targety miesięczne: {{ r.counts.get("targety", 0) }}</li>
+  <li>Klienci w lejku: {{ r.counts.get("klienci", 0) }}, sprawdzenia NIP: {{ r.counts.get("sprawdzenia", 0) }}, oferty: {{ r.counts.get("oferty", 0) }}</li>
 </ul>
 
 {% if r.errors %}

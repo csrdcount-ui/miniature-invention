@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Listy wymagań{% endblock %}
+{% block content %}
+<h1>Listy wymagań</h1>
+<p>Handlowcy widzą te listy na karcie klienta: pierwszą przed złożeniem oferty, drugą po złożeniu oferty. Jedna pozycja w jednej linii.</p>
+<form method="post" action="/konto/listy" class="stack">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  {% for key, label in CHECKLIST_KEYS.items() %}
+  <div class="pole">
+    <label for="f-{{ key }}">{{ label }}</label>
+    <textarea id="f-{{ key }}" name="{{ key }}" rows="8">{{ lists[key] }}</textarea>
+  </div>
+  {% endfor %}
+  <button type="submit">Zapisz listy</button>
+</form>
+{% endblock %}

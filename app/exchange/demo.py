@@ -91,15 +91,15 @@ CLIENTS_MEDIUM = [
     "Piekarnia Złoty Kłos sp. z o.o.", "Hotel Pod Lipami", "Zakład Mechaniczny Kowalski", "Drukarnia Akant sp. z o.o.",
     "Tartak Leśny Dwór", "Ogrodnictwo Zielone Pole", "Stolarnia Dąb s.c.", "Market Pod Zegarem", "Restauracja Stary Młyn",
     "Szkoła Językowa Lingua", "Klinika Weterynaryjna Azor", "Pensjonat Górski Potok", "Serwis Opon Kołowrót",
-    "Pralnia Przemysłowa Biel", "Przychodnia Zdrowie", "Fitness Klub Forma", "Kino Plaza", "Browar Rzemieślniczy Chmiel",
+    "Pralnia Chemiczna Śnieżka", "Przychodnia Zdrowie", "Fitness Klub Forma", "Kino Plaza", "Browar Rzemieślniczy Chmiel",
     "Warsztat Samochodowy Tłok", "Hotel Nad Jeziorem", "Kamieniarstwo Granit", "Zakład Stolarki PCV Okno",
     "Piekarnia Rumiana Skórka", "Cukiernia Słodki Kącik", "Gospodarstwo Rybne Karp", "Lakiernia Proszkowa Kolor",
     "Hala Sportowa Olimp", "Biurowiec Kwadrat", "Hotel Biznes Centrum", "Agencja Reklamowa Baner",
-    "Przedszkole Niepubliczne Promyk", "Zakład Poligraficzny Druk-Art", "Producent Opakowań Karton",
+    "Żłobek Niepubliczny Misie", "Zakład Poligraficzny Druk-Art", "Producent Opakowań Karton",
     "Salon Meblowy Komfort", "Szwalnia Igła i Nić", "Zakład Betoniarski Beton-Mix", "Wytwórnia Makaronu Kluska",
     "Centrum Rehabilitacji Ruch", "Cukiernia Marcepan", "Szkoła Jazdy Kierownica", "Pływalnia Miejska Fala",
-    "Zajazd Pod Dębem", "Dom Kultury Akord", "Laboratorium Analiz Probówka", "Sklep Spożywczy Smak",
-    "Hurtownia Kwiatów Tulipan", "Zakład Pogrzebowy Pokój", "Drukarnia Cyfrowa Piksel", "Pensjonat Leśna Cisza",
+    "Zajazd Pod Dębem", "Dom Kultury Akord", "Gabinet Rehabilitacji Ruch", "Sklep Spożywczy Smak",
+    "Hurtownia Kwiatów Tulipan", "Zakład Pogrzebowy Pokój", "Introligatornia Grzbiet", "Pensjonat Leśna Cisza",
 ]
 CLIENTS_LARGE = [  # 300–1000 MWh
     "Chłodnia Lubelska sp. z o.o.", "Hurtownia Budowlana Fundament", "Galwanizernia Metal-Pol", "Zakład Mięsny Kłos",
@@ -172,7 +172,8 @@ def _first_of_next_month(d: date) -> date:
 def demo_rows(today: Optional[date] = None) -> dict[str, list[dict]]:
     today = today or date.today()
     rng = random.Random(2026)
-    rows: dict[str, list[dict]] = {"zespol": [], "spolki": [], "umowy": [], "historia_statusow": [], "targety": []}
+    rows: dict[str, list[dict]] = {"zespol": [], "spolki": [], "umowy": [], "historia_statusow": [], "targety": [],
+                                   "klienci": [], "sprawdzenia_nip": [], "oferty": []}
 
     mgr_email = _email(MANAGER[0], MANAGER[1])
     rows["zespol"].append({
@@ -334,21 +335,7 @@ def demo_rows(today: Optional[date] = None) -> dict[str, list[dict]]:
                 {"umowa_id_zewn": ext, "status": status, "data_zdarzenia": when.isoformat(), "notatka": note}
             )
 
-    for k, (client, volume, markup) in enumerate(OFFERS, start=1):
-        seller = sellers[(k - 1) % len(sellers)][0]
-        sup = rng.choice(SUPPLIERS)
-        sent = today - timedelta(days=rng.randint(1, 25))
-        ext = f"DEMO-O-{k:04d}"
-        rows["umowy"].append({
-            "id_zewn": ext, "klient_nazwa": client, "klient_nip": "", "medium": "energia",
-            "spolka": sup[0], "handlowiec_email": seller, "data_podpisania": sent.isoformat(), "start_dostaw": "",
-            "okres_miesiace": rng.choice([12, 24, 36]), "wolumen_roczny_mwh": volume,
-            "cena_bazowa_zl_mwh": rng.randrange(480, 621, 5), "narzut_zl_mwh": min(markup, sup[4]),
-            "nowe_przylacze": "nie", "status": "Oferta",
-        })
-        rows["historia_statusow"].append(
-            {"umowa_id_zewn": ext, "status": "Oferta", "data_zdarzenia": sent.isoformat(), "notatka": "Oferta wysłana klientowi."}
-        )
+    _pipeline(rows, rng, today, sellers)
 
     # Targety: każdy sprzedający na każdy miesiąc okna, wg poziomu (udziału w masie marży).
     rows["targety"] = []
@@ -360,6 +347,92 @@ def demo_rows(today: Optional[date] = None) -> dict[str, list[dict]]:
                 "kwota_zl": target_for_share(share),
             })
     return rows
+
+
+# Klienci w lejku (bez umów): zimne leady, kontakt, zbieranie danych, przegrane.
+PIPELINE_NAMES = [
+    "Hurtownia Budowlana Cegiełka", "Zakład Mięsny Kowalscy", "Kwiaciarnia Hurtowa Bukiet", "Tartak Leśny Zakątek",
+    "Kancelaria Notarialna Paragraf", "Studio Fitness Forma", "Market Spożywczy Koszyk", "Serwis Opon Bieżnik",
+    "Szklarnia Pomidorowa Zielony Dach", "Hotel Nad Zalewem", "Szkółka Jeździecka Podkowa", "Kotłownia Osiedlowa Ciepło",
+    "Warsztat Ślusarski Imadło", "Winnica Słoneczne Wzgórze", "Restauracja Pod Dębem", "Magazyn Chłodniczy Szron",
+    "Wspólnota Mieszkaniowa Lipowa 7", "Fabryka Mebli Komoda", "Centrum Ogrodnicze Zielnik", "Spółdzielnia Mleczarska Łąka",
+    "Browar Kontraktowy Słód", "Myjnia Samochodowa Lśnienie", "Kino Studyjne Ekran", "Zakład Kamieniarski Granit",
+    "Hala Sportowa Arena", "Wędzarnia Ryb Bałtyk", "Pensjonat Leśna Polana",
+]
+CONTACTS = ["Jan Michalski", "Ewa Nowak", "Tomasz Wiśniewski", "Marta Zielińska", "Krzysztof Wójtowicz", "Beata Krawczyk",
+            "Robert Piątek", "Joanna Sikora", "Adam Baran", "Iwona Duda"]
+
+
+def _nip(rng: random.Random, used: set) -> str:
+    weights = [6, 5, 7, 2, 3, 4, 5, 6, 7]
+    while True:
+        digits = [rng.randint(1, 9)] + [rng.randint(0, 9) for _ in range(8)]
+        check = sum(d * w for d, w in zip(digits, weights)) % 11
+        nip = "".join(map(str, digits)) + str(check)
+        if check != 10 and nip not in used:
+            used.add(nip)
+            return nip
+
+
+def _pipeline(rows: dict, rng: random.Random, today: date, sellers: list) -> None:
+    """Lejek: dawne „oferty złożone” jako karty klientów z ofertą, plus leady, kontakt, dane, przegrane.
+
+    Zdrowy lejek mają Anna, Piotr, Katarzyna, Agnieszka i Michał Lex. Michał Wójcik i Paweł Kamiński
+    mają tylko po dwie oferty i zimne leady: mniej niż 3 klientów w pracy, więc widać alarm.
+    """
+    used: set = set()
+    names = iter(PIPELINE_NAMES)
+    n = 0
+
+    def client(seller, name, stage, step, step_date, **extra):
+        nonlocal n
+        n += 1
+        ext = f"DEMO-K-{n:03d}"
+        rows["klienci"].append({
+            "id_zewn": ext, "nazwa": name, "nip": _nip(rng, used), "handlowiec_email": seller, "etap": stage,
+            "zrodlo": rng.choice(["Polecenie", "Zimny telefon", "Baza firm", "Kampania"]),
+            "osoba_kontaktowa": rng.choice(CONTACTS), "telefon": f"6{rng.randint(10, 99)} {rng.randint(100, 999)} {rng.randint(100, 999)}",
+            "email": "", "nastepny_krok": step, "nastepny_krok_data": step_date.isoformat() if step_date else "", **extra,
+        })
+        return ext
+
+    def check(ext, supplier, result, until=None, note=""):
+        rows["sprawdzenia_nip"].append({"klient_id_zewn": ext, "spolka": supplier, "wynik": result,
+                                        "zarezerwowany_do": until.isoformat() if until else "", "uwagi": note})
+
+    sent_days = [1, 4, 2, 5, 6, 9, 3]  # świeże, do telefonu po 3 dniach, wygasła po tygodniu
+    for k, (name, volume, markup) in enumerate(OFFERS):
+        seller = sellers[k % len(sellers)][0]
+        sup = rng.choice(SUPPLIERS)
+        sent = today - timedelta(days=sent_days[k % len(sent_days)])
+        ext = client(seller, name, "oferta", "Zapytaj o ofertę: jak się podoba, czy coś poprawić", sent + timedelta(days=3))
+        until = today + timedelta(days=4 if k == 2 else rng.randint(20, 70))
+        check(ext, sup[0], "zarezerwowany", until, "Rezerwacja przez portal partnerski.")
+        rows["oferty"].append({
+            "klient_id_zewn": ext, "spolka": sup[0], "produkt": "fix", "medium": "energia",
+            "cena_bazowa_zl_mwh": rng.randrange(480, 621, 5), "marza_zl_mwh": min(markup, sup[4]),
+            "wolumen_roczny_mwh": volume, "okres_miesiace": rng.choice([12, 24, 36]), "data_wyslania": sent.isoformat(),
+            "wazna_do": (sent + timedelta(days=7)).isoformat(), "status": "otwarta",
+        })
+
+    healthy = [e for e, _ in sellers if not e.startswith(("michal.wojcik", "pawel.kaminski"))]
+    weak = [e for e, _ in sellers if e.startswith(("michal.wojcik", "pawel.kaminski"))]
+    for i, seller in enumerate(healthy):
+        client(seller, next(names), "lead", "Pierwszy telefon: osoba decyzyjna i koniec obecnej umowy", today + timedelta(days=1 + i % 3))
+        client(seller, next(names), "lead", "Pierwszy telefon", today - timedelta(days=2) if i == 0 else today + timedelta(days=2))
+        client(seller, next(names), "kontakt", "Telefon: prośba o faktury dystrybucyjne", today)
+        ext = client(seller, next(names), "dane", "Odebrać faktury i zużycie roczne", today + timedelta(days=2))
+        for sup in rng.sample(SUPPLIERS, 2):
+            check(ext, sup[0], "do_sprawdzenia")
+    for seller in weak:
+        client(seller, next(names), "lead", "Pierwszy telefon", today - timedelta(days=3))
+        client(seller, next(names), "lead", "Pierwszy telefon", today + timedelta(days=1))
+    lost = [("Cena", healthy[0]), ("Wybrał innego brokera", healthy[1]), ("NIP zajęty we wszystkich spółkach", healthy[2])]
+    for reason, seller in lost:
+        ext = client(seller, next(names), "przegrana", "", None, powod_przegranej=reason)
+        if reason.startswith("NIP"):
+            for sup in rng.sample(SUPPLIERS, 2):
+                check(ext, sup[0], "zajety", note="Rezerwacja innego agenta.")
 
 
 def demo_workbook(today: Optional[date] = None) -> bytes:

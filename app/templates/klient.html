@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+{% from "_makra.html" import pole, produkt_plakietka %}
+{% block title %}{{ c.name }}{% endblock %}
+{% block content %}
+<h1>{{ c.name }}</h1>
+<p><a href="/klienci">Wróć do listy klientów</a></p>
+<dl>
+  <dt>Etap</dt><dd><strong>{{ STAGES[c.stage] }}</strong>, od {{ c.stage_since|data }}{% if c.stage == "przegrana" %}. Powód: {{ c.lost_reason }}{% endif %}</dd>
+  <dt>NIP</dt><dd>{{ c.nip or "nie podano" }}</dd>
+  {% if c.contact_person %}<dt>Osoba kontaktowa</dt><dd>{{ c.contact_person }}</dd>{% endif %}
+  {% if c.phone %}<dt>Telefon</dt><dd><a href="tel:{{ c.phone }}">{{ c.phone }}</a></dd>{% endif %}
+  {% if c.email %}<dt>E-mail</dt><dd><a href="mailto:{{ c.email }}">{{ c.email }}</a></dd>{% endif %}
+  {% if user.role != ROLE_TRADER %}<dt>Opiekun</dt><dd>{{ c.owner.name }}</dd>{% endif %}
+  {% if c.source %}<dt>Źródło</dt><dd>{{ c.source }}</dd>{% endif %}
+</dl>
+
+{% if c.stage in OPEN_STAGES %}
+<h2>Następny krok</h2>
+{% if c.next_step_date %}
+<p>{% if c.next_step_date < today %}<strong class="uwaga">Zaległe od {{ c.next_step_date|data }}:</strong>{% else %}<strong>{{ c.next_step_date|data }}:</strong>{% endif %} {{ c.next_step }}</p>
+{% else %}
+<p><strong class="uwaga">Brak następnego kroku.</strong> Ustaw go poniżej.</p>
+{% endif %}
+{% endif %}
+
+{% if can_sell %}
+<details class="zwijane"{% if error and form.krok is defined %} open{% endif %}>
+  <summary>Zapisz rozmowę i następny krok</summary>
+  <div class="wnetrze">
+  <form method="post" action="/klienci/{{ c.id }}/dzialanie" class="stack">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="pole">
+      <label for="f-rodzaj">Co się wydarzyło</label>
+      <select id="f-rodzaj" name="rodzaj">
+        {% for k, v in [("telefon", "Telefon"), ("spotkanie", "Spotkanie"), ("email", "E-mail"), ("notatka", "Notatka")] %}<option value="{{ k }}" {% if form.rodzaj == k %}selected{% endif %}>{{ v }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="pole">
+      <label for="f-wynik">Wynik, ustalenia</label>
+      <textarea id="f-wynik" name="wynik" rows="3">{{ form.wynik or "" }}</textarea>
+    </div>
+    <div class="pole">
+      <label for="f-etap">Etap</label>
+      <select id="f-etap" name="etap">
+        {% for k, v in STAGES.items() if k != "wygrana" %}<option value="{{ k }}" {% if (form.etap or c.stage) == k %}selected{% endif %}>{{ v }}</option>{% endfor %}
+      </select>
+      <p class="podpowiedz">„Umowa podpisana” ustawia się sama, gdy zapiszesz umowę z oferty.</p>
+    </div>
+    <div class="pole">
+      <label for="f-powod">Powód przegranej (tylko przy etapie „Przegrana”)</label>
+      <select id="f-powod" name="powod">
+        <option value="">Nie dotyczy</option>
+        {% for r in LOST_REASONS %}<option value="{{ r }}" {% if form.powod == r %}selected{% endif %}>{{ r }}</option>{% endfor %}
+      </select>
+    </div>
+    {{ pole("krok", "Następny krok", form.krok if form.krok is defined else c.next_step, hint="Co konkretnie zrobisz, np. „telefon: decyzja po ofercie”.") }}
+    {{ pole("krok_data", "Kiedy", form.krok_data if form.krok_data is defined else (c.next_step_date.isoformat() if c.next_step_date else ""), type="date") }}
+    <button type="submit">Zapisz</button>
+  </form>
+  </div>
+</details>
+{% endif %}
+
+<h2>Sprawdzenie NIP w BOK</h2>
+{% if c.checks %}
+<ul>
+  {% for k in c.checks %}
+  <li>{{ k.supplier.name }}: <strong>{{ NIP_CHECK_RESULTS[k.result]|lower }}</strong>{% if k.reserved_until %} do {{ k.reserved_until|data }}{% endif %}{% if k.note %}. {{ k.note }}{% endif %}</li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>Jeszcze nie wysłano do BOK.</p>
+{% endif %}
+{% if can_sell %}
+<details class="zwijane">
+  <summary>Wyślij NIP do BOK: wybierz spółki</summary>
+  <div class="wnetrze">
+  {% if not c.nip %}
+  <p>Najpierw wpisz NIP klienta w danych klienta niżej.</p>
+  {% else %}
+  <form method="post" action="/klienci/{{ c.id }}/bok" class="stack">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <fieldset>
+      <legend>Spółki, w których chcesz ofertować</legend>
+      <p class="podpowiedz">BOK sprawdzi tylko zaznaczone: czy NIP jest wolny, zarezerwuje go i sprawdzi scoring.</p>
+      {% for s in suppliers %}
+      <div class="pole">
+        <label><input type="checkbox" name="spolka" value="{{ s.id }}" {% if s.id in checked and checked[s.id].result == "do_sprawdzenia" %}checked disabled{% endif %}>{{ s.name }}{% if s.id in checked %} ({{ NIP_CHECK_RESULTS[checked[s.id].result]|lower }}){% endif %}</label>
+      </div>
+      {% endfor %}
+    </fieldset>
+    <button type="submit">Wyślij do BOK</button>
+  </form>
+  {% endif %}
+  </div>
+</details>
+{% endif %}
+
+<h2>Oferty</h2>
+{% if offers %}
+<ul class="karty">
+  {% for o, st, total in offers %}
+  <li>
+    <h3>{{ o.supplier.name }} {{ produkt_plakietka(o.pricing_product) }}</h3>
+    <p>Status: <strong>{{ OFFER_STATUSES[o.status] }}</strong>{% if st.expired %}, <strong class="uwaga">wygasła {{ o.valid_until|data }}</strong>{% elif o.status == "otwarta" %}, ważna do {{ o.valid_until|data }}{% endif %}</p>
+    {% if st.needs_followup %}<p><strong class="uwaga">Wysłana {{ st.days }} dni temu, bez odpowiedzi: zadzwoń do klienta.</strong></p>{% endif %}
+    <p>{{ o.annual_volume_mwh|mwh }} rocznie, {{ o.term_months }} mies., marża {{ o.markup_pln_mwh|zl }}/MWh{% if o.base_price_pln_mwh is not none %}, cena dla klienta {{ (o.base_price_pln_mwh + o.markup_pln_mwh)|zl }}/MWh{% endif %}</p>
+    <p>Masa marży po podpisaniu: {{ total|zl }}</p>
+    {% if can_sell and o.status == "otwarta" %}
+    <p><a href="/umowy/nowa?klient={{ c.id }}&oferta={{ o.id }}">Klient podpisał: zapisz umowę</a></p>
+    <form method="post" action="/klienci/{{ c.id }}/oferta/{{ o.id }}/odrzucona">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button type="submit" class="drugi">Klient odrzucił ofertę</button>
+    </form>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>Brak ofert.</p>
+{% endif %}
+{% if can_sell and c.stage in OPEN_STAGES %}
+<p><a href="/klienci/{{ c.id }}/kalkulator">Kalkulator: gdzie się bardziej opłaca</a></p>
+<details class="zwijane"{% if error and form.marza is defined %} open{% endif %}>
+  <summary>Zapisz złożoną ofertę</summary>
+  <div class="wnetrze">
+  {% if not free %}
+  <p>Ofertę zapiszesz w spółce, w której BOK potwierdził wolny NIP i rezerwację. Wyślij NIP do BOK.</p>
+  {% else %}
+  <form method="post" action="/klienci/{{ c.id }}/oferta" class="stack">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="pole">
+      <label for="f-spolka">Spółka (z wolnym NIP-em)</label>
+      <select id="f-spolka" name="spolka">{% for s in free %}<option value="{{ s.id }}" {% if form.spolka == s.id|string %}selected{% endif %}>{{ s.name }}</option>{% endfor %}</select>
+    </div>
+    <div class="pole">
+      <label for="f-produkt">Produkt cenowy</label>
+      <select id="f-produkt" name="produkt">{% for k, v in PRICING_PRODUCTS.items() %}<option value="{{ k }}" {% if (form.produkt or "fix") == k %}selected{% endif %}>{{ v }}</option>{% endfor %}</select>
+    </div>
+    <div class="pole">
+      <label for="f-medium">Medium</label>
+      <select id="f-medium" name="medium">{% for k, v in MEDIA.items() %}<option value="{{ k }}" {% if (form.medium or "energia") == k %}selected{% endif %}>{{ v }}</option>{% endfor %}</select>
+    </div>
+    {{ pole("cena_bazowa", "Cena bazowa z cennika, zł/MWh", form.cena_bazowa, extra='inputmode="decimal"') }}
+    {{ pole("marza", "Marża, zł/MWh", form.marza, required=true, extra='inputmode="decimal"') }}
+    {{ pole("wolumen", "Wolumen roczny, MWh", form.wolumen, required=true, extra='inputmode="decimal"') }}
+    {{ pole("okres", "Okres umowy w miesiącach", form.okres or 24, type="number", required=true, extra='min="1" max="120"') }}
+    {{ pole("wyslana", "Data wysłania oferty", form.wyslana or today.isoformat(), type="date") }}
+    {{ pole("wazna_do", "Ważna do", form.wazna_do or week.isoformat(), type="date", hint="Zwykle tydzień: ceny na giełdzie szybko się zmieniają.") }}
+    <button type="submit">Zapisz ofertę</button>
+  </form>
+  <p class="podpowiedz">Po zapisaniu aplikacja ustawi telefon do klienta za 3 dni.</p>
+  {% endif %}
+  </div>
+</details>
+{% endif %}
+
+<details class="zwijane">
+  <summary>{{ "Co jest potrzebne do przygotowania umowy" if c.stage == "oferta" else "Co jest potrzebne do złożenia oferty" }}</summary>
+  <ul class="wnetrze">
+    {% if c.stage != "oferta" %}
+    {% if not c.nip %}<li><strong class="uwaga">Brakuje NIP-u klienta.</strong></li>{% endif %}
+    {% if c.nip and not free %}<li><strong class="uwaga">Brak potwierdzonej rezerwacji w żadnej spółce: wyślij NIP do BOK.</strong></li>{% endif %}
+    {% for item in need_offer %}<li>{{ item }}</li>{% endfor %}
+    {% else %}
+    {% for item in need_contract %}<li>{{ item }}</li>{% endfor %}
+    {% endif %}
+  </ul>
+</details>
+
+{% if can_sell %}
+<details class="zwijane"{% if error and form.nazwa is defined %} open{% endif %}>
+  <summary>Dane klienta: zmień</summary>
+  <div class="wnetrze">
+  <form method="post" action="/klienci/{{ c.id }}/dane" class="stack">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    {{ pole("nazwa", "Nazwa firmy", form.nazwa or c.name, required=true) }}
+    {{ pole("nip", "NIP", form.nip or c.nip or "", extra='inputmode="numeric"') }}
+    {{ pole("osoba", "Osoba kontaktowa", form.osoba or c.contact_person) }}
+    {{ pole("telefon", "Telefon", form.telefon or c.phone, type="tel") }}
+    {{ pole("email", "E-mail", form.email or c.email, type="email") }}
+    <div class="pole">
+      <label for="f-zrodlo">Skąd jest ten lead</label>
+      <select id="f-zrodlo" name="zrodlo"><option value="">Nie wybrano</option>{% for s in sources %}<option value="{{ s }}" {% if (form.zrodlo or c.source) == s %}selected{% endif %}>{{ s }}</option>{% endfor %}</select>
+    </div>
+    <button type="submit">Zapisz dane</button>
+  </form>
+  </div>
+</details>
+{% endif %}
+
+<details class="zwijane">
+  <summary>Historia działań ({{ c.events|length }})</summary>
+  <ol class="historia wnetrze">
+    {% for e in c.events %}
+    <li><p><strong>{{ e.day|data }}, {{ EVENT_KINDS[e.kind]|lower }}</strong>{% if e.user %} ({{ e.user.name }}){% endif %}</p><p>{{ e.text }}</p></li>
+    {% endfor %}
+  </ol>
+</details>
+{% endblock %}

@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Kalkulator: {{ c.name }}{% endblock %}
+{% block content %}
+<h1>Kalkulator: {{ c.name }}</h1>
+<p><a href="/klienci/{{ c.id }}">Wróć do karty klienta</a></p>
+<p>Wpisz cenę, jaką chcesz zaproponować klientowi, i ceny bazowe z cenników spółek. Zobaczysz, jaką marżę możesz wziąć w każdej spółce i ile zarobisz. Przy tej samej marży Twoja prowizja jest taka sama w każdej spółce: różnicę robią cena bazowa, limit marży i wielkość pierwszej transzy.</p>
+
+{% if rows %}
+<h2>Wynik</h2>
+<ul class="karty">
+  {% for r in rows %}
+  <li>
+    <h3>{{ r.supplier.name }}{% if not r.free %} <span class="podpowiedz">(NIP niesprawdzony albo niewolny)</span>{% endif %}</h3>
+    {% if r.error %}
+    <p>{{ r.error|capitalize }}.</p>
+    {% else %}
+    <p>Marża: <strong>{{ r.markup|zl }}/MWh</strong>{% if r.over_limit %} <strong class="uwaga">(ucięta do limitu spółki {{ r.limit|zl }}/MWh; cena dla klienta będzie niższa)</strong>{% endif %}</p>
+    <p>Masa marży: {{ r.total_markup|zl }}</p>
+    <p>Twoja prowizja: <strong>{{ r.commission|zl }}</strong>, w tym pierwsza transza {{ r.tranche_a|zl }}{% if r.first_tranche_pct is not none %} ({{ r.first_tranche_pct|pct }}){% endif %}</p>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+<p class="podpowiedz">To wyliczenie pomocnicze, nic nie zapisuje. Ofertę zapiszesz na karcie klienta.</p>
+{% endif %}
+
+<form method="get" action="/klienci/{{ c.id }}/kalkulator" class="stack">
+  <div class="pole">
+    <label for="f-cena">Cena dla klienta, zł/MWh (wymagane)</label>
+    <input id="f-cena" name="cena" inputmode="decimal" value="{{ qp.get('cena', '') }}" required>
+  </div>
+  <div class="pole">
+    <label for="f-wolumen">Wolumen roczny, MWh (wymagane)</label>
+    <input id="f-wolumen" name="wolumen" inputmode="decimal" value="{{ qp.get('wolumen', '') }}" required>
+  </div>
+  <div class="pole">
+    <label for="f-okres">Okres umowy w miesiącach (wymagane)</label>
+    <input id="f-okres" name="okres" type="number" min="1" max="120" value="{{ qp.get('okres', '24') }}" required>
+  </div>
+  <fieldset>
+    <legend>Ceny bazowe z cenników, zł/MWh</legend>
+    <p class="podpowiedz">Wypełnij tylko spółki, które chcesz porównać. Najpierw spółki z wolnym NIP-em.</p>
+    {% for s in suppliers %}
+    <div class="pole">
+      <label for="f-baza-{{ s.id }}">{{ s.name }}{% if s.id in free_ids %} (wolny NIP){% endif %}</label>
+      <input id="f-baza-{{ s.id }}" name="baza_{{ s.id }}" inputmode="decimal" value="{{ qp.get('baza_' ~ s.id, '') }}">
+    </div>
+    {% endfor %}
+  </fieldset>
+  <button type="submit">Policz</button>
+</form>
+{% endblock %}

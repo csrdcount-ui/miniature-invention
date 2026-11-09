@@ -17,6 +17,18 @@ Zaloguj się do każdej przez dane demonstracyjne (zakładka Konto → Import da
 - Dane demonstracyjne: 100 umów + 14 ofert (np. „Wózki Widłowe Michalski”). Uwaga: demo
   nie ustawia targetów — ustaw je w Zespół → osoba → „Target masy marży”.
 
+## Nowość: dzień handlowca (do sprawdzenia po wdrożeniu)
+
+Najpierw: Konto → Import danych → cofnij starą paczkę demo → wczytaj nową.
+- Handlowiec (Paweł Kamiński): po zalogowaniu „Mój dzień”, alarm „Za mało klientów
+  w pracy”, oferty do telefonu i wygasłe.
+- Handlowiec (Anna Kowalczyk): zakładka Klienci, karta klienta z ofertą, „Wyślij NIP
+  do BOK” z wyborem spółek, kalkulator, „Klient podpisał: zapisz umowę”.
+- Nowy klient z NIP-em, który ma już kolega: komunikat bez szczegółów.
+- BOK (Jessica Kowal): zakładka „Zlecenia”, 10 sprawdzeń, wpisanie wyniku.
+- Menedżer (Michał Lex): „Mój dzień” i „Lejek zespołu” z alarmami.
+- Właściciel: Konto → Listy wymagań (do oferty, do umowy).
+
 ## Nowość 10.11.2026 — do sprawdzenia po wdrożeniu
 
 - Dane demo mają targety (junior 150 000, senior 200 000, pro 250 000 zł) — paski na

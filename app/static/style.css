@@ -165,3 +165,13 @@ ul.miesiace { list-style: none; padding: 0; display: grid; gap: .5rem; }
 ul.miesiace p { margin: 0; }
 .uwaga { color: var(--blad); }
 ol.ranking { padding-left: 1.75rem; display: grid; gap: .35rem; }
+
+/* --- Dzień handlowca i karty klientów --- */
+a.przycisk {
+  display: inline-flex; align-items: center; min-height: 48px; padding: 0 1.2rem; border-radius: 6px;
+  background: var(--marka); color: var(--tlo); font-weight: 700; text-decoration: none;
+}
+.cel { font-size: 1.1rem; }
+ul.karty li.alarm { border: 2px solid var(--blad); background: var(--blad-tlo); }
+ul.lejek { list-style: none; padding: 0; display: grid; gap: .35rem; margin: 0; }
+ul.lejek a { display: inline-flex; align-items: center; min-height: 44px; }

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Klienci{% endblock %}
+{% block content %}
+<h1>Klienci</h1>
+<p><a class="przycisk" href="/klienci/nowy">Dodaj klienta</a></p>
+
+{% if funnel %}
+<p>{{ "Lejek zespołu" if user.role == ROLE_MANAGER else "Twój lejek" }}: {% for s in OPEN_STAGES %}{{ STAGES[s]|lower }} {{ funnel.counts[s] }}, {% endfor %}umowy w tym miesiącu {{ funnel.signed }}.{% if funnel.low and user.role == ROLE_TRADER %} <strong class="uwaga">Za mało klientów w pracy: dodaj nowych.</strong>{% endif %}</p>
+{% endif %}
+
+<form method="get" action="/klienci" class="pasek-filtrow">
+  <details class="panel"{% if filtered %} open{% endif %}>
+    <summary>Filtry{% if filtered %} (włączone){% endif %}</summary>
+    <div class="wnetrze stack">
+      <div class="pole">
+        <label for="f-szukaj">Nazwa albo NIP</label>
+        <input id="f-szukaj" name="szukaj" value="{{ qp.get('szukaj', '') }}">
+      </div>
+      <div class="pole">
+        <label for="f-etap">Etap</label>
+        <select id="f-etap" name="etap">
+          <option value="">Wszystkie</option>
+          <option value="w_toku" {% if stage == "w_toku" %}selected{% endif %}>W toku (bez wygranych i przegranych)</option>
+          {% for k, v in STAGES.items() %}<option value="{{ k }}" {% if stage == k %}selected{% endif %}>{{ v }}</option>{% endfor %}
+        </select>
+      </div>
+      {% if people %}
+      <div class="pole">
+        <label for="f-handlowiec">Opiekun</label>
+        <select id="f-handlowiec" name="handlowiec">
+          <option value="">Wszyscy</option>
+          {% for p in people %}<option value="{{ p.id }}" {% if qp.get('handlowiec') == p.id|string %}selected{% endif %}>{{ p.name }}</option>{% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      <button type="submit">Pokaż</button>
+    </div>
+  </details>
+  {% if filtered %}<a class="przycisk-drugi" href="/klienci">Wyczyść filtry</a>{% endif %}
+</form>
+
+<p><strong>Wyniki: {{ clients|length }}.</strong></p>
+{% if clients %}
+<ul class="karty">
+{% for c in clients %}
+  <li>
+    <h3><a href="/klienci/{{ c.id }}">{{ c.name }}</a></h3>
+    <p>{{ STAGES[c.stage] }}{% if user.role != ROLE_TRADER %}, opiekun: {{ c.owner.name }}{% endif %}</p>
+    {% if c.stage in OPEN_STAGES %}
+    <p>{% if c.next_step_date %}{% if c.next_step_date < today %}<strong class="uwaga">Zaległe od {{ c.next_step_date|data }}</strong>{% else %}{{ c.next_step_date|data }}{% endif %}: {{ c.next_step }}{% else %}<strong class="uwaga">Brak następnego kroku</strong>{% endif %}</p>
+    {% elif c.stage == "przegrana" %}<p>Powód: {{ c.lost_reason }}</p>{% endif %}
+  </li>
+{% endfor %}
+</ul>
+{% else %}
+<p>{{ "Żaden klient nie pasuje do filtrów." if filtered else "Nie ma jeszcze klientów. Dodaj pierwszego." }}</p>
+{% endif %}
+{% endblock %}

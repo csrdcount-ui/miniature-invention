@@ -9,9 +9,9 @@ from openpyxl import Workbook
 from openpyxl.styles import Font
 
 from .. import engine as eng
-from ..models import CONTRACT_STATUSES, MEDIA, TRIGGERS
+from ..models import CONTRACT_STATUSES, LEAD_SOURCES, LOST_REASONS, MEDIA, NIP_CHECK_RESULTS, OFFER_STATUSES, PRICING_PRODUCTS, STAGES, TRIGGERS
 
-STANDARD_VERSION = "1.1"  # 1.1: opcjonalny arkusz targety
+STANDARD_VERSION = "1.2"  # 1.1: targety; 1.2: klienci, sprawdzenia_nip, oferty
 
 
 @dataclass(frozen=True)
@@ -83,6 +83,41 @@ SHEETS: dict[str, list[Col]] = {
         Col("miesiac", "Miesiąc targetu w formacie RRRR-MM.", required=True, example="2026-11"),
         Col("kwota_zl", "Target masy marży w zł na ten miesiąc.", "dec", True, example="150000"),
     ],
+    "klienci": [
+        Col("id_zewn", "Identyfikator klienta w poprzednim systemie. Łączy kartę ze sprawdzeniami i ofertami.", required=True, example="K-001"),
+        Col("nazwa", "Nazwa firmy.", required=True, example="Wózki Widłowe Michalski"),
+        Col("nip", "NIP, 10 cyfr. Jeden NIP = jeden klient w biurze.", example=""),
+        Col("handlowiec_email", "E-mail opiekuna klienta.", "email", True, example="anna.kowalczyk@firma.pl"),
+        Col("etap", "Etap w lejku.", "choice", False, tuple(STAGES), "lead"),
+        Col("zrodlo", "Skąd jest lead.", "choice", False, tuple(LEAD_SOURCES), "Polecenie"),
+        Col("osoba_kontaktowa", "Osoba kontaktowa.", example="Jan Michalski"),
+        Col("telefon", "Telefon.", example="600 100 200"),
+        Col("email", "E-mail klienta.", example=""),
+        Col("nastepny_krok", "Następny krok.", example="Telefon: decyzja po ofercie"),
+        Col("nastepny_krok_data", "Data następnego kroku.", "date", example="2026-11-20"),
+        Col("powod_przegranej", "Przy etapie przegrana: powód z listy.", "choice", False, tuple(LOST_REASONS), ""),
+        Col("notatka", "Notatka do historii działań.", example=""),
+    ],
+    "sprawdzenia_nip": [
+        Col("klient_id_zewn", "id_zewn klienta z arkusza klienci.", required=True, example="K-001"),
+        Col("spolka", "Nazwa spółki obrotu.", required=True, example="Axpo"),
+        Col("wynik", "Wynik sprawdzenia przez BOK.", "choice", True, tuple(NIP_CHECK_RESULTS), "zarezerwowany"),
+        Col("zarezerwowany_do", "Do kiedy rezerwacja (przy wyniku zarezerwowany).", "date", example="2026-12-31"),
+        Col("uwagi", "Uwagi BOK.", example=""),
+    ],
+    "oferty": [
+        Col("klient_id_zewn", "id_zewn klienta z arkusza klienci.", required=True, example="K-001"),
+        Col("spolka", "Nazwa spółki obrotu.", required=True, example="Axpo"),
+        Col("produkt", "Produkt cenowy.", "choice", False, tuple(PRICING_PRODUCTS), "fix"),
+        Col("medium", "Energia albo gaz.", "choice", False, tuple(MEDIA), "energia"),
+        Col("cena_bazowa_zl_mwh", "Cena bazowa z cennika.", "dec", example="520"),
+        Col("marza_zl_mwh", "Marża w zł/MWh.", "dec", True, example="100"),
+        Col("wolumen_roczny_mwh", "Wolumen roczny w MWh.", "dec", True, example="180"),
+        Col("okres_miesiace", "Okres umowy w miesiącach.", "int", True, example="24"),
+        Col("data_wyslania", "Kiedy oferta trafiła do klienta.", "date", True, example="2026-11-05"),
+        Col("wazna_do", "Ważna do. Puste = 7 dni od wysłania.", "date", example="2026-11-12"),
+        Col("status", "Status oferty.", "choice", False, tuple(OFFER_STATUSES), "otwarta"),
+    ],
 }
 
 SHEET_TITLES = {
@@ -91,6 +126,9 @@ SHEET_TITLES = {
     "umowy": "Umowy z klientami",
     "historia_statusow": "Historia statusów umów",
     "targety": "Miesięczne targety masy marży (arkusz opcjonalny)",
+    "klienci": "Karty klientów w lejku (arkusz opcjonalny)",
+    "sprawdzenia_nip": "Sprawdzenia NIP przez BOK w spółkach (arkusz opcjonalny)",
+    "oferty": "Oferty złożone klientom (arkusz opcjonalny)",
 }
 
 

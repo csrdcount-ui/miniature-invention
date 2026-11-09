@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from io import BytesIO
 from typing import Any, Optional
@@ -24,6 +24,12 @@ from ..models import (
     ROLE_OWNER,
     ROLE_TRADER,
     SELLING_ROLES,
+    OFFER_VALID_DAYS,
+    Checklist,
+    Client,
+    ClientEvent,
+    ClientOffer,
+    NipCheck,
     Contract,
     ContractStatusEvent,
     ImportBatch,
@@ -57,7 +63,7 @@ class RowError(Exception):
 class Report:
     errors: list[dict] = field(default_factory=list)
     warnings: list[dict] = field(default_factory=list)
-    counts: dict = field(default_factory=lambda: {"osoby": 0, "spolki": 0, "reguly": 0, "umowy": 0, "zmiany_statusow": 0, "targety": 0})
+    counts: dict = field(default_factory=lambda: {"osoby": 0, "spolki": 0, "reguly": 0, "umowy": 0, "zmiany_statusow": 0, "targety": 0, "klienci": 0, "sprawdzenia": 0, "oferty": 0})
     demo: bool = False
     passwords: list[dict] = field(default_factory=list)  # tylko po zatwierdzeniu, nie zapisywane
 
@@ -400,6 +406,80 @@ def _apply(db: Session, data: dict, actor: User, batch: ImportBatch, report: Rep
             report.counts["targety"] += 1
         _row(db, report, "targety", rownum, add_target)
 
+    # 5. Klienci w lejku, sprawdzenia NIP przez BOK i oferty.
+    clients: dict[str, Client] = {}
+    for rownum, v in data.get("klienci", []):
+        def add_client(v=v):
+            if v["id_zewn"] in clients or db.scalar(select(Client).where(Client.ext_id == v["id_zewn"])):
+                raise RowError("id_zewn", f"klient {v['id_zewn']} występuje dwa razy albo był już zaimportowany")
+            owner = user_by_email(v["handlowiec_email"])
+            if not owner or owner.role not in SELLING_ROLES:
+                raise RowError("handlowiec_email", f"nie ma osoby sprzedającej {v['handlowiec_email']}")
+            nip = "".join(ch for ch in (v["nip"] or "") if ch.isdigit())
+            if nip and not svc_valid_nip(nip):
+                raise RowError("nip", "NIP ma niepoprawną sumę kontrolną")
+            if nip and db.scalar(select(Client).where(Client.nip == nip)):
+                raise RowError("nip", "klient z tym NIP-em już jest w platformie")
+            stage = v["etap"] or "lead"
+            if stage == "przegrana" and not v["powod_przegranej"]:
+                raise RowError("powod_przegranej", "przy przegranej podaj powód")
+            c = Client(
+                name=v["nazwa"][:300], nip=nip or None, contact_person=(v["osoba_kontaktowa"] or "")[:200],
+                phone=(v["telefon"] or "")[:50], email=(v["email"] or "")[:200], source=v["zrodlo"] or "",
+                owner_id=owner.id, stage=stage, stage_since=date.today(), next_step=(v["nastepny_krok"] or "")[:300],
+                next_step_date=v["nastepny_krok_data"], lost_reason=v["powod_przegranej"] or "", ext_id=v["id_zewn"], **tag,
+            )
+            db.add(c)
+            db.flush()
+            db.add(ClientEvent(client_id=c.id, kind="system", text=(f"Zaimportowano z pliku {batch.filename}. " + (v["notatka"] or "")).strip()))
+            clients[v["id_zewn"]] = c
+            report.counts["klienci"] += 1
+        _row(db, report, "klienci", rownum, add_client)
+
+    def client_of(ext: str) -> Client:
+        c = clients.get(ext) or db.scalar(select(Client).where(Client.ext_id == ext))
+        if not c:
+            raise RowError("klient_id_zewn", f"brak klienta {ext} w arkuszu klienci")
+        return c
+
+    def supplier_of(name: str) -> Supplier:
+        s = suppliers.get(name.lower()) or db.scalar(select(Supplier).where(Supplier.name == name))
+        if not s:
+            raise RowError("spolka", f"nie ma spółki {name} w pliku ani w platformie")
+        return s
+
+    for rownum, v in data.get("sprawdzenia_nip", []):
+        def add_check(v=v):
+            c, s = client_of(v["klient_id_zewn"]), supplier_of(v["spolka"])
+            if not c.nip:
+                raise RowError("klient_id_zewn", "klient bez NIP-u nie może mieć sprawdzenia w BOK")
+            done = v["wynik"] != "do_sprawdzenia"
+            db.add(NipCheck(
+                client_id=c.id, supplier_id=s.id, result=v["wynik"], note=(v["uwagi"] or "")[:500],
+                reserved_until=v["zarezerwowany_do"] if v["wynik"] == "zarezerwowany" else None,
+                requested_by_id=c.owner_id, checked_at=datetime.utcnow() if done else None,
+            ))
+            db.flush()
+            report.counts["sprawdzenia"] += 1
+        _row(db, report, "sprawdzenia_nip", rownum, add_check)
+
+    for rownum, v in data.get("oferty", []):
+        def add_client_offer(v=v):
+            c, s = client_of(v["klient_id_zewn"]), supplier_of(v["spolka"])
+            sent = v["data_wyslania"]
+            db.add(ClientOffer(
+                client_id=c.id, supplier_id=s.id, pricing_product=v["produkt"] or "fix", medium=v["medium"] or "energia",
+                base_price_pln_mwh=v["cena_bazowa_zl_mwh"], markup_pln_mwh=v["marza_zl_mwh"],
+                annual_volume_mwh=v["wolumen_roczny_mwh"], term_months=v["okres_miesiace"], sent_date=sent,
+                valid_until=v["wazna_do"] or sent + timedelta(days=OFFER_VALID_DAYS), status=v["status"] or "otwarta",
+                created_by_id=c.owner_id,
+            ))
+            db.add(ClientEvent(client_id=c.id, kind="oferta", day=sent, user_id=c.owner_id,
+                               text=f"Oferta {s.name}, marża {v['marza_zl_mwh']} zł/MWh."))
+            db.flush()
+            report.counts["oferty"] += 1
+        _row(db, report, "oferty", rownum, add_client_offer)
+
 
 def svc_valid_nip(nip: str) -> bool:
     weights = [6, 5, 7, 2, 3, 4, 5, 6, 7]
@@ -475,6 +555,16 @@ def blockers(db: Session, batch: ImportBatch) -> list[str]:
     )).count()
     if n:
         out.append(f"{n} umów spoza tej paczki korzysta z jej osób albo spółek")
+    n = db.query(Client).filter(
+        Client.import_batch_id.is_(None) | (Client.import_batch_id != bid), Client.owner_id.in_(users)
+    ).count()
+    if n:
+        out.append(f"{n} klientów spoza tej paczki ma opiekuna z tej paczki")
+    foreign_client = Client.import_batch_id.is_(None) | (Client.import_batch_id != bid)
+    n = db.query(NipCheck).join(Client).filter(foreign_client, NipCheck.supplier_id.in_(sups)).count()
+    n += db.query(ClientOffer).join(Client).filter(foreign_client, ClientOffer.supplier_id.in_(sups)).count()
+    if n:
+        out.append(f"{n} sprawdzeń NIP albo ofert spoza tej paczki dotyczy jej spółek")
     n = db.query(User).filter(
         User.import_batch_id.is_(None) | (User.import_batch_id != bid), User.manager_id.in_(users)
     ).count()
@@ -506,6 +596,16 @@ def revert(db: Session, batch: ImportBatch) -> dict:
         db.execute(update(SalesTarget).where(SalesTarget.set_by_id.in_(user_ids)).values(set_by_id=None))
         for t in db.scalars(select(SalesTarget).where(SalesTarget.user_id.in_(user_ids))):
             db.delete(t)
+        db.execute(update(NipCheck).where(NipCheck.requested_by_id.in_(user_ids)).values(requested_by_id=None))
+        db.execute(update(NipCheck).where(NipCheck.checked_by_id.in_(user_ids)).values(checked_by_id=None))
+        db.execute(update(ClientOffer).where(ClientOffer.created_by_id.in_(user_ids)).values(created_by_id=None))
+        db.execute(update(ClientEvent).where(ClientEvent.user_id.in_(user_ids)).values(user_id=None))
+        db.execute(update(Checklist).where(Checklist.updated_by_id.in_(user_ids)).values(updated_by_id=None))
+    counts["klienci"] = 0
+    for cl in db.scalars(select(Client).where(Client.import_batch_id == bid)):
+        db.delete(cl)
+        counts["klienci"] += 1
+    db.flush()
     for c in db.scalars(select(Contract).where(Contract.import_batch_id == bid)):
         db.delete(c)
         counts["umowy"] += 1

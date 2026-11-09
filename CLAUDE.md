@@ -286,5 +286,29 @@ Oferta to dziś umowa w statusie „Oferta” — rozwiązanie przejściowe do m
   „Ci, którzy mają juniora: 200 000” z dyktowanej wiadomości zinterpretowane jako senior.
 - Zespół: ranking miesiąca (wykonanie targetu), „Rytm: umowy w N z ostatnich 6 miesięcy”
   (≤3 = „nieregularnie”). Strona osoby: zwijane statystyki po miesiącach z targetem
-  i % w każdym miesiącu, „brak umów” wyróżnione. Pulpit: oferty starsze niż 14 dni
+  i % w każdym miesiącu, „brak umów” wyróżnione. Pulpit: oferty czekające 3 dni i dłużej
   wyróżnione („Czeka N dni”).
+
+## Dzień handlowca, wdrożenie 1 (10.11.2026)
+
+Decyzje właścicielki: alarm to lejek, nie norma tygodniowa (mniej niż 3 klientów w pracy:
+kontakt, dane, oferta = pilny sygnał „dodaj nowych”); menedżer pilnuje wypełnienia lejka
+na każdym etapie; handlowiec sam wskazuje spółki do sprawdzenia NIP, BOK sprawdza tylko je;
+duplikat NIP: tylko „NIP obsługuje już Twój kolega z biura. Zapytaj BOK o szczegóły.”;
+oferta ważna do 7 dni, telefon po 3 dniach bez odpowiedzi.
+
+Kod: `app/pipeline.py` (logika, bez FastAPI), `app/routes/klienci.py` (/dzien, /klienci,
+/klienci/{id}, /klienci/{id}/kalkulator, /bok, /konto/listy), modele Client, NipCheck,
+ClientOffer, ClientEvent, Checklist (nowe tabele, bez nowych kolumn w starych). Etapy:
+lead, kontakt, dane, oferta, wygrana, przegrana (z powodem). Zakładki: handlowiec i menedżer
+zaczynają od „Mój dzień”, BOK od „Zlecenia” (/bok), właściciel od pulpitu; Raporty są
+podsekcją Portfela. Umowa z oferty: /umowy/nowa?klient=&oferta= wypełnia formularz, po
+zapisie klient przechodzi na „Umowa podpisana”. Pulpit „Oferty złożone” czyta oferty
+z kart klientów (i dawne umowy w statusie Oferta). Standard Excela 1.2: arkusze klienci,
+sprawdzenia_nip, oferty. Demo: 100 umów, 41 klientów (14 z ofertą), 26 sprawdzeń
+(10 czeka na BOK); Michał Wójcik i Paweł Kamiński mają alarm małego lejka.
+Sprawdzone na PostgreSQL 16: baza z poprzedniej wersji, cofnięcie starego demo, nowe demo.
+
+Nie zrobione (następne): przedłużanie rezerwacji z dowodami, karta spółki dla BOK
+(szablony e-maili), wersje cenników, punkty poboru, kalendarz w telefonie (ICS),
+podpowiedzi rozmów, nazwa firmy z wykazu VAT po NIP, uporządkowanie reszty BOK.

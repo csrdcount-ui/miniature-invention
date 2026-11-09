@@ -52,12 +52,12 @@
 </dl>
 {% for g in offers.groups %}
 <details class="zwijane">
-  <summary>{% if not offers.show_mine_only %}{{ g.trader_name }}: {% else %}Twoje oferty: {% endif %}{{ g.count|oferty }}, {{ g.markup|zl }}{% if g.stale %}, czeka ponad {{ OFFER_STALE_DAYS }} dni: {{ g.stale }}{% endif %}</summary>
+  <summary>{% if not offers.show_mine_only %}{{ g.trader_name }}: {% else %}Twoje oferty: {% endif %}{{ g.count|oferty }}, {{ g.markup|zl }}{% if g.stale %}, bez odpowiedzi od {{ OFFER_STALE_DAYS }}+ dni: {{ g.stale }}{% endif %}</summary>
   <ul class="karty wnetrze">
   {% for o in g.lista %}
     <li>
-      <h3><a href="/umowy/{{ o.id }}">{{ o.client_name }}</a> {{ produkt_plakietka(o.pricing_product) }}</h3>
-      {% if o.days > OFFER_STALE_DAYS %}<p><strong class="uwaga">Czeka {{ o.days }} dni — zapytaj o decyzję klienta.</strong></p>{% endif %}
+      <h3><a href="{{ o.url }}">{{ o.client_name }}</a> {{ produkt_plakietka(o.pricing_product) }}</h3>
+      {% if o.days >= OFFER_STALE_DAYS %}<p><strong class="uwaga">Czeka {{ o.days }} dni: zadzwoń, jak oferta się podoba, czy coś poprawić.</strong></p>{% endif %}
       <p>Złożona {{ o.date|data }} ({{ o.days }} {{ "dzień" if o.days == 1 else "dni" }} temu), {{ o.supplier_name }}, {{ MEDIA[o.medium]|lower }}</p>
       <p>{{ o.annual_volume_mwh|mwh }} rocznie, {{ o.term_months }} mies., marża {{ o.markup_pln_mwh|zl }}/MWh</p>
       <p>Masa marży po podpisaniu: <strong>{{ o.markup|zl }}</strong></p>
@@ -66,9 +66,9 @@
   </ul>
 </details>
 {% endfor %}
-<p class="podpowiedz">Oferta to umowa w statusie „Oferta”. Gdy klient podpisze, zmień status na „Umowa podpisana”. <a href="/umowy?status=Oferta">Wszystkie oferty na liście umów</a>.</p>
+<p class="podpowiedz">Oferty z kart klientów. Gdy klient podpisze, na karcie klienta stuknij „Klient podpisał: zapisz umowę”. <a href="/klienci?etap=oferta">Klienci z ofertą</a>.</p>
 {% else %}
-<p>Brak otwartych ofert. Ofertę zapiszesz jako umowę w statusie „Oferta”: <a href="/umowy/nowa">dodaj ofertę</a>.</p>
+<p>Brak otwartych ofert. Ofertę zapiszesz na karcie klienta, w spółce z wolnym NIP-em: <a href="/klienci">klienci</a>.</p>
 {% endif %}
 
 {% if user.role == ROLE_OWNER %}

@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}Mój dzień{% endblock %}
+{% block content %}
+{% macro lejek(f) -%}
+<ul class="lejek">
+  {% for s in OPEN_STAGES %}<li><a href="/klienci?etap={{ s }}{% if handlowiec is defined %}&handlowiec={{ handlowiec }}{% endif %}">{{ STAGES[s] }}: <strong>{{ f.counts[s] }}</strong></a></li>{% endfor %}
+  <li>Umowy podpisane w tym miesiącu: <strong>{{ f.signed }}</strong></li>
+</ul>
+{%- endmacro %}
+<h1>Mój dzień, {{ d.today|data }}</h1>
+<p><a class="przycisk" href="/klienci/nowy">Szybki lead: dodaj klienta</a></p>
+
+<p class="cel">{{ month_label|capitalize }}: {% if mine.target is not none %}<strong>{{ mine.pct or 0 }}% targetu</strong>{% if mine.target > mine.markup %}, brakuje {{ (mine.target - mine.markup)|zl }}{% endif %}{% else %}masa marży {{ mine.markup|zl }}, target nie ustawiony{% endif %}.</p>
+
+<h2>Pilne{% if d.urgent %} ({{ d.urgent }}){% endif %}</h2>
+{% if not d.urgent %}
+<p>Nic pilnego. Dobry moment na pozyskiwanie nowych klientów.</p>
+{% else %}
+<ul class="karty">
+  {% if d.funnel.low %}
+  <li class="alarm">
+    <h3>Za mało klientów w pracy: {{ d.funnel.work }}</h3>
+    <p>Pracujesz z mniej niż {{ d.funnel.min }} klientami (kontakt, zbieranie danych, oferty). Z tak małego lejka sprzeda się najwyżej jedna umowa. Dodaj nowych potencjalnych klientów i wyślij ich NIP-y do BOK.</p>
+    <p><a href="/klienci/nowy">Dodaj klienta</a>{% if d.funnel.counts.lead %} albo <a href="/klienci?etap=lead">zadzwoń do zimnych leadów ({{ d.funnel.counts.lead }})</a>{% endif %}.</p>
+  </li>
+  {% endif %}
+  {% for c, o, st in d.followups %}
+  <li>
+    <h3><a href="/klienci/{{ c.id }}">{{ c.name }}</a>: zapytaj o ofertę</h3>
+    <p>Oferta {{ o.supplier.name }} wysłana {{ st.days }} dni temu, bez odpowiedzi. Zadzwoń: jak się podoba, czy wszystko jest zrozumiałe, czy coś poprawić.{% if c.phone %} Telefon: <a href="tel:{{ c.phone }}">{{ c.phone }}</a>.{% endif %}</p>
+  </li>
+  {% endfor %}
+  {% for c, o, st in d.expiring %}
+  <li>
+    <h3><a href="/klienci/{{ c.id }}">{{ c.name }}</a>: {{ "oferta wygasła" if st.expired else "oferta wygasa" }}</h3>
+    <p>Oferta {{ o.supplier.name }} ważna do {{ o.valid_until|data }}. {{ "Przygotuj nową z aktualnego cennika albo zamknij temat." if st.expired else "Domknij decyzję klienta, zanim zmieni się cennik." }}</p>
+  </li>
+  {% endfor %}
+  {% for c in d.overdue %}
+  <li>
+    <h3><a href="/klienci/{{ c.id }}">{{ c.name }}</a>: zaległe od {{ c.next_step_date|data }}</h3>
+    <p>{{ c.next_step }}{% if c.phone %}. Telefon: <a href="tel:{{ c.phone }}">{{ c.phone }}</a>{% endif %}</p>
+  </li>
+  {% endfor %}
+  {% for c in d.no_step %}
+  <li>
+    <h3><a href="/klienci/{{ c.id }}">{{ c.name }}</a>: brak następnego kroku</h3>
+    <p>Każdy klient w toku musi mieć następny krok z datą. Etap: {{ STAGES[c.stage]|lower }}.</p>
+  </li>
+  {% endfor %}
+  {% for c, k in d.reservations %}
+  <li>
+    <h3><a href="/klienci/{{ c.id }}">{{ c.name }}</a>: rezerwacja wygasa {{ k.reserved_until|data }}</h3>
+    <p>{{ k.supplier.name }}. Do przedłużenia potrzebne dowody rozmów: e-maile, złożona oferta, wiadomość od klienta. Przekaż je BOK.</p>
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+<h2>Dziś ({{ d.todays|length }})</h2>
+{% if d.todays %}
+<ul class="karty">
+  {% for c in d.todays %}
+  <li>
+    <h3><a href="/klienci/{{ c.id }}">{{ c.name }}</a></h3>
+    <p>{{ c.next_step }}</p>
+    <p class="podpowiedz">{{ STAGES[c.stage] }}{% if c.phone %}, telefon: <a href="tel:{{ c.phone }}">{{ c.phone }}</a>{% endif %}</p>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>Na dziś nic nie zaplanowano.</p>
+{% endif %}
+
+<h2>Od BOK</h2>
+{% if d.from_bok %}
+<ul>
+  {% for k in d.from_bok %}
+  <li><a href="/klienci/{{ k.client_id }}">{{ k.client.name }}</a>, {{ k.supplier.name }}: <strong>{{ NIP_RESULTS[k.result]|lower }}</strong>{% if k.reserved_until %} do {{ k.reserved_until|data }}{% endif %}{% if k.note %}. {{ k.note }}{% endif %}</li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>Brak nowych odpowiedzi z ostatnich 7 dni.</p>
+{% endif %}
+{% if d.waiting_bok %}<p class="podpowiedz">Czeka na BOK: {{ d.waiting_bok|length }} {{ "sprawdzenie" if d.waiting_bok|length == 1 else "sprawdzenia" if d.waiting_bok|length < 5 else "sprawdzeń" }}.</p>{% endif %}
+
+<details class="zwijane">
+  <summary>Mój lejek: {{ d.funnel.work }} w pracy, {{ d.funnel.counts.lead }} zimnych</summary>
+  <div class="wnetrze">{{ lejek(d.funnel) }}</div>
+</details>
+
+{% if team_funnels is defined %}
+<details class="zwijane">
+  <summary>Lejek zespołu: {{ team_funnel.work }} w pracy{% set low = team_funnels|selectattr("1.low")|list %}{% if low %}, za mało w lejku: {{ low|length }} os.{% endif %}</summary>
+  <div class="wnetrze">
+    {{ lejek(team_funnel) }}
+    <ul class="karty">
+    {% for p, f in team_funnels %}
+      <li{% if f.low %} class="alarm"{% endif %}>
+        <h3><a href="/klienci?handlowiec={{ p.id }}&etap=w_toku">{{ p.name }}</a>{% if f.low %}: za mało klientów w pracy{% endif %}</h3>
+        <p>Zimne {{ f.counts.lead }}, kontakt {{ f.counts.kontakt }}, dane {{ f.counts.dane }}, oferty {{ f.counts.oferta }}, umowy w tym miesiącu {{ f.signed }}.</p>
+      </li>
+    {% endfor %}
+    </ul>
+  </div>
+</details>
+{% endif %}
+
+<details class="zwijane">
+  <summary>Najbliższe 7 dni ({{ d.week|length }})</summary>
+  <div class="wnetrze">
+  {% if d.week %}
+  <ul>
+    {% for c in d.week %}<li>{{ c.next_step_date|data }}: <a href="/klienci/{{ c.id }}">{{ c.name }}</a>, {{ c.next_step }}</li>{% endfor %}
+  </ul>
+  {% else %}<p>Nic zaplanowanego.</p>{% endif %}
+  </div>
+</details>
+<p><a href="/pulpit">Sprzedaż i statystyki</a></p>
+{% endblock %}

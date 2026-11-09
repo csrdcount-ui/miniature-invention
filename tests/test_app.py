@@ -197,7 +197,7 @@ def test_zakladki_wlasciciela(client):
     setup_company(client)
     login(client, "kris@firma.pl")
     menu = _menu(client.get("/pulpit").text)
-    for label in ["Portfel", "Spółki", "Zespół", "Raporty", "Konto"]:
+    for label in ["Klienci", "Portfel", "Spółki", "Zespół", "Konto"]:  # Raporty: podsekcja Portfela
         assert f"<span>{label}</span>" in menu, label
     # stare, długie menu zniknęło z każdej strony
     html = client.get("/pulpit").text
@@ -491,7 +491,7 @@ def test_logika_biznesowa_nie_zalezy_od_warstwy_stron():
     import ast
     import pathlib
     root = pathlib.Path(__file__).resolve().parent.parent / "app"
-    for name in ["engine.py", "services.py", "models.py", "migrate.py"]:
+    for name in ["engine.py", "services.py", "models.py", "migrate.py", "pipeline.py"]:
         tree = ast.parse((root / name).read_text())
         for node in ast.walk(tree):
             if isinstance(node, ast.ImportFrom):
@@ -676,7 +676,7 @@ def test_wlasciciel_resetuje_haslo_osoby(client):
     r = post(client, "/logowanie", "/logowanie", {"email": "hania@firma.pl", "haslo": PW})
     assert r.status_code == 401
     r = post(client, "/logowanie", "/logowanie", {"email": "hania@firma.pl", "haslo": new_password})
-    assert r.status_code == 303 and r.headers["location"] == "/pulpit"
+    assert r.status_code == 303 and r.headers["location"] == "/dzien"  # handlowiec zaczyna od dnia pracy
 
 
 def test_reset_hasla_tylko_dla_wlasciciela(client):
@@ -1133,4 +1133,4 @@ def test_stara_oferta_jest_wyrozniona(client):
     login(client, "hania@firma.pl")
     _umowa(client, klient="Stara oferta", status="Oferta", podpisana=(date.today() - timedelta(days=20)).isoformat())
     page = client.get("/pulpit").text
-    assert "Czeka 20 dni" in page and "czeka ponad 14 dni: 1" in page
+    assert "Czeka 20 dni" in page and "bez odpowiedzi od 3+ dni: 1" in page

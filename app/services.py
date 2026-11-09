@@ -675,12 +675,53 @@ def month_sales(db: Session, user_ids: list[int], month: date) -> dict:
 # --------------------------------------------------------------------------
 
 PIPELINE_STATUSES = ("Lead", "Kontakt", "Oferta")
-OFFER_STALE_DAYS = 14  # oferta bez decyzji dłużej niż tyle dni jest wyróżniona na pulpicie
+OFFER_STALE_DAYS = 3  # po 3 dniach bez decyzji klienta handlowiec dzwoni (praktyka właścicielki, 10.11.2026)
 OFFER_STATUS = "Oferta"
 
 
-def offers_overview(viewer: User, contracts: list[Contract], show_tranche_b: bool = True) -> dict:
-    """Oferty złożone (status „Oferta”) pogrupowane po handlowcach, z prognozą, gdyby wszystkie się zamknęły.
+def _offer_items(db: Optional[Session], contracts: list[Contract], client_offers: list) -> list[tuple]:
+    """Wspólny kształt ofert: dawne umowy w statusie „Oferta” i oferty z kart klientów.
+
+    Dla oferty z karty klienta liczymy warunki tak, jakby umowę podpisano dziś: reguły spółki
+    i stawki obowiązujące dziś (to prognoza, nie zamrożone warunki).
+    """
+    today = date.today()
+    items = []
+    for c in contracts:
+        if c.status == OFFER_STATUS:
+            items.append((c.trader_id, c.trader, c.manager_id, calculate_contract(c), {
+                "url": f"/umowy/{c.id}", "client_name": c.client_name, "supplier_name": c.supplier.name,
+                "medium": c.medium, "pricing_product": c.pricing_product, "annual_volume_mwh": c.annual_volume_mwh,
+                "markup_pln_mwh": c.markup_pln_mwh, "term_months": c.term_months, "date": c.signed_date,
+            }))
+    for o in client_offers:
+        if o.status != "otwarta" or o.client.stage != "oferta" or db is None:
+            continue
+        owner = o.client.owner
+        rs = rule_set_on(db, o.supplier_id, today)
+        rate = user_rate_on(db, owner.id, today)
+        mrate = user_rate_on(db, owner.manager_id, today) if owner.manager_id else None
+        if rs is None:
+            continue
+        b = eng.calculate(eng.ContractTerms(
+            annual_volume_mwh=eng.D(o.annual_volume_mwh), term_months=int(o.term_months),
+            markup_pln_mwh=eng.D(o.markup_pln_mwh), broker_share_pct=eng.D(rs.broker_share_pct),
+            first_tranche_pct=eng.D(rs.first_tranche_pct),
+            trader_share_pct=eng.D(rate.trader_share_pct) if rate else Decimal(0),
+            manager_override_pct=eng.D(mrate.override_pct) if mrate else Decimal(0),
+            manager_override_base=mrate.override_base if mrate else eng.OVERRIDE_OD_NARZUTU,
+        ))
+        items.append((owner.id, owner, owner.manager_id, b, {
+            "url": f"/klienci/{o.client_id}", "client_name": o.client.name, "supplier_name": o.supplier.name,
+            "medium": o.medium, "pricing_product": o.pricing_product, "annual_volume_mwh": o.annual_volume_mwh,
+            "markup_pln_mwh": o.markup_pln_mwh, "term_months": o.term_months, "date": o.sent_date,
+        }))
+    return items
+
+
+def offers_overview(viewer: User, contracts: list[Contract], show_tranche_b: bool = True,
+                    client_offers: tuple = (), db: Optional[Session] = None) -> dict:
+    """Oferty złożone pogrupowane po handlowcach, z prognozą, gdyby wszystkie się zamknęły.
 
     Prognoza tylko w kolumnach dozwolonych dla roli: właściciel widzi przychód spółki, menedżer swój
     override, handlowiec swoją prowizję (transzę A, gdy biuro ukrywa transzę B). Masa marży — wszyscy.
@@ -688,28 +729,21 @@ def offers_overview(viewer: User, contracts: list[Contract], show_tranche_b: boo
     today = date.today()
     out = {"count": 0, "markup": Decimal(0), "owner": Decimal(0), "override": Decimal(0), "mine": Decimal(0), "groups": []}
     groups: dict[int, dict] = {}
-    for c in contracts:
-        if c.status != OFFER_STATUS:
-            continue
-        b = calculate_contract(c)
+    for trader_id, trader, manager_id, b, item in _offer_items(db, contracts, list(client_offers)):
         out["count"] += 1
         out["markup"] += b.total_markup
         if viewer.role == ROLE_OWNER:
             out["owner"] += b.owner_margin.total
-        if c.manager_id == viewer.id:
+        if manager_id == viewer.id:
             out["override"] += b.manager_override.total
-        if c.trader_id == viewer.id:
+        if trader_id == viewer.id:
             out["mine"] += b.trader.total if show_tranche_b else b.trader.tranche1
-        g = groups.setdefault(c.trader_id, {"trader_name": c.trader.name, "count": 0, "markup": Decimal(0), "lista": []})
+        g = groups.setdefault(trader_id, {"trader_name": trader.name, "count": 0, "markup": Decimal(0), "lista": [], "stale": 0})
         g["count"] += 1
         g["markup"] += b.total_markup
-        g["stale"] = g.get("stale", 0) + ((today - c.signed_date).days > OFFER_STALE_DAYS)
-        g["lista"].append({
-            "id": c.id, "client_name": c.client_name, "supplier_name": c.supplier.name, "medium": c.medium,
-            "pricing_product": c.pricing_product, "annual_volume_mwh": c.annual_volume_mwh,
-            "markup_pln_mwh": c.markup_pln_mwh, "term_months": c.term_months, "markup": b.total_markup,
-            "date": c.signed_date, "days": (today - c.signed_date).days,
-        })
+        days = (today - item["date"]).days
+        g["stale"] += days >= OFFER_STALE_DAYS
+        g["lista"].append({**item, "markup": b.total_markup, "days": days})
     for g in groups.values():
         g["lista"].sort(key=lambda i: i["date"])
     out["groups"] = sorted(groups.values(), key=lambda g: (-g["markup"], g["trader_name"]))

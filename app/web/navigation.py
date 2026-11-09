@@ -3,28 +3,33 @@ from __future__ import annotations
 
 from typing import Optional
 
-from ..models import ROLE_BOK, ROLE_MANAGER, ROLE_OWNER, User
+from ..models import ROLE_BOK, ROLE_MANAGER, ROLE_OWNER, ROLE_TRADER, User
 
 # (klucz, podpis, adres, prefiksy adresów należących do zakładki, dostęp)
 # dostęp: False (każdy zalogowany), "owner" (tylko właściciel),
-#         "team" (właściciel, menedżer, albo BOK gdy widzi prowizje)
+#         "team" (właściciel, menedżer, albo BOK gdy widzi prowizje),
+#         "seller" (handlowiec i menedżer: dzień pracy), "bok" (BOK i właściciel: kolejka zleceń)
+# Na telefonie najwyżej 5 zakładek; Raporty (na razie zapowiedź) są podsekcją Portfela.
 TABS = [
-    ("portfel", "Portfel", "/pulpit", ("/pulpit", "/umowy"), False),
+    ("dzien", "Mój dzień", "/dzien", ("/dzien",), "seller"),
+    ("bok", "Zlecenia", "/bok", ("/bok",), "bokq"),
+    ("klienci", "Klienci", "/klienci", ("/klienci",), False),
+    ("portfel", "Portfel", "/pulpit", ("/pulpit", "/umowy", "/raporty"), False),
     ("spolki", "Spółki", "/spolki", ("/spolki",), "owner"),
     ("zespol", "Zespół", "/zespol", ("/zespol",), "team"),
-    ("raporty", "Raporty", "/raporty", ("/raporty",), False),
     ("konto", "Konto", "/konto", ("/konto", "/haslo"), False),
 ]
 
 # podsekcje widoczne tylko dla właściciela
-OWNER_ONLY_SUBTABS = {"/konto/import", "/zespol/nowa"}
+OWNER_ONLY_SUBTABS = {"/konto/import", "/zespol/nowa", "/konto/listy"}
 
 SUBTABS = {
-    "portfel": [("Podsumowanie", "/pulpit"), ("Umowy", "/umowy"), ("Nowa umowa", "/umowy/nowa")],
+    "portfel": [("Podsumowanie", "/pulpit"), ("Umowy", "/umowy"), ("Nowa umowa", "/umowy/nowa"), ("Raporty", "/raporty")],
+    "klienci": [("Lista klientów", "/klienci"), ("Nowy klient", "/klienci/nowy")],
     "spolki": [("Lista spółek", "/spolki"), ("Dodaj spółkę", "/spolki/nowa")],
     "zespol": [("Lista osób", "/zespol"), ("Dodaj osobę", "/zespol/nowa")],
     "konto": [("Moje konto", "/konto"), ("Moje dane", "/konto/dane"), ("Zmiana hasła", "/haslo"),
-              ("Import danych", "/konto/import")],
+              ("Listy wymagań", "/konto/listy"), ("Import danych", "/konto/import")],
 }
 
 
@@ -39,6 +44,10 @@ def navigation(user: Optional[User], path: str, *, bok_sees_commissions: bool = 
     tabs, active = [], None
     for key, label, url, prefixes, access in TABS:
         if access == "owner" and user.role != ROLE_OWNER:
+            continue
+        if access == "seller" and user.role not in (ROLE_MANAGER, ROLE_TRADER):
+            continue
+        if access == "bokq" and user.role != ROLE_BOK:
             continue
         if access == "team" and not (
             user.role in (ROLE_OWNER, ROLE_MANAGER) or (user.role == ROLE_BOK and bok_sees_commissions)

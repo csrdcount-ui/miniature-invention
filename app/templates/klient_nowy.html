@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% from "_makra.html" import pole %}
+{% block title %}Nowy klient{% endblock %}
+{% block content %}
+<h1>Nowy klient</h1>
+<p>Wystarczy nazwa firmy. NIP będzie potrzebny, żeby BOK sprawdził, w których spółkach możesz ofertować.</p>
+<form method="post" action="/klienci/nowy" class="stack">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  {{ pole("nazwa", "Nazwa firmy", form.nazwa, required=true) }}
+  {{ pole("nip", "NIP", form.nip, hint="10 cyfr. Sprawdzam sumę kontrolną i czy klienta nie prowadzi już ktoś w biurze.", extra='inputmode="numeric"') }}
+  {{ pole("osoba", "Osoba kontaktowa", form.osoba) }}
+  {{ pole("telefon", "Telefon", form.telefon, type="tel") }}
+  {{ pole("email", "E-mail", form.email, type="email") }}
+  <div class="pole">
+    <label for="f-zrodlo">Skąd jest ten lead</label>
+    <select id="f-zrodlo" name="zrodlo">
+      <option value="">Nie wybrano</option>
+      {% for s in sources %}<option value="{{ s }}" {% if form.zrodlo == s %}selected{% endif %}>{{ s }}</option>{% endfor %}
+    </select>
+  </div>
+  {% if owners|length > 1 %}
+  <div class="pole">
+    <label for="f-opiekun">Opiekun klienta</label>
+    <select id="f-opiekun" name="opiekun">
+      {% for o in owners %}<option value="{{ o.id }}" {% if (form.opiekun or user.id|string) == o.id|string %}selected{% endif %}>{{ o.name }}</option>{% endfor %}
+    </select>
+  </div>
+  {% endif %}
+  {{ pole("krok", "Następny krok", form.krok, hint="Zostaw puste: „Pierwszy telefon: osoba decyzyjna i termin końca obecnej umowy”.") }}
+  {{ pole("krok_data", "Kiedy", form.krok_data or tomorrow.isoformat(), type="date") }}
+  <div class="pole">
+    <label for="f-notatka">Notatka</label>
+    <textarea id="f-notatka" name="notatka" rows="3">{{ form.notatka or "" }}</textarea>
+  </div>
+  <button type="submit">Zapisz klienta</button>
+</form>
+{% endblock %}

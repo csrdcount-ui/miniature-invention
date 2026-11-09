@@ -362,3 +362,182 @@ class ImportBatch(Base):
     summary: Mapped[str] = mapped_column(Text, default="")
     # treść pliku trzymana tylko do zatwierdzenia, potem kasowana
     content: Mapped[Optional[bytes]] = mapped_column(LargeBinary, nullable=True)
+
+
+# --------------------------------------------------------------------------
+# Lejek sprzedaży: klient, sprawdzenie NIP w BOK, oferta, oś zdarzeń
+# --------------------------------------------------------------------------
+
+# Etapy lejka (ustalone z właścicielką 10.11.2026). Sprawdzenie NIP w BOK jest
+# osobnym procesem obok etapów: ofertę można złożyć tylko w spółce z wolnym NIP-em.
+STAGES = {
+    "lead": "Zimny lead",
+    "kontakt": "Kontakt i osoba decyzyjna",
+    "dane": "Zbieranie danych od klienta",
+    "oferta": "Oferta złożona",
+    "wygrana": "Umowa podpisana",
+    "przegrana": "Przegrana",
+}
+OPEN_STAGES = ("lead", "kontakt", "dane", "oferta")
+WORK_STAGES = ("kontakt", "dane", "oferta")  # „wątki, na których handlowiec pracuje”
+LOST_REASONS = [
+    "Cena",
+    "Klient zostaje u obecnego sprzedawcy",
+    "Wybrał innego brokera",
+    "NIP zajęty we wszystkich spółkach",
+    "Negatywny scoring",
+    "Brak decyzji klienta",
+    "Inny powód",
+]
+LEAD_SOURCES = ["Polecenie", "Zimny telefon", "Baza firm", "Kampania", "Strona internetowa", "Klient powracający", "Inne"]
+
+# Wynik sprawdzenia NIP-u przez BOK w danej spółce.
+NIP_CHECK_RESULTS = {
+    "do_sprawdzenia": "Czeka na BOK",
+    "zarezerwowany": "Wolny, zarezerwowany dla nas",
+    "zajety": "Zajęty (inny agent albo sprzedaż spółki)",
+    "scoring": "Negatywny scoring, nie ofertować",
+}
+OFFER_STATUSES = {"otwarta": "Czeka na decyzję klienta", "przyjeta": "Przyjęta", "odrzucona": "Odrzucona"}
+OFFER_VALID_DAYS = 7  # oferta ważna zwykle do tygodnia (ceny giełdowe)
+OFFER_FOLLOWUP_DAYS = 3  # po 3 dniach bez odpowiedzi: telefon do klienta
+EVENT_KINDS = {
+    "telefon": "Telefon",
+    "spotkanie": "Spotkanie",
+    "email": "E-mail",
+    "notatka": "Notatka",
+    "etap": "Zmiana etapu",
+    "bok": "BOK",
+    "oferta": "Oferta",
+    "system": "System",
+}
+CONTACT_KINDS = ("telefon", "spotkanie", "email")
+
+
+class Client(Base):
+    """Karta klienta. Jeden NIP = jedna karta w biurze, jeden opiekun."""
+
+    __tablename__ = "clients"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(300))
+    nip: Mapped[Optional[str]] = mapped_column(String(10), unique=True, nullable=True)
+    contact_person: Mapped[str] = mapped_column(String(200), default="")
+    phone: Mapped[str] = mapped_column(String(50), default="")
+    email: Mapped[str] = mapped_column(String(200), default="")
+    source: Mapped[str] = mapped_column(String(50), default="")
+    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    stage: Mapped[str] = mapped_column(String(20), default="lead", index=True)
+    stage_since: Mapped[date] = mapped_column(Date, default=date.today)
+    next_step: Mapped[str] = mapped_column(String(300), default="")
+    next_step_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True, index=True)
+    lost_reason: Mapped[str] = mapped_column(String(100), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    ext_id: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    import_batch_id: Mapped[Optional[int]] = mapped_column(ForeignKey("import_batches.id"), nullable=True)
+
+    owner: Mapped[User] = relationship(foreign_keys=[owner_id])
+    checks: Mapped[list["NipCheck"]] = relationship(
+        back_populates="client", cascade="all, delete-orphan", order_by="NipCheck.id"
+    )
+    offers: Mapped[list["ClientOffer"]] = relationship(
+        back_populates="client", cascade="all, delete-orphan", order_by="ClientOffer.id.desc()"
+    )
+    events: Mapped[list["ClientEvent"]] = relationship(
+        back_populates="client", cascade="all, delete-orphan", order_by="ClientEvent.id.desc()"
+    )
+
+
+class NipCheck(Base):
+    """Zlecenie dla BOK: sprawdź NIP klienta w tej spółce (rezerwacja i scoring)."""
+
+    __tablename__ = "nip_checks"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    client_id: Mapped[int] = mapped_column(ForeignKey("clients.id"), index=True)
+    supplier_id: Mapped[int] = mapped_column(ForeignKey("suppliers.id"))
+    result: Mapped[str] = mapped_column(String(20), default="do_sprawdzenia", index=True)
+    reserved_until: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    note: Mapped[str] = mapped_column(String(500), default="")
+    requested_by_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
+    requested_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    checked_by_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
+    checked_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    client: Mapped[Client] = relationship(back_populates="checks")
+    supplier: Mapped["Supplier"] = relationship()
+    requested_by: Mapped[Optional[User]] = relationship(foreign_keys=[requested_by_id])
+    checked_by: Mapped[Optional[User]] = relationship(foreign_keys=[checked_by_id])
+
+
+class ClientOffer(Base):
+    """Oferta złożona klientowi w jednej spółce. Ważna zwykle tydzień."""
+
+    __tablename__ = "client_offers"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    client_id: Mapped[int] = mapped_column(ForeignKey("clients.id"), index=True)
+    supplier_id: Mapped[int] = mapped_column(ForeignKey("suppliers.id"))
+    pricing_product: Mapped[str] = mapped_column(String(10), default="fix")
+    medium: Mapped[str] = mapped_column(String(10), default="energia")
+    base_price_pln_mwh: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 2), nullable=True)
+    markup_pln_mwh: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    annual_volume_mwh: Mapped[Decimal] = mapped_column(Numeric(14, 3))
+    term_months: Mapped[int] = mapped_column(Integer)
+    sent_date: Mapped[date] = mapped_column(Date)
+    valid_until: Mapped[date] = mapped_column(Date)
+    status: Mapped[str] = mapped_column(String(20), default="otwarta")
+    created_by_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    client: Mapped[Client] = relationship(back_populates="offers")
+    supplier: Mapped["Supplier"] = relationship()
+
+
+class ClientEvent(Base):
+    """Oś zdarzeń na karcie klienta: kto, co, kiedy (handlowiec i BOK w jednym miejscu)."""
+
+    __tablename__ = "client_events"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    client_id: Mapped[int] = mapped_column(ForeignKey("clients.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(20), default="notatka")
+    text: Mapped[str] = mapped_column(Text, default="")
+    day: Mapped[date] = mapped_column(Date, default=date.today)
+    user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    client: Mapped[Client] = relationship(back_populates="events")
+    user: Mapped[Optional[User]] = relationship()
+
+
+# Listy wymagań na dwóch etapach (edytuje właściciel). Wersja startowa z docs/WIEDZA-BRANZOWA.md.
+CHECKLIST_KEYS = {
+    "oferta": "Co jest potrzebne do złożenia oferty",
+    "umowa": "Co jest potrzebne do przygotowania umowy",
+}
+CHECKLIST_DEFAULTS = {
+    "oferta": "\n".join([
+        "NIP wolny i zarezerwowany przez BOK w spółce, w której składasz ofertę",
+        "Scoring klienta w tej spółce bez zastrzeżeń",
+        "Roczne zużycie energii lub gazu",
+        "Grupa taryfowa (B, C albo G dla wspólnot)",
+        "Data końca obecnej umowy i okres wypowiedzenia",
+        "Powyżej progu spółki (1, 2 lub 4 GWh): profil zużycia do wyceny indywidualnej",
+    ]),
+    "umowa": "\n".join([
+        "Faktury dystrybucyjne (zawsze)",
+        "Dokumenty wymagane przez wybraną spółkę",
+        "Numery punktów poboru",
+        "Sposób podpisu: Autenti, kod SMS albo papier (przy papierze: skan do spółki, oryginał pocztą)",
+    ]),
+}
+
+
+class Checklist(Base):
+    __tablename__ = "checklists"
+
+    key: Mapped[str] = mapped_column(String(20), primary_key=True)
+    body: Mapped[str] = mapped_column(Text, default="")
+    updated_by_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

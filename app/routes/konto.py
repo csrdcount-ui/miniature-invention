@@ -15,7 +15,10 @@ from ..models import (
     BOK_PERMISSIONS,
     POLICY_SETTINGS,
     PermissionChange,
+    ROLE_BOK,
+    ROLE_MANAGER,
     ROLE_OWNER,
+    ROLE_TRADER,
     Company,
     User,
 )
@@ -31,13 +34,27 @@ from ..web.ui import (
 
 router = APIRouter()
 
+
+def home_url(user: User) -> str:
+    """Pierwszy ekran po zalogowaniu: handlowiec i menedżer — dzień pracy, BOK — kolejka zleceń."""
+    if user.role in (ROLE_TRADER, ROLE_MANAGER):
+        return "/dzien"
+    if user.role == ROLE_BOK:
+        return "/bok"
+    return "/pulpit"
+
+
+@router.get("/start-pracy", include_in_schema=False)
+def start_page(user: User = Depends(current_user)):
+    return redirect(home_url(user))
+
 def _no_users(db: Session) -> bool:
     return db.scalar(select(func.count(User.id))) == 0
 
 
 @router.get("/", include_in_schema=False)
 def index(request: Request):
-    return redirect("/pulpit" if request.session.get("uid") else "/logowanie")
+    return redirect("/start-pracy" if request.session.get("uid") else "/logowanie")
 
 
 @router.get("/logowanie", response_class=HTMLResponse)
@@ -61,7 +78,7 @@ async def login(request: Request, db: Session = Depends(get_db)):
     request.session.clear()
     request.session["uid"] = user.id
     request.session["sv"] = user.session_version
-    return redirect("/pulpit")
+    return redirect(home_url(user))
 
 
 @router.post("/wyloguj")

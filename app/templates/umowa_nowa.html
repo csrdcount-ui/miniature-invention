@@ -8,6 +8,11 @@
 {% else %}
 <form method="post" action="/umowy/nowa" class="stack">
   <input type="hidden" name="csrf" value="{{ csrf }}">
+  {% if form.klient_id %}
+  <input type="hidden" name="klient_id" value="{{ form.klient_id }}">
+  <input type="hidden" name="oferta_id" value="{{ form.oferta_id }}">
+  <p role="status" class="flash">Dane przepisane z przyjętej oferty. Sprawdź datę podpisania i start dostaw.</p>
+  {% endif %}
   <fieldset>
     <legend>Klient</legend>
     {{ pole("klient", "Nazwa klienta", form.klient, required=true) }}

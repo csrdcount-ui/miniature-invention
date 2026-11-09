@@ -16,6 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .. import engine as eng
+from .. import pipeline as pl
 from .. import services as svc
 from ..db import get_db
 from ..models import (
@@ -27,6 +28,8 @@ from ..models import (
     ROLE_OWNER,
     ROLE_TRADER,
     SELLING_ROLES,
+    Client,
+    ClientOffer,
     Contract,
     Supplier,
     User,
@@ -63,7 +66,10 @@ def dashboard(request: Request, user: User = Depends(current_user), db: Session 
         "user": user, "summary": summary, "show_b": show_b,
         "recent": [svc.contract_view(user, c, perms, show_b) for c in contracts[:5]],
         "month_label": svc.month_label(month),
-        "offers": svc.offers_overview(user, contracts, show_b),
+        "offers": svc.offers_overview(
+            user, contracts, show_b, db=db,
+            client_offers=[o for cl in db.scalars(pl.visible_clients_query(user).where(Client.stage == "oferta")) for o in cl.offers],
+        ),
         "stats": svc.monthly_stats(contracts, stats_from, stats_to),
         "stats_open": "od_mies" in qp or "do_mies" in qp,
     }
@@ -165,9 +171,30 @@ def _new_contract_ctx(db: Session, user: User, **extra) -> dict:
     return ctx
 
 
+def _offer_from_query(db: Session, user: User, klient: str, oferta: str):
+    """Umowa z oferty na karcie klienta: klient i oferta muszą być widoczne dla zapisującego."""
+    if not (klient.isdigit() and oferta.isdigit()):
+        return None, None
+    c = db.get(Client, int(klient))
+    o = db.get(ClientOffer, int(oferta))
+    if not c or not o or o.client_id != c.id or not pl.can_sell_for(user, c):
+        return None, None
+    return c, o
+
+
 @router.get("/umowy/nowa", response_class=HTMLResponse)
 def contract_new_page(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    return render(request, "umowa_nowa.html", _new_contract_ctx(db, user))
+    c, o = _offer_from_query(db, user, request.query_params.get("klient", ""), request.query_params.get("oferta", ""))
+    form = {}
+    if c:
+        form = {
+            "klient": c.name, "nip": c.nip or "", "spolka": str(o.supplier_id), "medium": o.medium,
+            "produkt": o.pricing_product, "handlowiec": str(c.owner_id), "okres": o.term_months,
+            "wolumen": f"{o.annual_volume_mwh.normalize():f}", "narzut": f"{o.markup_pln_mwh.normalize():f}",
+            "cena_bazowa": f"{o.base_price_pln_mwh.normalize():f}" if o.base_price_pln_mwh is not None else "",
+            "klient_id": str(c.id), "oferta_id": str(o.id),
+        }
+    return render(request, "umowa_nowa.html", _new_contract_ctx(db, user, form=form))
 
 
 @router.post("/umowy/nowa")
@@ -206,7 +233,11 @@ async def contract_create(request: Request, user: User = Depends(current_user), 
         )
     except (FormError, svc.BusinessError, eng.EngineError) as e:
         return render(request, "umowa_nowa.html", _new_contract_ctx(db, user, error=str(e), form=form), 400)
-    flash(request, f"Zapisano umowę z klientem {c.client_name}.")
+    client, offer = _offer_from_query(db, user, form.get("klient_id", ""), form.get("oferta_id", ""))
+    if client:
+        pl.win_with_contract(db, client, user, c, offer)
+        db.commit()
+    flash(request, f"Zapisano umowę z klientem {c.client_name}." + (" Klient przeszedł na etap „Umowa podpisana”." if client else ""))
     return redirect(f"/umowy/{c.id}")
 
 
