@@ -11,12 +11,35 @@
   <dt>Konto</dt><dd>{{ "aktywne" if p.active else "nieaktywne" }}</dd>
 </dl>
 
+{% if sales %}
+<h2>Sprzedaż: {{ month_label }}</h2>
+<dl>
+  <dt>Umowy podpisane w tym miesiącu</dt><dd>{{ sales.count }}</dd>
+  <dt>Masa marży</dt><dd>{{ sales.markup|zl }}</dd>
+  <dt>Target</dt><dd>{{ sales.target|zl if sales.target is not none else "nie ustawiony" }}</dd>
+  {% if sales.target is not none %}<dt>Wykonanie</dt><dd><strong>{{ sales.pct if sales.pct is not none else 0 }}%</strong></dd>{% endif %}
+</dl>
+<p><a href="/umowy?handlowiec={{ p.id }}">Umowy tej osoby</a></p>
+{% if can_target %}
+<h3>Target masy marży</h3>
+<ul>
+{% for label, value, amount in targets %}<li>{{ label }}: {{ amount|zl if amount is not none else "nie ustawiony" }}</li>{% endfor %}
+</ul>
+<form method="post" action="/zespol/{{ p.id }}/target" class="stack">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  {{ pole("miesiac", "Miesiąc", targets[0][1], type="month", hint="Format RRRR-MM, np. 2026-11.", required=true) }}
+  {{ pole("kwota", "Target masy marży w zł", "", hint="Na przykład 150000.", required=true, extra='inputmode="decimal"') }}
+  <button type="submit">Zapisz target</button>
+</form>
+{% endif %}
+{% endif %}
+
 {% if p.role in (ROLE_MANAGER, ROLE_TRADER) %}
 <h2>Obecne stawki</h2>
 {% if current %}
 <dl>
   <dt>Obowiązują od</dt><dd>{{ current.valid_from|data if current.valid_from.year > 2000 else "od początku" }}</dd>
-  <dt>Udział w całej masie narzutu</dt><dd>{{ current.trader_share_pct|pct }}</dd>
+  <dt>Udział w całej masie marży</dt><dd>{{ current.trader_share_pct|pct }}</dd>
   {% if p.role == ROLE_MANAGER %}
   <dt>Override od umów zespołu</dt><dd>{{ current.override_pct|pct }} {{ OVERRIDE_BASES.get(current.override_base) }}</dd>
   {% endif %}
@@ -31,7 +54,7 @@
 <form method="post" action="/zespol/{{ p.id }}/stawki" class="stack">
   <input type="hidden" name="csrf" value="{{ csrf }}">
   {{ pole("od", "Obowiązują od", form.od or today.isoformat(), type="date", required=true) }}
-  {{ pole("udzial", "Udział w całej masie narzutu, w procentach", form.udzial or (current.trader_share_pct|pct|replace("%","") if current else ""), required=true, extra='inputmode="decimal"') }}
+  {{ pole("udzial", "Udział w całej masie marży, w procentach", form.udzial or (current.trader_share_pct|pct|replace("%","") if current else ""), required=true, extra='inputmode="decimal"') }}
   {% if p.role == ROLE_MANAGER %}
   {{ pole("override", "Override od umów zespołu, w procentach", form.override or (current.override_pct|pct|replace("%","") if current else ""), extra='inputmode="decimal"') }}
   {{ wybor("baza", "Od czego liczony jest override", OVERRIDE_BASES.items(), form.baza or (current.override_base if current else "narzut")) }}
@@ -76,11 +99,13 @@
 </form>
 {% endif %}
 
-<h2>Hasło</h2>
+<h2>{{ "Hasło" if user.role in (ROLE_OWNER, ROLE_BOK) else "Logowanie" }}</h2>
 <p class="podpowiedz">Ostatnie logowanie: {{ p.last_login_at.strftime("%d.%m.%Y %H:%M") if p.last_login_at else "jeszcze się nie logował(a)" }}.</p>
+{% if user.role in (ROLE_OWNER, ROLE_BOK) %}
 <p>{{ p.name }} zapomniał(a) hasła albo zaczyna pracę? Nadaj nowe hasło. Poprzednie przestanie działać od razu.</p>
 <form method="post" action="/zespol/{{ p.id }}/reset-hasla">
   <input type="hidden" name="csrf" value="{{ csrf }}">
   <button type="submit">Nadaj nowe hasło</button>
 </form>
+{% endif %}
 {% endblock %}

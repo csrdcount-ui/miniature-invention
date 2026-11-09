@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..db import get_db
-from ..models import ROLE_BOK, ROLE_OWNER, Company, User
+from ..models import ROLE_BOK, ROLE_MANAGER, ROLE_OWNER, Company, User
 
 
 class LoginRequired(Exception):
@@ -81,6 +81,15 @@ def owner_or_bok_commissions(user: User = Depends(current_user), db: Session = D
     """Właściciel zawsze; BOK tylko gdy widzi prowizje handlowców (ta sama przesłanka:
     kto już widzi zarobki, temu można powierzyć też reset hasła tej osoby)."""
     if user.role == ROLE_OWNER:
+        return user
+    if user.role == ROLE_BOK and bok_perms(db).bok_sees_commissions:
+        return user
+    raise HTTPException(status_code=403)
+
+
+def team_viewer(user: User = Depends(current_user), db: Session = Depends(get_db)) -> User:
+    """Zakładka Zespół: właściciel, menedżer (tylko swoi ludzie) i BOK z wglądem w prowizje."""
+    if user.role in (ROLE_OWNER, ROLE_MANAGER):
         return user
     if user.role == ROLE_BOK and bok_perms(db).bok_sees_commissions:
         return user

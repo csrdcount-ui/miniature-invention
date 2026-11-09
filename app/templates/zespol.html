@@ -1,20 +1,26 @@
 {% extends "base.html" %}
 {% block title %}Zespół i stawki{% endblock %}
 {% block content %}
-<h1>Zespół i stawki</h1>
+<h1>{{ "Mój zespół" if user.role == ROLE_MANAGER else "Zespół i stawki" }}</h1>
+<p>Sprzedaż w miesiącu: {{ month_label }}.</p>
 
 <h2>Osoby</h2>
 <ul class="karty">
-{% for p, r in rows %}
+{% for p, r, m in rows %}
   <li>
     <h3><a href="/zespol/{{ p.id }}">{{ p.name }}</a>{% if not p.active %} (nieaktywny){% endif %}</h3>
     {% if p.needs_last_name %}<p><strong>Uzupełnij nazwisko.</strong></p>{% endif %}
     <p>{{ p.role_label }}{% if p.manager %}, zespół: {{ p.manager.name }}{% endif %}</p>
+    {% if m %}
+    <p>W tym miesiącu: {{ m.count }} umów, masa marży {{ m.markup|zl }}{% if m.target is not none %}, target {{ m.target|zl }}, wykonanie <strong>{{ m.pct if m.pct is not none else 0 }}%</strong>{% else %}, target nie ustawiony{% endif %}.</p>
+    {% endif %}
+    {% if p.role in (ROLE_MANAGER, ROLE_TRADER) %}<p>Ostatnie logowanie: {{ p.last_login_at.strftime("%d.%m.%Y %H:%M") if p.last_login_at else "jeszcze nie" }}.</p>{% endif %}
     {% if r and p.role in (ROLE_MANAGER, ROLE_TRADER) %}
-    <p>Udział w całej masie narzutu: {{ r.trader_share_pct|pct }}{% if p.role == ROLE_MANAGER %}, override {{ r.override_pct|pct }} {{ OVERRIDE_BASES.get(r.override_base) }}{% endif %}</p>
+    <p>Udział w całej masie marży: {{ r.trader_share_pct|pct }}{% if p.role == ROLE_MANAGER %}, override {{ r.override_pct|pct }} {{ OVERRIDE_BASES.get(r.override_base) }}{% endif %}</p>
     {% endif %}
   </li>
 {% endfor %}
 </ul>
+{% if not rows %}<p>{{ "Nie masz jeszcze nikogo w zespole. Przypisuje go właściciel." if user.role == ROLE_MANAGER else "Brak osób." }}</p>{% endif %}
 
 {% endblock %}

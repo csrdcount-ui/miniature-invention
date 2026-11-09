@@ -97,7 +97,7 @@ async def supplier_rules_add(sid: int, request: Request, user: User = Depends(ow
             broker_share_pct=p_dec(form, "udzial", "Udział brokera w narzucie", minimum=0, maximum=100),
             first_tranche_pct=p_dec(form, "transza", "Pierwsza transza", minimum=0, maximum=100),
             first_tranche_trigger=form.get("wyzwalacz") if form.get("wyzwalacz") in TRIGGERS else "weryfikacja",
-            max_markup_pln_mwh=p_dec(form, "limit", "Limit narzutu", required=False, minimum=0),
+            max_markup_pln_mwh=p_dec(form, "limit", "Limit marży", required=False, minimum=0),
             new_connection_months=p_int(form, "nowe_msc", "Okres rozliczeń z faktur dla nowych przyłączy", maximum=60),
             clawback_mode=form.get("korekta") if form.get("korekta") in eng.CLAWBACK_MODES else eng.KOREKTA_PROPORCJONALNA,
             note=form.get("uwagi", "")[:2000],

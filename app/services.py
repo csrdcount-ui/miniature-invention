@@ -27,6 +27,7 @@ from .models import (
     ROLE_TRADER,
     SELLING_ROLES,
     Company,
+    SalesTarget,
     Contract,
     ContractStatusEvent,
     Supplier,
@@ -147,7 +148,7 @@ def build_contract(
         )
     if rs.max_markup_pln_mwh is not None and markup_pln_mwh > rs.max_markup_pln_mwh:
         raise BusinessError(
-            f"Narzut {markup_pln_mwh} zł/MWh przekracza limit spółki "
+            f"Marża {markup_pln_mwh} zł/MWh przekracza limit spółki obrotu "
             f"{supplier.name}: {rs.max_markup_pln_mwh} zł/MWh."
         )
 
@@ -266,8 +267,8 @@ SORT_LABELS = {
     "podpisana_asc": "Data podpisania: najstarsze najpierw",
     "wolumen_desc": "Wolumen roczny: od największego",
     "wolumen_asc": "Wolumen roczny: od najmniejszego",
-    "narzut_desc": "Narzut: od największego",
-    "narzut_asc": "Narzut: od najmniejszego",
+    "narzut_desc": "Marża: od największej",
+    "narzut_asc": "Marża: od najmniejszej",
     "klient_asc": "Nazwa klienta: A–Z",
     "klient_desc": "Nazwa klienta: Z–A",
 }
@@ -413,7 +414,14 @@ def _payout(p: eng.Payout) -> dict:
     }
 
 
-def contract_view(viewer: User, c: Contract, perms: BokPerms = DEFAULT_PERMS) -> dict:
+def tranche_b_visible(viewer: User, company: Optional[Company]) -> bool:
+    """Polityka biura: handlowiec może nie widzieć prognozy transzy B (motywacja do bieżącej sprzedaży)."""
+    if viewer.role != ROLE_TRADER:
+        return True
+    return True if company is None else bool(company.traders_see_tranche_b)
+
+
+def contract_view(viewer: User, c: Contract, perms: BokPerms = DEFAULT_PERMS, show_tranche_b: bool = True) -> dict:
     """Słownik z danymi umowy, który wolno pokazać danej osobie."""
     b = calculate_contract(c)
     client_price = None
@@ -465,7 +473,7 @@ def contract_view(viewer: User, c: Contract, perms: BokPerms = DEFAULT_PERMS) ->
                 f"Override menedżera: {c.manager.name}" if c.manager else "Override menedżera",
                 _payout(b.manager_override),
             ),
-            ("Marża właściciela", _payout(b.owner_margin)),
+            ("Przychód spółki", _payout(b.owner_margin)),
         ]
         view["warnings"] = list(b.warnings)
         return view
@@ -490,7 +498,12 @@ def contract_view(viewer: User, c: Contract, perms: BokPerms = DEFAULT_PERMS) ->
     if is_seller:
         view["trader_share_pct"] = c.trader_share_pct
         view["first_tranche_pct"] = c.first_tranche_pct
-        view["rows"].append(("Twoja prowizja", _payout(b.trader)))
+        view["tranche_a"] = b.trader.tranche1
+        if show_tranche_b:
+            view["rows"].append(("Twoja prowizja", _payout(b.trader)))
+        else:
+            # bez prognozy transzy B: nie wysyłamy jej nawet do szablonu
+            view["hide_b"] = True
     elif is_contract_manager:
         view["trader_share_pct"] = c.trader_share_pct
         view["rows"].append((f"Prowizja handlowca: {c.trader.name}", _payout(b.trader)))
@@ -563,3 +576,77 @@ __all__ = [
     "ROLE_OWNER",
     "ROLE_TRADER",
 ]
+
+
+# --------------------------------------------------------------------------
+# Sprzedaż w miesiącu i targety
+# --------------------------------------------------------------------------
+
+MONTHS_PL = ["styczeń", "luty", "marzec", "kwiecień", "maj", "czerwiec", "lipiec",
+             "sierpień", "wrzesień", "październik", "listopad", "grudzień"]
+# statusy przed podpisaniem i zerwane nie liczą się do sprzedaży miesiąca
+NOT_SALE_STATUSES = {"Lead", "Kontakt", "Oferta", "Zerwana"}
+
+
+def month_start(d: Optional[date] = None) -> date:
+    d = d or date.today()
+    return date(d.year, d.month, 1)
+
+
+def month_label(m: date) -> str:
+    return f"{MONTHS_PL[m.month - 1]} {m.year}"
+
+
+def _next_month(m: date) -> date:
+    return date(m.year + (m.month == 12), m.month % 12 + 1, 1)
+
+
+def target_of(db: Session, user_id: int, month: date) -> Optional[Decimal]:
+    t = db.scalar(select(SalesTarget).where(SalesTarget.user_id == user_id, SalesTarget.month == month))
+    return t.amount if t else None
+
+
+def set_target(db: Session, *, actor: User, person: User, month: date, amount: Decimal) -> None:
+    if not can_set_target(actor, person):
+        raise BusinessError("Nie możesz ustawić targetu tej osobie.")
+    if amount < 0:
+        raise BusinessError("Target nie może być ujemny.")
+    t = db.scalar(select(SalesTarget).where(SalesTarget.user_id == person.id, SalesTarget.month == month))
+    if t:
+        t.amount, t.set_by_id = amount, actor.id
+    else:
+        db.add(SalesTarget(user_id=person.id, month=month, amount=amount, set_by_id=actor.id))
+    db.commit()
+
+
+def can_set_target(actor: User, person: User) -> bool:
+    if person.role not in SELLING_ROLES:
+        return False
+    if actor.role == ROLE_OWNER:
+        return True
+    return actor.role == ROLE_MANAGER and person.manager_id == actor.id
+
+
+def month_sales(db: Session, user_ids: list[int], month: date) -> dict:
+    """Sprzedaż w miesiącu (umowy podpisane w tym miesiącu, bez zerwanych)."""
+    out = {"count": 0, "markup": Decimal(0), "tranche_a": Decimal(0), "target": None, "pct": None}
+    if not user_ids:
+        return out
+    q = select(Contract).where(
+        Contract.trader_id.in_(user_ids),
+        Contract.signed_date >= month,
+        Contract.signed_date < _next_month(month),
+        Contract.status.not_in(NOT_SALE_STATUSES),
+    )
+    for c in db.scalars(q):
+        b = calculate_contract(c)
+        out["count"] += 1
+        out["markup"] += b.total_markup
+        out["tranche_a"] += b.trader.tranche1
+    targets = [target_of(db, uid, month) for uid in user_ids]
+    targets = [t for t in targets if t is not None]
+    if targets:
+        out["target"] = sum(targets, Decimal(0))
+        if out["target"] > 0:
+            out["pct"] = int((out["markup"] / out["target"] * 100).quantize(Decimal(1)))
+    return out

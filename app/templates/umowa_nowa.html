@@ -43,7 +43,7 @@
   <fieldset>
     <legend>Cena</legend>
     {{ pole("cena_bazowa", "Cena bazowa spółki w zł za MWh", form.cena_bazowa, hint="Opcjonalnie. Służy do pokazania ceny dla klienta.", extra='inputmode="decimal"') }}
-    {{ pole("narzut", "Narzut w zł za MWh", form.narzut, hint="Kwota doliczana do ceny bazowej. Limit zależy od spółki.", required=true, extra='inputmode="decimal"') }}
+    {{ pole("narzut", "Marża w zł za MWh", form.narzut, hint="Kwota doliczana do ceny bazowej. Limit zależy od spółki obrotu.", required=true, extra='inputmode="decimal"') }}
   </fieldset>
   {{ wybor("status", "Status", STATUSES|zip(STATUSES), form.status or "Umowa podpisana") }}
   <button type="submit">Zapisz umowę i policz prowizję</button>

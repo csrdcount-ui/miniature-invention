@@ -10,7 +10,7 @@ from sqlalchemy import inspect, select, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
-from .models import BOK_PERMISSIONS, Contract, ContractStatusEvent, User, split_full_name
+from .models import BOK_PERMISSIONS, POLICY_SETTINGS, Contract, ContractStatusEvent, User, split_full_name
 
 
 def _add_column(engine: Engine, table: str, column: str, ddl: str) -> None:
@@ -47,6 +47,8 @@ def _schema(engine: Engine) -> None:
                 _add_column(engine, table, "import_batch_id", "INTEGER REFERENCES import_batches(id)")
     if inspect(engine).has_table("company"):
         for key, (_, _, default, _) in BOK_PERMISSIONS.items():
+            _add_column(engine, "company", key, f"BOOLEAN NOT NULL DEFAULT {'TRUE' if default else 'FALSE'}")
+        for key, (_, _, default) in POLICY_SETTINGS.items():
             _add_column(engine, "company", key, f"BOOLEAN NOT NULL DEFAULT {'TRUE' if default else 'FALSE'}")
 
 

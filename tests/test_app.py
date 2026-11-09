@@ -68,7 +68,7 @@ def test_pelny_przeplyw_i_poufnosc(client):
     assert "600,00 zł/MWh" in page  # cena dla klienta
     # poufne: udział brokera (38 500), marża właściciela, procent spółki
     assert "38 500" not in page
-    assert "Marża właściciela" not in page
+    assert "Przychód spółki" not in page
     assert "77%" not in page
     assert "Udział brokera" not in page
     assert client.get("/spolki").status_code == 403
@@ -80,7 +80,7 @@ def test_pelny_przeplyw_i_poufnosc(client):
     assert "Prowizja handlowca: Hania Handlowiec" in page
     assert "Twój override" in page
     assert "2 500,00 zł" in page  # 5% z 50 000
-    assert "38 500" not in page and "Marża właściciela" not in page and "77%" not in page
+    assert "38 500" not in page and "Przychód spółki" not in page and "77%" not in page
     assert client.get("/spolki/1").status_code == 403
 
     # Handlowiec spoza zespołu nie widzi cudzej umowy (404, nie zdradzamy istnienia)
@@ -93,7 +93,7 @@ def test_pelny_przeplyw_i_poufnosc(client):
     page = client.get(f"/umowy/{cid}").text
     assert "Spółka obrotu → broker" in page
     assert "38 500,00 zł" in page
-    assert "Marża właściciela" in page
+    assert "Przychód spółki" in page
     assert "16 000,00 zł" in page  # 38 500 − 20 000 − 2 500
 
 
@@ -549,12 +549,12 @@ def test_bok_widzi_wszystkie_umowy_bez_warunkow_wlasciciela(client):
     assert client.get("/zespol").status_code == 403
     page = client.get(f"/umowy/{cid}").text
     assert "Piekarnia Kowalski" in page
-    for secret in ["Spółka obrotu → broker", "Marża właściciela", "udział brokera", "Udział brokera"]:
+    for secret in ["Spółka obrotu → broker", "Przychód spółki", "udział brokera", "Udział brokera"]:
         assert secret not in page, secret
     # domyślnie bez prowizji handlowców
     assert "Prowizja handlowca" not in page and "20\u00a0000,00\u00a0zł" not in page
     pulpit = client.get("/pulpit").text
-    assert "Marża właściciela" not in pulpit and "Prowizje handlowców" not in pulpit
+    assert "Przychód spółki" not in pulpit and "Prowizje handlowców" not in pulpit
 
 
 def test_wlasciciel_wlacza_bokowi_prowizje(client):
@@ -565,7 +565,7 @@ def test_wlasciciel_wlacza_bokowi_prowizje(client):
     assert "Prowizja handlowca: Hania Handlowiec" in page
     assert "20\u00a0000,00\u00a0zł" in page  # twarda spacja w tysiącach
     assert "Override menedżera: 5%" in page and "Twój override" not in page
-    assert "Spółka obrotu → broker" not in page and "Marża właściciela" not in page
+    assert "Spółka obrotu → broker" not in page and "Przychód spółki" not in page
     assert "Prowizje handlowców" in client.get("/pulpit").text
 
 
@@ -748,7 +748,7 @@ def test_bok_z_prowizjami_resetuje_haslo_handlowca_ale_nie_wlasciciela(client):
     # BOK nie widzi ani nie edytuje stawek/ustawień konta na stronie handlowca
     page = client.get(f"/zespol/{hania_id}").text
     assert "Zmień stawki" not in page and "Ustawienia konta" not in page
-    assert "Udział w całej masie narzutu" in page  # odczyt stawki zostaje
+    assert "Udział w całej masie marży" in page  # odczyt stawki zostaje
 
 
 def test_ostatnie_logowanie_i_wylogowanie_wszystkich_urzadzen(client):
@@ -902,3 +902,109 @@ def test_demo_umowy_maja_produkt_fix_domyslnie(client):
     with SessionLocal() as db:
         demo = db.query(Contract).filter(Contract.import_batch_id.isnot(None)).all()
         assert all(c.pricing_product == "fix" for c in demo)
+
+
+# --------------------------------------------------------------------------
+# Nazewnictwo marży, sprzedaż miesiąca vs target, polityka transzy B,
+# zakładka Zespół menedżera
+# --------------------------------------------------------------------------
+
+def _dzis_umowa(client, **over):
+    from datetime import date
+    return _umowa(client, podpisana=date.today().isoformat(), **over)
+
+
+def test_nazewnictwo_marza_i_przychod_spolki(client):
+    setup_company(client)
+    login(client, "kris@firma.pl")
+    _dzis_umowa(client)
+    page = client.get("/pulpit").text
+    assert "Całkowita masa marży" in page and "Przychód spółki" in page
+    assert "narzut" not in page.lower().replace('name="narzut', "")
+
+
+def test_handlowiec_widzi_sprzedaz_miesiaca_i_target(client):
+    from datetime import date
+    setup_company(client)
+    login(client, "hania@firma.pl")
+    _dzis_umowa(client)  # 100 MWh x 5 lat x 100 zł = 50 000 zł masy marży
+    page = client.get("/pulpit").text
+    assert "Twoja sprzedaż" in page and "nie ustawiony" in page
+    # menedżer Hani ustawia jej target na bieżący miesiąc
+    login(client, "marek@firma.pl")
+    with SessionLocal() as db:
+        hania = db.query(User).filter_by(email="hania@firma.pl").one().id
+    miesiac = date.today().strftime("%Y-%m")
+    r = post(client, f"/zespol/{hania}", f"/zespol/{hania}/target", {"miesiac": miesiac, "kwota": "200000"})
+    assert r.status_code == 303, r.text
+    login(client, "hania@firma.pl")
+    page = client.get("/pulpit").text
+    assert "<strong>25%</strong>" in page  # 50 000 z 200 000
+    assert "Twoja transza A z tych umów" in page
+
+
+def test_menedzer_ma_zakladke_zespol_tylko_ze_swoimi_ludzmi(client):
+    setup_company(client)
+    login(client, "marek@firma.pl")
+    assert "<span>Zespół</span>" in _menu(client.get("/pulpit").text)
+    page = client.get("/zespol").text
+    assert "Hania Handlowiec" in page and "Olek Obcy" not in page and "Kris Właściciel" not in page
+    with SessionLocal() as db:
+        olek = db.query(User).filter_by(email="olek@firma.pl").one().id
+        hania = db.query(User).filter_by(email="hania@firma.pl").one().id
+    assert client.get(f"/zespol/{olek}").status_code == 404
+    page = client.get(f"/zespol/{hania}").text
+    # menedżer nie edytuje stawek, nie resetuje haseł
+    assert "Zmień stawki" not in page and "Nadaj nowe hasło" not in page and "Target masy marży" in page
+    r = post(client, f"/zespol/{hania}", f"/zespol/{hania}/reset-hasla", {})
+    assert r.status_code == 403
+    r = post(client, f"/zespol/{hania}", f"/zespol/{olek}/target", {"miesiac": "2026-11", "kwota": "1"})
+    assert r.status_code == 404
+    assert client.get("/zespol/nowa").status_code == 403
+
+
+def test_handlowiec_nie_ustawia_targetu(client):
+    setup_company(client)
+    login(client, "hania@firma.pl")
+    with SessionLocal() as db:
+        hania = db.query(User).filter_by(email="hania@firma.pl").one().id
+    assert client.get("/zespol").status_code == 403
+    r = post(client, "/konto", f"/zespol/{hania}/target", {"miesiac": "2026-11", "kwota": "999999"})
+    assert r.status_code == 403
+
+
+def test_polityka_ukrywa_transze_b_handlowcowi(client):
+    setup_company(client)
+    login(client, "hania@firma.pl")
+    cid = _dzis_umowa(client)
+    assert "Prognoza transzy B" in client.get("/pulpit").text
+    assert "Podział prowizji z całego okresu" in client.get(f"/umowy/{cid}").text
+    login(client, "kris@firma.pl")
+    r = post(client, "/konto", "/konto/polityka", {})  # odznaczone = wyłączone
+    assert r.status_code == 303
+    assert "Handlowcy widzą prognozę transzy B, wyłączone" in client.get("/konto").text
+    login(client, "hania@firma.pl")
+    page = client.get("/pulpit").text
+    assert "Prognoza transzy B" not in page and "Transza A z Twoich umów" in page
+    page = client.get(f"/umowy/{cid}").text
+    assert "Podział prowizji z całego okresu" not in page and "Twoja transza A" in page
+    # menedżer i właściciel dalej widzą pełny podział
+    login(client, "marek@firma.pl")
+    assert "Podział prowizji z całego okresu" in client.get(f"/umowy/{cid}").text
+
+
+def test_cofniecie_demo_usuwa_targety(client):
+    from datetime import date
+    setup_company(client)
+    login(client, "kris@firma.pl")
+    from .test_import import _demo_preview
+    bid = _demo_preview(client)
+    post(client, f"/konto/import/{bid}", f"/konto/import/{bid}/zatwierdz", {})
+    with SessionLocal() as db:
+        anna = db.query(User).filter(User.last_name == "Kowalczyk").one().id
+    post(client, f"/zespol/{anna}", f"/zespol/{anna}/target", {"miesiac": date.today().strftime("%Y-%m"), "kwota": "150000"})
+    r = post(client, "/konto/import", f"/konto/import/{bid}/cofnij", {"potwierdzam": "1"})
+    assert r.status_code == 303
+    from app.models import SalesTarget
+    with SessionLocal() as db:
+        assert db.query(SalesTarget).count() == 0

@@ -3,15 +3,15 @@ from __future__ import annotations
 
 from typing import Optional
 
-from ..models import ROLE_BOK, ROLE_OWNER, User
+from ..models import ROLE_BOK, ROLE_MANAGER, ROLE_OWNER, User
 
 # (klucz, podpis, adres, prefiksy adresów należących do zakładki, dostęp)
 # dostęp: False (każdy zalogowany), "owner" (tylko właściciel),
-#         "owner_or_bok_commissions" (właściciel, albo BOK gdy widzi prowizje)
+#         "team" (właściciel, menedżer, albo BOK gdy widzi prowizje)
 TABS = [
     ("portfel", "Portfel", "/pulpit", ("/pulpit", "/umowy"), False),
     ("spolki", "Spółki", "/spolki", ("/spolki",), "owner"),
-    ("zespol", "Zespół", "/zespol", ("/zespol",), "owner_or_bok_commissions"),
+    ("zespol", "Zespół", "/zespol", ("/zespol",), "team"),
     ("raporty", "Raporty", "/raporty", ("/raporty",), False),
     ("konto", "Konto", "/konto", ("/konto", "/haslo"), False),
 ]
@@ -40,8 +40,8 @@ def navigation(user: Optional[User], path: str, *, bok_sees_commissions: bool = 
     for key, label, url, prefixes, access in TABS:
         if access == "owner" and user.role != ROLE_OWNER:
             continue
-        if access == "owner_or_bok_commissions" and not (
-            user.role == ROLE_OWNER or (user.role == ROLE_BOK and bok_sees_commissions)
+        if access == "team" and not (
+            user.role in (ROLE_OWNER, ROLE_MANAGER) or (user.role == ROLE_BOK and bok_sees_commissions)
         ):
             continue
         is_active = any(_belongs(path, pre) for pre in prefixes)

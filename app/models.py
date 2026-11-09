@@ -150,6 +150,35 @@ class Company(Base):
     bok_sees_commissions: Mapped[bool] = mapped_column(Boolean, default=False)
     bok_can_reserve_nip: Mapped[bool] = mapped_column(Boolean, default=True)
     bok_can_reassign_clients: Mapped[bool] = mapped_column(Boolean, default=False)
+    # polityka biura: czy handlowcy widzą prognozę transzy B (domyślnie tak, z zastrzeżeniem)
+    traders_see_tranche_b: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+# Ustawienia polityki biura (nie uprawnienia BOK), zapisywane w tej samej historii zmian.
+POLICY_SETTINGS = {
+    "traders_see_tranche_b": (
+        "Handlowcy widzą prognozę transzy B",
+        "Prognoza zawsze z zastrzeżeniem: korekty, zerwania, upadłość klienta, niższe zużycie. "
+        "Wyłącz, jeśli handlowcy mają widzieć tylko transzę A i bieżącą sprzedaż.",
+        True,
+    ),
+}
+
+
+class SalesTarget(Base):
+    """Miesięczny target masy marży dla osoby sprzedającej."""
+
+    __tablename__ = "sales_targets"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    month: Mapped[date] = mapped_column(Date, index=True)  # zawsze 1. dzień miesiąca
+    amount: Mapped[Decimal] = mapped_column(Numeric(16, 2))
+    set_by_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
+    set_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    user: Mapped["User"] = relationship(foreign_keys=[user_id])
+    set_by: Mapped[Optional["User"]] = relationship(foreign_keys=[set_by_id])
 
 
 class PermissionChange(Base):

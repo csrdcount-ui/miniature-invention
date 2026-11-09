@@ -23,6 +23,20 @@
 </dl>
 <p><a href="/konto/dane">Zmień {{ "dane i nazwę firmy" if user.role == ROLE_OWNER else "imię i nazwisko" }}</a></p>
 
+{% if policy_settings %}
+<h2 id="polityka">Polityka biura</h2>
+<form method="post" action="/konto/polityka" class="stack">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  {% for s in policy_settings %}
+  <div class="pole">
+    <label><input type="checkbox" name="{{ s.key }}" value="1" aria-describedby="h-{{ s.key }}" {% if s.on %}checked{% endif %}>{{ s.label }}</label>
+    <p class="podpowiedz" id="h-{{ s.key }}">{{ s.desc }}</p>
+  </div>
+  {% endfor %}
+  <button type="submit">Zapisz politykę</button>
+</form>
+{% endif %}
+
 {% if bok_settings %}
 <h2 id="uprawnienia-bok">Uprawnienia biura obsługi (BOK)</h2>
 <p>Zaznacz, które zadania wykonuje biuro obsługi. Udziału brokera u spółek i Twojej marży BOK nie widzi nigdy, niezależnie od ustawień.</p>
@@ -43,7 +57,7 @@
 <h3>Historia zmian uprawnień</h3>
 <ul>
 {% for h in bok_history %}
-  <li>{{ h.changed_at.strftime("%d.%m.%Y %H:%M") }}: {{ BOK_PERMISSIONS[h.setting][0] if h.setting in BOK_PERMISSIONS else h.setting }}, {{ "włączone" if h.new_value else "wyłączone" }}, zmienił(a): {{ h.changed_by.name if h.changed_by else "system" }}.</li>
+  <li>{{ h.changed_at.strftime("%d.%m.%Y %H:%M") }}: {{ BOK_PERMISSIONS[h.setting][0] if h.setting in BOK_PERMISSIONS else (POLICY_SETTINGS[h.setting][0] if h.setting in POLICY_SETTINGS else h.setting) }}, {{ "włączone" if h.new_value else "wyłączone" }}, zmienił(a): {{ h.changed_by.name if h.changed_by else "system" }}.</li>
 {% endfor %}
 </ul>
 {% endif %}

@@ -27,6 +27,7 @@ from ..models import (
     ContractStatusEvent,
     ImportBatch,
     PermissionChange,
+    SalesTarget,
     Supplier,
     SupplierRuleSet,
     User,
@@ -479,6 +480,9 @@ def revert(db: Session, batch: ImportBatch) -> dict:
     if user_ids:
         db.execute(update(ContractStatusEvent).where(ContractStatusEvent.changed_by_id.in_(user_ids)).values(changed_by_id=None))
         db.execute(update(PermissionChange).where(PermissionChange.changed_by_id.in_(user_ids)).values(changed_by_id=None))
+        db.execute(update(SalesTarget).where(SalesTarget.set_by_id.in_(user_ids)).values(set_by_id=None))
+        for t in db.scalars(select(SalesTarget).where(SalesTarget.user_id.in_(user_ids))):
+            db.delete(t)
     for c in db.scalars(select(Contract).where(Contract.import_batch_id == bid)):
         db.delete(c)
         counts["umowy"] += 1

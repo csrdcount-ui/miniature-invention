@@ -84,7 +84,7 @@ def test_demo_podglad_niczego_nie_zapisuje_a_zatwierdzenie_tak(client):
         cid = db.query(Contract).filter_by(trader_id=anna.id).first().id
     page = client.get(f"/umowy/{cid}").text
     assert "Twoja prowizja" in page
-    for secret in ["Spółka obrotu → broker", "Marża właściciela", "Udział brokera"]:
+    for secret in ["Spółka obrotu → broker", "Przychód spółki", "Udział brokera"]:
         assert secret not in page
 
 

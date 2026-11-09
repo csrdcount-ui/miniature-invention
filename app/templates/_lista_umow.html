@@ -4,10 +4,13 @@
   <li>
     <h3><a href="/umowy/{{ c.id }}">{{ c.client_name }}</a> {{ produkt_plakietka(c.pricing_product) }}</h3>
     <p>{{ c.supplier_name }}, {{ MEDIA[c.medium]|lower }}, {{ c.term_months }} mies., status: {{ c.status }}</p>
-    <p>Wolumen roczny {{ c.annual_volume_mwh|mwh }}, narzut {{ c.markup_pln_mwh|zl }}/MWh</p>
+    <p>Wolumen roczny {{ c.annual_volume_mwh|mwh }}, marża {{ c.markup_pln_mwh|zl }}/MWh</p>
     {% if user.role != ROLE_TRADER %}<p>Handlowiec: {{ c.trader_name }}</p>{% endif %}
+    {% if c.tranche_a is defined and user.role == ROLE_TRADER %}
+    <p>Twoja transza A: {{ c.tranche_a|zl }}</p>
+    {% endif %}
     {% for label, p in c.rows %}
-      {% if label in ("Twoja prowizja", "Twój override", "Marża właściciela") %}
+      {% if label in ("Twój override", "Przychód spółki") or (label == "Twoja prowizja" and user.role != ROLE_TRADER) %}
       <p>{{ label }}: {{ p.total|zl }}</p>
       {% endif %}
     {% endfor %}

@@ -13,6 +13,7 @@ from datetime import datetime
 from ..db import get_db
 from ..models import (
     BOK_PERMISSIONS,
+    POLICY_SETTINGS,
     PermissionChange,
     ROLE_OWNER,
     Company,
@@ -117,10 +118,32 @@ def account_page(request: Request, user: User = Depends(current_user), db: Sessi
             {"key": k, "label": lab, "desc": desc, "on": bool(getattr(company, k)), "works": works}
             for k, (lab, desc, _, works) in BOK_PERMISSIONS.items()
         ]
+        ctx["policy_settings"] = [
+            {"key": k, "label": lab, "desc": desc, "on": bool(getattr(company, k))}
+            for k, (lab, desc, _) in POLICY_SETTINGS.items()
+        ]
         ctx["bok_history"] = list(
             db.scalars(select(PermissionChange).order_by(PermissionChange.changed_at.desc(), PermissionChange.id.desc()).limit(20))
         )
     return render(request, "konto.html", ctx)
+
+
+@router.post("/konto/polityka")
+async def policy_save(request: Request, user: User = Depends(owner_only), db: Session = Depends(get_db)):
+    form = await form_data(request)
+    company = company_of(db)
+    if not company:
+        return redirect("/konto/dane")
+    changes = []
+    for key, (label, _, _) in POLICY_SETTINGS.items():
+        new, old = form.get(key) == "1", bool(getattr(company, key))
+        if new != old:
+            setattr(company, key, new)
+            db.add(PermissionChange(setting=key, old_value=old, new_value=new, changed_by_id=user.id))
+            changes.append(f"{label}: {'włączone' if new else 'wyłączone'}")
+    db.commit()
+    flash(request, "Zapisano politykę biura. " + ("; ".join(changes) + "." if changes else "Bez zmian."))
+    return redirect("/konto#polityka")
 
 
 @router.post("/konto/uprawnienia-bok")

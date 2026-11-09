@@ -27,7 +27,7 @@ from ..models import (
     UserRate,
 )
 from ..security import hash_password, new_password
-from ..web.auth import owner_only, owner_or_bok_commissions
+from ..web.auth import owner_only, owner_or_bok_commissions, team_viewer
 from ..web.forms import (
     FormError,
     names_error,
@@ -38,6 +38,7 @@ from ..web.forms import (
 from ..web.ui import (
     flash,
     fmt_date,
+    fmt_zl,
     form_data,
     redirect,
     render,
@@ -50,13 +51,19 @@ def _managers(db: Session) -> list[User]:
 
 
 @router.get("/zespol", response_class=HTMLResponse)
-def team_page(request: Request, user: User = Depends(owner_or_bok_commissions), db: Session = Depends(get_db)):
+def team_page(request: Request, user: User = Depends(team_viewer), db: Session = Depends(get_db)):
     q = select(User).order_by(User.role, User.last_name, User.first_name)
     if user.role == ROLE_BOK:
         q = q.where(User.role.in_((ROLE_MANAGER, ROLE_TRADER)))
+    if user.role == ROLE_MANAGER:
+        q = q.where(User.manager_id == user.id)
     people = list(db.scalars(q))
-    rows = [(p, svc.current_rate(p)) for p in people]
-    return render(request, "zespol.html", {"user": user, "rows": rows})
+    month = svc.month_start()
+    rows = [
+        (p, svc.current_rate(p), svc.month_sales(db, [p.id], month) if p.role in SELLING_ROLES else None)
+        for p in people
+    ]
+    return render(request, "zespol.html", {"user": user, "rows": rows, "month_label": svc.month_label(month)})
 
 
 @router.get("/zespol/nowa", response_class=HTMLResponse)
@@ -119,6 +126,18 @@ def _get_user(db: Session, uid: int) -> User:
     return u
 
 
+def _get_user_for_viewer(db: Session, viewer: User, uid: int) -> User:
+    """Właściciel: każdy. Menedżer: tylko jego ludzie. BOK: menedżerowie i handlowcy."""
+    if viewer.role == ROLE_OWNER:
+        return _get_user(db, uid)
+    if viewer.role == ROLE_MANAGER:
+        u = _get_user(db, uid)
+        if u.manager_id != viewer.id:
+            raise HTTPException(status_code=404)
+        return u
+    return _get_user_for_bok(db, uid)
+
+
 def _get_user_for_bok(db: Session, uid: int) -> User:
     """BOK zarządza tylko menedżerami i handlowcami — nigdy właścicielem ani innym BOK
     (nawet gdy widzi prowizje, nie powinien móc zresetować hasła właściciela)."""
@@ -128,14 +147,43 @@ def _get_user_for_bok(db: Session, uid: int) -> User:
     return u
 
 
+def _person_ctx(db: Session, user: User, p: User, **extra) -> dict:
+    month = svc.month_start()
+    nxt = date(month.year + (month.month == 12), month.month % 12 + 1, 1)
+    ctx = {
+        "user": user, "p": p, "current": svc.current_rate(p), "managers": _managers(db), "today": date.today(),
+        "form": {}, "month_label": svc.month_label(month),
+        "sales": svc.month_sales(db, [p.id], month) if p.role in SELLING_ROLES else None,
+        "can_target": svc.can_set_target(user, p),
+        "targets": [(svc.month_label(m), m.strftime("%Y-%m"), svc.target_of(db, p.id, m)) for m in (month, nxt)],
+    }
+    ctx.update(extra)
+    return ctx
+
+
 @router.get("/zespol/{uid}", response_class=HTMLResponse)
-def person_page(uid: int, request: Request, user: User = Depends(owner_or_bok_commissions), db: Session = Depends(get_db)):
-    p = _get_user(db, uid) if user.role == ROLE_OWNER else _get_user_for_bok(db, uid)
-    return render(
-        request,
-        "osoba.html",
-        {"user": user, "p": p, "current": svc.current_rate(p), "managers": _managers(db), "today": date.today(), "form": {}},
-    )
+def person_page(uid: int, request: Request, user: User = Depends(team_viewer), db: Session = Depends(get_db)):
+    p = _get_user_for_viewer(db, user, uid)
+    return render(request, "osoba.html", _person_ctx(db, user, p))
+
+
+@router.post("/zespol/{uid}/target")
+async def person_target(uid: int, request: Request, user: User = Depends(team_viewer), db: Session = Depends(get_db)):
+    p = _get_user_for_viewer(db, user, uid)
+    form = await form_data(request)
+    if not svc.can_set_target(user, p):
+        raise HTTPException(status_code=403)
+    raw_month = form.get("miesiac", "")
+    try:
+        y, m = (int(x) for x in raw_month.split("-")[:2])
+        month = date(y, m, 1)
+        amount = p_dec(form, "kwota", "Target masy marży", minimum=0)
+    except (ValueError, FormError) as e:
+        msg = str(e) if isinstance(e, FormError) else "Podaj miesiąc w formacie RRRR-MM, np. 2026-11."
+        return render(request, "osoba.html", _person_ctx(db, user, p, error=msg), 400)
+    svc.set_target(db, actor=user, person=p, month=month, amount=amount)
+    flash(request, f"Zapisano target {p.name} na {svc.month_label(month)}: {fmt_zl(amount)}.")
+    return redirect(f"/zespol/{p.id}")
 
 
 @router.post("/zespol/{uid}/stawki")
@@ -156,7 +204,7 @@ async def person_rate_add(uid: int, request: Request, user: User = Depends(owner
         return render(
             request,
             "osoba.html",
-            {"user": user, "p": p, "current": svc.current_rate(p), "managers": _managers(db), "today": date.today(), "error": str(e), "form": form},
+            _person_ctx(db, user, p, error=str(e), form=form),
             400,
         )
     db.add(r)
@@ -175,7 +223,7 @@ async def person_update(uid: int, request: Request, user: User = Depends(owner_o
             return render(
                 request,
                 "osoba.html",
-                {"user": user, "p": p, "current": svc.current_rate(p), "managers": _managers(db), "today": date.today(), "error": err, "form": {}},
+                _person_ctx(db, user, p, error=err),
                 400,
             )
         p.set_names(form["imie"], form["nazwisko"])

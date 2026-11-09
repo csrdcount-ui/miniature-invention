@@ -12,6 +12,7 @@ from fastapi.templating import Jinja2Templates
 
 from .. import engine as eng
 from ..models import (
+    POLICY_SETTINGS,
     PRICING_PRODUCTS,
     BOK_PERMISSIONS,
     ROLE_BOK,
@@ -99,8 +100,9 @@ templates.env.globals.update(
     SELLING_ROLES=SELLING_ROLES,
     BOK_PERMISSIONS=BOK_PERMISSIONS,
     PRICING_PRODUCTS=PRICING_PRODUCTS,
+    POLICY_SETTINGS=POLICY_SETTINGS,
     OVERRIDE_BASES={
-        eng.OVERRIDE_OD_NARZUTU: "od całej masy narzutu",
+        eng.OVERRIDE_OD_NARZUTU: "od całej masy marży",
         eng.OVERRIDE_OD_HANDLOWCA: "od prowizji handlowca",
     },
     CLAWBACK_MODES={

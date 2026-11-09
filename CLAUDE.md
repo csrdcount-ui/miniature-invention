@@ -207,7 +207,25 @@ Odpowiedzi z 7.11.2026 są w `docs/WIEDZA-BRANZOWA.md`. Zostały:
      Punkty 1–2 (prawdziwa ocena opłacalności zerwania wobec giełdy) wciąż
      NIE zrobione — osobna integracja z danymi rynkowymi.
 
-## Zgłoszenia właścicielki z 9.11.2026 (po teście demo) — czekają na jej potwierdzenie
+## Zgłoszenia właścicielki z 9.11.2026 (po teście demo)
+
+ZROBIONE 9.11.2026 (commit po 979292b): nazewnictwo („marża”, „całkowita masa marży”,
+„Przychód spółki” zamiast „Marża właściciela”; techniczne nazwy pól i kolumn importu
+bez zmian), sprzedaż bieżącego miesiąca vs target na pulpicie (`SalesTarget`,
+`month_sales` w `app/services.py`; liczą się umowy podpisane w miesiącu, bez
+zerwanych i bez Lead/Kontakt/Oferta), target ustawia właściciel albo menedżer
+swoim ludziom, zakładka Zespół dla menedżera (tylko jego ludzie, bez edycji stawek
+i bez resetu haseł, `team_viewer` w `app/web/auth.py`), polityka biura
+„Handlowcy widzą prognozę transzy B” (`Company.traders_see_tranche_b`, domyślnie
+tak; prognoza B zawsze z zastrzeżeniem, schowana w `<details>`).
+
+NIE zrobione — następne wdrożenie: poziomy handlowców (junior/senior/pro,
+definiuje właściciel, przypisuje menedżer) oraz harmonogram rozliczeń w karcie
+spółki (warianty transzy B 1–3, terminy rozliczenia i wypłaty) z podsumowaniem
+portfela wg okresów i potwierdzaniem wpływu od spółki. Wiedza w
+`docs/WIEDZA-BRANZOWA.md` („Wypłata prowizji w czasie”).
+
+Pierwotne zgłoszenia:
 
 1. **Terminologia:** w branży brokerskiej mówi się „marża”, nie „narzut”. Zamienić
    wszędzie („masa narzutu” → „całkowita masa marży”, „narzut zł/MWh” → „marża

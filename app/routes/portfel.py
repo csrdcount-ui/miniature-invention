@@ -22,13 +22,16 @@ from ..models import (
     CONTRACT_STATUSES,
     MEDIA,
     PRICING_PRODUCTS,
+    ROLE_BOK,
+    ROLE_MANAGER,
     ROLE_OWNER,
     ROLE_TRADER,
+    SELLING_ROLES,
     Contract,
     Supplier,
     User,
 )
-from ..web.auth import bok_perms, current_user
+from ..web.auth import bok_perms, company_of, current_user
 from ..web.forms import (
     FormError,
     p_date,
@@ -50,8 +53,23 @@ router = APIRouter()
 def dashboard(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
     contracts = list(db.scalars(svc.visible_contracts_query(user)))
     perms = bok_perms(db)
+    show_b = svc.tranche_b_visible(user, company_of(db))
     summary = svc.summary_for(user, contracts, perms)
-    ctx = {"user": user, "summary": summary, "recent": [svc.contract_view(user, c, perms) for c in contracts[:5]]}
+    month = svc.month_start()
+    ctx = {
+        "user": user, "summary": summary, "show_b": show_b,
+        "recent": [svc.contract_view(user, c, perms, show_b) for c in contracts[:5]],
+        "month_label": svc.month_label(month),
+    }
+    if user.role in (ROLE_TRADER, ROLE_MANAGER):
+        ctx["mine"] = svc.month_sales(db, [user.id], month)
+    if user.role == ROLE_MANAGER:
+        team = [u.id for u in db.scalars(select(User).where(User.manager_id == user.id, User.active.is_(True)))]
+        ctx["team"] = svc.month_sales(db, team, month)
+        ctx["team_size"] = len(team)
+    if user.role in (ROLE_OWNER, ROLE_BOK):
+        sellers = [u.id for u in db.scalars(select(User).where(User.role.in_(SELLING_ROLES), User.active.is_(True)))]
+        ctx["company_month"] = svc.month_sales(db, sellers, month)
     if user.role == ROLE_OWNER:
         suppliers = list(db.scalars(select(Supplier).order_by(Supplier.name)))
         ctx["suppliers_without_rules"] = [s.name for s in suppliers if not s.rule_sets]
@@ -101,7 +119,8 @@ def contracts_page(request: Request, user: User = Depends(current_user), db: Ses
     q = svc.apply_contract_filters(svc.visible_contracts_query(user), filters)
     contracts = list(db.scalars(q))
     perms = bok_perms(db)
-    views = [svc.contract_view(user, c, perms) for c in contracts]
+    show_b = svc.tranche_b_visible(user, company_of(db))
+    views = [svc.contract_view(user, c, perms, show_b) for c in contracts]
     ctx = {
         "user": user,
         "contracts": views,
@@ -160,7 +179,7 @@ async def contract_create(request: Request, user: User = Depends(current_user), 
             start_date=p_date(form, "start", "Start dostaw", required=False),
             term_months=p_int(form, "okres", "Okres umowy w miesiącach", minimum=1, maximum=120),
             annual_volume_mwh=p_dec(form, "wolumen", "Wolumen roczny", minimum=Decimal("0.001")),
-            markup_pln_mwh=p_dec(form, "narzut", "Narzut", minimum=0),
+            markup_pln_mwh=p_dec(form, "narzut", "Marża", minimum=0),
             base_price_pln_mwh=p_dec(form, "cena_bazowa", "Cena bazowa spółki", required=False, minimum=0),
             new_connection=form.get("nowe_przylacze") == "1",
             status=form.get("status") if form.get("status") in CONTRACT_STATUSES else "Umowa podpisana",
@@ -180,11 +199,11 @@ def _get_visible_contract(db: Session, user: User, cid: int) -> Contract:
     return c
 
 
-def _contract_ctx(user: User, c: Contract, form: Optional[dict] = None, error: Optional[str] = None, perms=None) -> dict:
+def _contract_ctx(user: User, c: Contract, form: Optional[dict] = None, error: Optional[str] = None, perms=None, show_b: bool = True) -> dict:
     perms = perms or svc.DEFAULT_PERMS
     return {
         "user": user,
-        "c": svc.contract_view(user, c, perms),
+        "c": svc.contract_view(user, c, perms, show_b),
         "can_edit_status": svc.can_edit_status(user, c, perms),
         "history": c.events,
         "since": svc.status_since(c),
@@ -197,7 +216,7 @@ def _contract_ctx(user: User, c: Contract, form: Optional[dict] = None, error: O
 @router.get("/umowy/{cid}", response_class=HTMLResponse)
 def contract_page(cid: int, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
     c = _get_visible_contract(db, user, cid)
-    return render(request, "umowa.html", _contract_ctx(user, c, perms=bok_perms(db)))
+    return render(request, "umowa.html", _contract_ctx(user, c, perms=bok_perms(db), show_b=svc.tranche_b_visible(user, company_of(db))))
 
 
 @router.post("/umowy/{cid}/status")
@@ -209,6 +228,6 @@ async def contract_status(cid: int, request: Request, user: User = Depends(curre
         svc.change_status(db, actor=user, c=c, new_status=form.get("status", ""), effective_date=when, note=form.get("notatka", ""), perms=bok_perms(db))
     except (FormError, svc.BusinessError) as e:
         db.rollback()
-        return render(request, "umowa.html", _contract_ctx(user, c, form, str(e), perms=bok_perms(db)), 400)
+        return render(request, "umowa.html", _contract_ctx(user, c, form, str(e), perms=bok_perms(db), show_b=svc.tranche_b_visible(user, company_of(db))), 400)
     flash(request, f"Status umowy: {c.status}, od {fmt_date(when)}. Zmiana zapisana w historii.")
     return redirect(f"/umowy/{c.id}")

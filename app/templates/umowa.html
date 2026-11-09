@@ -22,17 +22,17 @@
   <dt>Wolumen z całego okresu</dt><dd>{{ c.total_volume_mwh|mwh }}</dd>
   <dt>Punkt poboru</dt><dd>{{ "nowe przyłącze, bez historii" if c.new_connection else "z historią zużycia" }}</dd>
   {% if c.base_price_pln_mwh is not none %}<dt>Cena bazowa spółki</dt><dd>{{ c.base_price_pln_mwh|zl }}/MWh</dd>{% endif %}
-  <dt>Narzut</dt><dd>{{ c.markup_pln_mwh|zl }}/MWh</dd>
+  <dt>Marża</dt><dd>{{ c.markup_pln_mwh|zl }}/MWh</dd>
   {% if c.client_price_pln_mwh is not none %}<dt>Cena dla klienta</dt><dd>{{ c.client_price_pln_mwh|zl }}/MWh</dd>{% endif %}
-  <dt>Cała masa narzutu</dt><dd>{{ c.total_markup|zl }}</dd>
+  <dt>Całkowita masa marży</dt><dd>{{ c.total_markup|zl }}</dd>
 </dl>
 
 <h2>Prowizje</h2>
 {% if c.broker_share_pct is defined %}
-<p>Reguły zamrożone w dniu podpisania: udział brokera {{ c.broker_share_pct|pct }}, pierwsza transza {{ c.first_tranche_pct|pct }}, handlowiec {{ c.trader_share_pct|pct }} całego narzutu{% if c.manager_name %}, override menedżera {{ c.manager_override_pct|pct }} {{ OVERRIDE_BASES.get(c.manager_override_base) }}{% endif %}. Korekta: {{ CLAWBACK_MODES.get(c.clawback_mode)|lower }}.</p>
+<p>Reguły zamrożone w dniu podpisania: udział brokera {{ c.broker_share_pct|pct }}, pierwsza transza {{ c.first_tranche_pct|pct }}, handlowiec {{ c.trader_share_pct|pct }} całej masy marży{% if c.manager_name %}, override menedżera {{ c.manager_override_pct|pct }} {{ OVERRIDE_BASES.get(c.manager_override_base) }}{% endif %}. Korekta: {{ CLAWBACK_MODES.get(c.clawback_mode)|lower }}.</p>
 {% else %}
 <p>
-  {% if c.trader_share_pct is defined %}Udział handlowca: {{ c.trader_share_pct|pct }} całego narzutu. {% endif %}
+  {% if c.trader_share_pct is defined %}Udział handlowca: {{ c.trader_share_pct|pct }} całej masy marży. {% endif %}
   {% if c.first_tranche_pct is defined %}Pierwsza transza: {{ c.first_tranche_pct|pct }} prowizji. {% endif %}
   {% if c.manager_override_pct is defined %}{{ "Override menedżera" if user.role == ROLE_BOK else "Twój override" }}: {{ c.manager_override_pct|pct }} {{ OVERRIDE_BASES.get(c.manager_override_base) }}.{% endif %}
 </p>
@@ -40,7 +40,12 @@
 {% if c.new_connection %}
 <p>Nowe przyłącze: przez pierwsze {{ c.new_connection_months }} mies. prowizja z każdej zapłaconej faktury. Potem pierwsza transza od reszty umowy.</p>
 {% endif %}
-{% if c.rows %}
+{% if c.hide_b %}
+<dl>
+  <dt>Twoja transza A</dt><dd>{{ c.tranche_a|zl }}</dd>
+</dl>
+<p class="podpowiedz">Dalsze wypłaty z tej umowy rozlicza biuro zgodnie z rozliczeniami spółki obrotu.</p>
+{% elif c.rows %}
 {{ tabela_prowizji(c.rows, "Podział prowizji z całego okresu umowy", c.new_connection, c.new_connection_months) }}
 <p class="podpowiedz">To prognoza od wolumenu z umowy. Wypłata z góry jest zaliczką: przy zerwaniu umowy lub niższym zużyciu spółka może ją skorygować, a korekta przechodzi proporcjonalnie na handlowca i menedżera.</p>
 {% else %}

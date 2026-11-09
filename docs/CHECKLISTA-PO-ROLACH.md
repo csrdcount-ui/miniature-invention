@@ -1,6 +1,6 @@
 # Checklista po rolach: co jest wdrożone a co czeka
 
-Stan na 9.11.2026, commit `979292b`. Pierwsza kolumna zasad: wszystko tu opisane
+Stan na 9.11.2026 (wieczór). Nowości po `979292b`: marża zamiast narzutu, „Przychód spółki”, sprzedaż miesiąca vs target, zakładka Zespół menedżera, polityka transzy B. Pierwsza kolumna zasad: wszystko tu opisane
 jest w kodzie na `main`. „Wdrożone” znaczy: na serwerze po ostatnim ręcznym
 „Manual Deploy” — sprawdź numer commitu na https://platforma-brokerska.onrender.com/wersja.
 

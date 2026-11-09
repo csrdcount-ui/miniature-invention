@@ -37,15 +37,15 @@
   {{ pole("do", "Podpisana do", qp.get("do", ""), type="date") }}
   {{ pole("wolumen_min", "Wolumen roczny od (MWh)", qp.get("wolumen_min", ""), extra='inputmode="decimal"') }}
   {{ pole("wolumen_max", "Wolumen roczny do (MWh)", qp.get("wolumen_max", ""), extra='inputmode="decimal"') }}
-  {{ pole("narzut_min", "Narzut od (zł/MWh)", qp.get("narzut_min", ""), extra='inputmode="decimal"') }}
-  {{ pole("narzut_max", "Narzut do (zł/MWh)", qp.get("narzut_max", ""), extra='inputmode="decimal"') }}
+  {{ pole("narzut_min", "Marża od (zł/MWh)", qp.get("narzut_min", ""), extra='inputmode="decimal"') }}
+  {{ pole("narzut_max", "Marża do (zł/MWh)", qp.get("narzut_max", ""), extra='inputmode="decimal"') }}
   {{ wybor("nowe", "Nowe przyłącze", [("tak", "Tak"), ("nie", "Nie")], qp.get("nowe", ""), empty="Wszystkie") }}
   {{ wybor("sort", "Sortowanie", sort_options.items(), filters.sort) }}
   <button type="submit">Filtruj</button>
 </form>
 {% if filters.active or filters.sort != "podpisana_desc" %}<p><a href="/umowy">Wyczyść filtry</a></p>{% endif %}
 
-<p>Liczba umów: {{ summary.count }}. Cała masa narzutu: {{ summary.total_markup|zl }}.</p>
+<p>Liczba umów: {{ summary.count }}. Całkowita masa marży: {{ summary.total_markup|zl }}.</p>
 {% if contracts %}
 {% include "_lista_umow.html" with context %}
 {% else %}

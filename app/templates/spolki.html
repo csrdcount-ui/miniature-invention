@@ -11,7 +11,7 @@
   <li>
     <h3><a href="/spolki/{{ s.id }}">{{ s.name }}</a>{% if not s.active %} (nieaktywna){% endif %}</h3>
     {% if rs %}
-    <p>Udział brokera {{ rs.broker_share_pct|pct }}, pierwsza transza {{ rs.first_tranche_pct|pct }}, limit narzutu {{ rs.max_markup_pln_mwh|zl if rs.max_markup_pln_mwh is not none else "brak" }}{% if rs.max_markup_pln_mwh is not none %}/MWh{% endif %}.</p>
+    <p>Udział brokera {{ rs.broker_share_pct|pct }}, pierwsza transza {{ rs.first_tranche_pct|pct }}, limit marży {{ rs.max_markup_pln_mwh|zl if rs.max_markup_pln_mwh is not none else "brak" }}{% if rs.max_markup_pln_mwh is not none %}/MWh{% endif %}.</p>
     <p>Obowiązuje od {{ rs.valid_from|data }}.</p>
     {% else %}
     <p><strong>Brak reguł prowizji.</strong> Nie można zapisać umowy z tą spółką.</p>
