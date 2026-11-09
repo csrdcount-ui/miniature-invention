@@ -170,7 +170,8 @@ Odpowiedzi z 7.11.2026 są w `docs/WIEDZA-BRANZOWA.md`. Zostały:
   (wtedy aplikacja ma generować ofertę, np. PDF z logo)?
 - Co znaczy „regres” (odrzucenie/cofnięcie umowy przez spółkę z braków?).
 - Na jak długo opiekun brokera zwykle przedłuża rezerwację?
-- Produkty w cennikach (stała, indeks, mix), zależność od okresu i taryfy.
+- ~~Produkty w cennikach~~ — odpowiedziane 9.11.2026: SPOT, FIX, TRANZA
+  (`docs/WIEDZA-BRANZOWA.md`, sekcja „Produkty cenowe i ryzyko zerwania”).
 - Ważność wyceny indywidualnej.
 - BOK: domyślne uprawnienia do przepinania klientów; kilka osób z podziałem pracy?
 - Migracja: z jakich CRM-ów, zanonimizowany eksport, historia wypłat i korekt.
@@ -184,9 +185,10 @@ Odpowiedzi z 7.11.2026 są w `docs/WIEDZA-BRANZOWA.md`. Zostały:
 - **Filtry menedżera** (dowolny parametr umowy, w tym ryzyko zerwania przy spadku
   cen na giełdzie — „fixing”/RDN) — zgłoszone, NIE zrobione. Blokery do
   rozstrzygnięcia z właścicielką, zanim da się to zaprojektować:
-  1. Dziś `Contract` nie ma pola typu cenowego (stała/indeks/mix) — to wciąż
-     otwarte pytanie z `docs/WIEDZA-BRANZOWA.md` („Produkty w cennikach”), bez
-     niego nie da się filtrować po „umowach na fixing/RDN”.
+  1. ODPOWIEDZIANE 9.11.2026: trzy produkty — SPOT, FIX, TRANZA, z kolorami
+     (FIX zielony, SPOT niebieski, TRANZA żółty) i zasadą UC84 o karze umownej
+     (patrz `docs/WIEDZA-BRANZOWA.md`). `Contract` wciąż nie ma pola typu
+     cenowego — do dodania razem z filtrami, propozycja czeka na jej akceptację.
   2. „Czy opłaca się zerwać umowę, bo giełda spadła” wymaga danych o aktualnej
      cenie rynkowej (TGE: fixing, RDN) — to osobna integracja z zewnętrznym
      źródłem danych giełdowych, nie jest to sam filtr na istniejących polach.

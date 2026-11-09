@@ -142,3 +142,35 @@ między spółkami obrotu, więc w aplikacji mają być konfigurowalne per spó�
 
 Lista otwartych pytań jest w rozmowie z właścicielką projektu; tu trafiają
 tylko potwierdzone odpowiedzi.
+
+
+## Produkty cenowe i ryzyko zerwania (potwierdzone 9.11.2026)
+
+### Trzy produkty
+- **SPOT (RDN, indeks)** — cena zmienna, powiązana z rynkiem dnia następnego.
+  Spółka obrotu nie musi mieć wcześniej zahedowanej (zakupionej z wyprzedzeniem)
+  energii pod ten kontrakt.
+- **FIX** — cena stała, zahedowana. Spółka kupuje energię na ten kontrakt
+  z wyprzedzeniem, więc ponosi realny koszt zakupu.
+- **TRANZA (mix)** — cena ustalana transzami, częściowe hedgowanie w etapach.
+
+### UC84 a kara umowna za zerwanie
+Nowelizacja UC84 wymaga, żeby spółka obrotu **wykazała poniesione koszty** w
+karze umownej za zerwanie umowy — nie może ustalać kary uznaniowo.
+
+Skutek dla ryzyka zerwania:
+- **Kontrakty SPOT są łatwiejsze do zerwania.** Jeśli energia pod kontrakt nie
+  była wcześniej zakupiona na portfel spółki, spółka ponosi realnie tylko
+  koszty operacyjne i transakcyjne — które są niewielkie, więc kara też jest
+  niewielka. Szczególnie opłaca się zerwać SPOT, który był przeszacowany, np.
+  ktoś dołożył 300 zł do wskaźnika K, albo zawyżył/nieaktualny jest profil
+  ryzyka klienta.
+- **Kontrakty FIX są najbezpieczniejsze dla spółki** (i najtrudniejsze/najdroższe
+  do zerwania dla klienta/brokera) — spółka ma realny koszt zakupu energii,
+  który wykaże w karze.
+- TRANZA jest pośrednia: kara rośnie z każdą zrealizowaną transzą zakupu.
+
+### Kolory produktów w interfejsie (ustalone 9.11.2026)
+FIX — zielony (bezpieczny, zahedowany). SPOT — niebieski. TRANZA — żółty.
+Kolor jest tylko dodatkiem do etykiety tekstowej (FIX/SPOT/TRANZA), nigdy
+jedynym nośnikiem informacji — także dla czytnika ekranu.
