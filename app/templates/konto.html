@@ -23,6 +23,11 @@
 </dl>
 <p><a href="/konto/dane">Zmień {{ "dane i nazwę firmy" if user.role == ROLE_OWNER else "imię i nazwisko" }}</a></p>
 
+{% if user.role == ROLE_OWNER %}
+<h2>Import danych</h2>
+<p><a href="/konto/import">Wczytaj dane z pliku Excela albo dane demonstracyjne</a>. Tam pobierzesz też pusty szablon i plik demonstracyjny.</p>
+{% endif %}
+
 {% if policy_settings %}
 <h2 id="polityka">Polityka biura</h2>
 <form method="post" action="/konto/polityka" class="stack">

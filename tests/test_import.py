@@ -360,3 +360,14 @@ def test_wynik_importu_ma_plik_z_haslami_do_pobrania(client):
     assert "jessica.kowal@demo.invalid" in plik and "michal.lex@demo.invalid" in plik
     # po odświeżeniu haseł nie ma nigdzie na serwerze
     assert "Hasło:" not in client.get(f"/konto/import/{bid}").text
+
+
+def test_import_ma_widoczny_link_na_stronie_konto_tylko_dla_wlasciciela(client):
+    setup_company(client)
+    login(client, "kris@firma.pl")
+    page = client.get("/konto").text
+    assert "<h2>Import danych</h2>" in page and 'href="/konto/import"' in page
+    for who in ["marek@firma.pl", "hania@firma.pl"]:
+        login(client, who)
+        assert "<h2>Import danych</h2>" not in client.get("/konto").text
+        assert client.get("/konto/import").status_code == 403
