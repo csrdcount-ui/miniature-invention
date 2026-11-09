@@ -174,3 +174,36 @@ Skutek dla ryzyka zerwania:
 FIX — zielony (bezpieczny, zahedowany). SPOT — niebieski. TRANZA — żółty.
 Kolor jest tylko dodatkiem do etykiety tekstowej (FIX/SPOT/TRANZA), nigdy
 jedynym nośnikiem informacji — także dla czytnika ekranu.
+
+## Wypłata prowizji w czasie: transza A i transza B (potwierdzone 9.11.2026)
+
+- **Transza A** — wypłata z góry, procent całej prowizji (np. 30% albo 50%), po
+  zdarzeniu wyzwalającym (np. poprawna weryfikacja umowy, nawet rok przed startem
+  dostaw).
+- **Transza B** — pozostała część prowizji (całość minus transza A), rozłożona na
+  okres kontraktu. Spółki różnią się tym, KIEDY zaczynają płacić transzę B:
+  1. od razu, równo przez cały kontrakt;
+  2. dopiero po „odpracowaniu” transzy A przez rzeczywiste zużycie klienta (np.
+     kontrakt 48 mies., A = 50%, dostawy od 1.01.2027, klient zużywa więcej niż
+     w umowie, A odpracowane w 20. miesiącu — od 21. miesiąca spółka płaci B);
+  3. częściowo od razu: np. 50% należnej B co miesiąc, reszta idzie na spłatę A;
+     po spłacie A — 100% B do końca kontraktu.
+- Odpracowanie liczy się od RZECZYWISTEGO zużycia, więc dokładne terminy znane są
+  dopiero z rozliczeń spółki; plan z wolumenu umownego jest tylko prognozą.
+- Ta sama mechanika dotyczy brokera, handlowca i menedżera (proporcjonalnie).
+- **Wypłaty zespołowi:** biura nie wypłacają przed otrzymaniem pieniędzy od spółki
+  (płynność). Zwykle w ciągu ok. 2 dni od wpływu od spółki.
+
+## Poziomy handlowców (potwierdzone 9.11.2026)
+
+- Menedżerowie stopniują handlowców, np. junior, senior, pro, z różnym udziałem:
+  junior ok. 30% (wymaga czasu menedżera: wspólne wyjazdy, nauka), senior 35–45%
+  (samodzielny, potrzebuje wsparcia w sytuacjach niestandardowych), bardzo
+  profesjonalny handlowiec do 50%.
+- Procent zmienia także menedżer, nie tylko właściciel.
+
+## Nazewnictwo
+
+- W branży mówi się „marża” / „masa marży”, nie „narzut”.
+- Zysk biura brokerskiego (różnica między udziałem od spółki obrotu a wypłatami
+  zespołu) to najczęściej „przychód spółki”.
