@@ -128,7 +128,7 @@ Zrobione: nawigacja z zakładkami pod kciukiem, imię i nazwisko osobno, nazwa f
 w belce, historia statusów umów, podział kodu na moduły, rola BOK z przełącznikami,
 strona /wersja, import z Excela (standard 1.0: zespol, spolki, umowy,
 historia_statusow) z podglądem, zatwierdzeniem i cofnięciem paczki, dane demo
-(12 spółek, 8 osób, 60 umów) usuwane cofnięciem paczki, reset hasła przez
+(12 spółek, 9 osób, 100 umów) usuwane cofnięciem paczki, reset hasła przez
 właściciela (hasło losowe, czytelne, pokazane raz) i wskazówka odzyskiwania
 na stronie logowania (`new_password()` w `app/security.py`, wspólna z importem).
 Samoobsługowe odzyskiwanie przez e-mail NIE jest zrobione — właścicielka wycofała
@@ -206,6 +206,23 @@ Odpowiedzi z 7.11.2026 są w `docs/WIEDZA-BRANZOWA.md`. Zostały:
      (literówka w adresie = pusty filtr, nie błąd) w `app/routes/portfel.py`.
      Punkty 1–2 (prawdziwa ocena opłacalności zerwania wobec giełdy) wciąż
      NIE zrobione — osobna integracja z danymi rynkowymi.
+
+## Czysty start 10.11.2026 (jednorazowy, zaplanowany na wdrożenie)
+
+Właścicielka zablokowała się na koncie Boss01 (najpewniej przez przycisk „Nadaj nowe
+hasło” na własnym koncie — losowe hasło pokazane raz; przycisk na własnym koncie jest
+już zablokowany) i poprosiła o skasowanie wszystkiego. `_one_time_clean_start` w
+`app/migrate.py` czyści wszystkie tabele przy pierwszym starcie po wdrożeniu i ustawia
+znacznik `czysty-start-2026-11-10` w `system_flags`, więc kolejne wdrożenia niczego nie
+kasują. Po potwierdzeniu przez nią, że poszło (`/logowanie` odesłało na `/start`),
+USUNĄĆ ten kod i znacznik z migrate.py. Uwaga na przyszłość: właściciel nie ma dziś
+odzyskiwania dostępu, gdy zapomni hasło (BOK nie resetuje właściciela, e-maila brak) —
+propozycja: jednorazowy kod odzyskiwania pokazywany przy tworzeniu konta; nie zrobione.
+
+Dane demo przebudowane 10.11.2026 (`app/exchange/demo.py`): 100 umów, marże i
+proporcje wg `docs/WIEDZA-BRANZOWA.md`, menedżer Michał Lex, BOK: Jessica Kowal (szefowa,
+nazwisko zgadnięte, właścicielka może je zmienić w Zespół) i Joanna Dąbrowska. Platforma
+nie rozróżnia szefa BOK od zwykłej osoby BOK.
 
 ## Zgłoszenia właścicielki z 9.11.2026 (po teście demo)
 

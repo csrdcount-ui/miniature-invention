@@ -207,3 +207,16 @@ jedynym nośnikiem informacji — także dla czytnika ekranu.
 - W branży mówi się „marża” / „masa marży”, nie „narzut”.
 - Zysk biura brokerskiego (różnica między udziałem od spółki obrotu a wypłatami
   zespołu) to najczęściej „przychód spółki”.
+
+## Realne marże zależne od wolumenu (potwierdzone 10.11.2026)
+
+Marża brokera w zł/MWh maleje z wielkością umowy (wolumen roczny):
+- do 50 MWh: do ok. 150 zł
+- 50–500 MWh: 90–120 zł
+- 500–1000 MWh (1 GWh): 60–70 zł, przy dobrych układach, głównie z cenników
+- 1–10 GWh: 30–50 zł
+- powyżej 10 GWh: 8–15 zł
+
+Stare dane demonstracyjne miały marże sprzed ok. czterech lat, dziś nieosiągalne.
+Struktura portfela demo (liczba umów): 17% do 50 MWh, 49% 50–300 MWh, 11% 300–1000 MWh,
+23% powyżej 1 GWh.

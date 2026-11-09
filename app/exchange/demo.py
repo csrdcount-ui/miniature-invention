@@ -15,7 +15,8 @@ from .standard import build_workbook
 
 DOMAIN = "demo.invalid"
 
-# nazwa, udział brokera, 1. transza, wyzwalacz, limit narzutu, mies. nowych przyłączy, korekta
+# nazwa, udział brokera, 1. transza, wyzwalacz, limit marży, mies. nowych przyłączy, korekta
+# Limity marży co najmniej 150 zł/MWh, żeby mieściły najwyższe marże małych umów.
 SUPPLIERS = [
     ("e2V (Ekovoltis)", 75, 30, "weryfikacja", 200, 12, "proporcjonalna"),
     ("ENGIE", 70, 50, "start_dostaw", 180, 12, "proporcjonalna"),
@@ -23,44 +24,86 @@ SUPPLIERS = [
     ("Enefit", 72, 40, "zmiana_sprzedawcy", 200, 12, "proporcjonalna"),
     ("Polenergia", 68, 30, "start_dostaw", 160, 12, "proporcjonalna"),
     ("Respect Energy", 80, 50, "weryfikacja", 200, 12, "proporcjonalna"),
-    ("Enea", 60, 30, "start_dostaw", 120, 12, "proporcjonalna"),
-    ("PGE", 62, 30, "start_dostaw", 120, 12, "proporcjonalna"),
-    ("Orlen", 64, 30, "zmiana_sprzedawcy", 140, 12, "proporcjonalna"),
-    ("Tauron", 61, 30, "start_dostaw", 130, 12, "proporcjonalna"),
+    ("Enea", 60, 30, "start_dostaw", 150, 12, "proporcjonalna"),
+    ("PGE", 62, 30, "start_dostaw", 150, 12, "proporcjonalna"),
+    ("Orlen", 64, 30, "zmiana_sprzedawcy", 150, 12, "proporcjonalna"),
+    ("Tauron", 61, 30, "start_dostaw", 150, 12, "proporcjonalna"),
     ("Audax", 78, 50, "weryfikacja", 200, 12, "brak"),
     ("Axpo", 74, 40, "weryfikacja", 180, 12, "proporcjonalna"),
 ]
 RULES_FROM = date(2023, 1, 1)
 
-MANAGER = ("Tomasz", "Zieliński", 45, 5)
+MANAGER = ("Michał", "Lex", 45, 5)
 TRADERS = [  # imię, nazwisko, udział, waga sprzedaży
     ("Anna", "Kowalczyk", 50, 14),
     ("Piotr", "Nowicki", 45, 11),
     ("Katarzyna", "Mazur", 40, 9),
     ("Michał", "Wójcik", 40, 8),
     ("Agnieszka", "Lewandowska", 35, 6),
-    ("Paweł", "Kamiński", 35, 6),  # najgorszy portfel: najwięcej zerwań
+    ("Paweł", "Kamiński", 35, 3),  # najgorszy portfel: najwięcej zerwań
 ]
-BOK = ("Joanna", "Dąbrowska")
+# Biuro obsługi: pierwsza osoba to szefowa. Platforma nie rozróżnia dziś szefa BOK od zwykłej
+# osoby BOK (obie mają te same uprawnienia).
+BOK = [("Jessica", "Kowal"), ("Joanna", "Dąbrowska")]
 
-CLIENTS = [
-    "Piekarnia Złoty Kłos sp. z o.o.", "Chłodnia Lubelska sp. z o.o.", "Hotel Pod Lipami", "Zakład Mechaniczny Kowalski",
-    "Wspólnota Mieszkaniowa ul. Lipowa 12", "Wspólnota Mieszkaniowa ul. Długa 5", "Wspólnota Mieszkaniowa os. Słoneczne",
-    "Drukarnia Akant sp. z o.o.", "Tartak Leśny Dwór", "Ogrodnictwo Zielone Pole", "Stolarnia Dąb s.c.",
-    "Market Pod Zegarem", "Przetwórnia Owoców Sad", "Myjnia Błysk", "Centrum Logistyczne Wschód sp. z o.o.",
-    "Hurtownia Budowlana Fundament", "Galwanizernia Metal-Pol", "Restauracja Stary Młyn", "Szkoła Językowa Lingua",
-    "Klinika Weterynaryjna Azor", "Pensjonat Górski Potok", "Serwis Opon Kołowrót", "Zakład Mięsny Kłos",
-    "Wytwórnia Lodów Bałtyk", "Pralnia Przemysłowa Biel", "Magazyny Chłodnicze Arktyka", "Przychodnia Zdrowie",
-    "Fitness Klub Forma", "Kino Plaza", "Szklarnia Pomidor sp. z o.o.", "Odlewnia Żeliwa Sztaba",
-    "Mleczarnia Łąka", "Browar Rzemieślniczy Chmiel", "Tłocznia Soków Jabłonka", "Wspólnota Mieszkaniowa ul. Ogrodowa 3",
-    "Warsztat Samochodowy Tłok", "Hotel Nad Jeziorem", "Kamieniarstwo Granit", "Zakład Stolarki PCV Okno",
-    "Centrum Handlowe Rynek", "Piekarnia Rumiana Skórka", "Spółdzielnia Ogrodnicza Plon", "Wylęgarnia Drobiu Kurnik",
-    "Lakiernia Proszkowa Kolor", "Hala Sportowa Olimp", "Biurowiec Kwadrat", "Fabryka Mebli Komfort sp. z o.o.",
-    "Cukiernia Słodki Kącik", "Gospodarstwo Rybne Karp", "Pracownia Ceramiki Glina", "Wspólnota Mieszkaniowa ul. Polna 8",
-    "Hotel Biznes Centrum", "Zakład Tworzyw Polimer", "Agencja Reklamowa Baner", "Tłocznia Oleju Rzepak",
-    "Przedszkole Niepubliczne Promyk", "Zakład Poligraficzny Druk-Art", "Serwerownia DataLas sp. z o.o.",
-    "Sklep Ogrodniczy Konewka", "Producent Opakowań Karton",
+# Struktura portfela wg rocznego wolumenu (razem 100 umów, procenty = liczby):
+# nazwa, liczba umów, możliwe wolumeny roczne w MWh, możliwe marże w zł/MWh
+TIERS = [
+    ("do 50 MWh", 17, [5, 8, 10, 12, 15, 18, 20, 25, 30, 35, 40, 45, 50], list(range(110, 151, 5))),
+    ("50–300 MWh", 49, [60, 70, 80, 90, 100, 120, 140, 150, 160, 180, 200, 220, 250, 280, 300], list(range(90, 121, 5))),
+    ("300–500 MWh", 4, [320, 350, 400, 450, 500], list(range(90, 121, 5))),
+    ("500–1000 MWh", 7, [550, 600, 650, 700, 800, 900, 1000], [60, 65, 70]),
+    ("1–3 GWh", 17, [1100, 1200, 1400, 1500, 1800, 2000, 2500], list(range(30, 51, 5))),
+    ("3–10 GWh", 4, [3200, 3500, 4000, 5000], [30, 35, 40]),
+    ("powyżej 10 GWh", 2, [10500, 12000], list(range(8, 16))),
 ]
+
+CLIENTS_SMALL = [
+    "Wspólnota Mieszkaniowa ul. Lipowa 12", "Wspólnota Mieszkaniowa ul. Długa 5", "Wspólnota Mieszkaniowa os. Słoneczne",
+    "Wspólnota Mieszkaniowa ul. Ogrodowa 3", "Wspólnota Mieszkaniowa ul. Polna 8", "Wspólnota Mieszkaniowa ul. Krótka 2",
+    "Pracownia Ceramiki Glina", "Sklep Ogrodniczy Konewka", "Myjnia Błysk", "Kancelaria Podatkowa Bilans",
+    "Studio Fryzjerskie Nożyczki", "Gabinet Stomatologiczny Uśmiech", "Księgarnia Kartka", "Apteka Pod Różą",
+    "Warsztat Rowerowy Szprycha", "Kwiaciarnia Pod Magnolią", "Biuro Rachunkowe Księga",
+]
+CLIENTS_MEDIUM = [
+    "Piekarnia Złoty Kłos sp. z o.o.", "Hotel Pod Lipami", "Zakład Mechaniczny Kowalski", "Drukarnia Akant sp. z o.o.",
+    "Tartak Leśny Dwór", "Ogrodnictwo Zielone Pole", "Stolarnia Dąb s.c.", "Market Pod Zegarem", "Restauracja Stary Młyn",
+    "Szkoła Językowa Lingua", "Klinika Weterynaryjna Azor", "Pensjonat Górski Potok", "Serwis Opon Kołowrót",
+    "Pralnia Przemysłowa Biel", "Przychodnia Zdrowie", "Fitness Klub Forma", "Kino Plaza", "Browar Rzemieślniczy Chmiel",
+    "Warsztat Samochodowy Tłok", "Hotel Nad Jeziorem", "Kamieniarstwo Granit", "Zakład Stolarki PCV Okno",
+    "Piekarnia Rumiana Skórka", "Cukiernia Słodki Kącik", "Gospodarstwo Rybne Karp", "Lakiernia Proszkowa Kolor",
+    "Hala Sportowa Olimp", "Biurowiec Kwadrat", "Hotel Biznes Centrum", "Agencja Reklamowa Baner",
+    "Przedszkole Niepubliczne Promyk", "Zakład Poligraficzny Druk-Art", "Producent Opakowań Karton",
+    "Salon Meblowy Komfort", "Szwalnia Igła i Nić", "Zakład Betoniarski Beton-Mix", "Wytwórnia Makaronu Kluska",
+    "Centrum Rehabilitacji Ruch", "Cukiernia Marcepan", "Szkoła Jazdy Kierownica", "Pływalnia Miejska Fala",
+    "Zajazd Pod Dębem", "Dom Kultury Akord", "Laboratorium Analiz Probówka", "Sklep Spożywczy Smak",
+    "Hurtownia Kwiatów Tulipan", "Zakład Pogrzebowy Pokój", "Drukarnia Cyfrowa Piksel", "Pensjonat Leśna Cisza",
+]
+CLIENTS_LARGE = [  # 300–1000 MWh
+    "Chłodnia Lubelska sp. z o.o.", "Hurtownia Budowlana Fundament", "Galwanizernia Metal-Pol", "Zakład Mięsny Kłos",
+    "Wytwórnia Lodów Bałtyk", "Magazyny Chłodnicze Arktyka", "Szklarnia Pomidor sp. z o.o.", "Mleczarnia Łąka",
+    "Tłocznia Soków Jabłonka", "Przetwórnia Owoców Sad", "Odlewnia Żeliwa Sztaba",
+]
+CLIENTS_XL = [  # powyżej 1 GWh; dwa pierwsze to największe (powyżej 10 GWh)
+    "Walcownia Stali Hutnik S.A.", "Cementownia Wapienna S.A.",
+    "Zakłady Chemiczne Reagent S.A.", "Papiernia Biała sp. z o.o.", "Cukrownia Buraczana S.A.", "Zakład Produkcji Szkła Kryształ",
+    "Centrum Logistyczne Wschód sp. z o.o.", "Fabryka Mebli Komfort sp. z o.o.", "Serwerownia DataLas sp. z o.o.",
+    "Centrum Handlowe Rynek", "Tłocznia Oleju Rzepak", "Zakład Tworzyw Polimer", "Spółdzielnia Ogrodnicza Plon",
+    "Wylęgarnia Drobiu Kurnik", "Fabryka Opakowań Tektura sp. z o.o.", "Zakład Przetwórstwa Mięsnego Wędlina S.A.",
+    "Hurtownia Spożywcza Centrum sp. z o.o.", "Fabryka Okien Panorama S.A.", "Szpital Powiatowy Zielona Dolina",
+    "Uczelnia Techniczna Politech", "Centrum Dystrybucji Paczek Ekspres", "Kopalnia Kruszyw Żwir", "Zakłady Mleczarskie Nabiał S.A.",
+]
+
+
+def _client_slots() -> list[dict]:
+    """Jedno miejsce na umowę: klient, wolumen i marża z właściwego przedziału. Razem 100."""
+    pools = [CLIENTS_SMALL, CLIENTS_MEDIUM, CLIENTS_LARGE[:4], CLIENTS_LARGE[4:], CLIENTS_XL[6:], CLIENTS_XL[2:6], CLIENTS_XL[:2]]
+    slots = []
+    for (tier, count, _, _), names in zip(TIERS, pools):
+        assert len(names) == count, (tier, len(names), count)
+        slots += [{"tier": tier, "client": n} for n in names]
+    return slots
+
 
 BREAK_REASONS = [
     "Klient wypowiedział umowę i przeszedł do innego sprzedawcy.",
@@ -100,9 +143,11 @@ def demo_rows(today: Optional[date] = None) -> dict[str, list[dict]]:
             "id_zewn": f"DEMO-H-{i}", "imie": first, "nazwisko": last, "email": _email(first, last), "rola": "handlowiec",
             "menedzer_email": mgr_email, "aktywny": "tak", "udzial_w_narzucie_proc": share,
         })
-    rows["zespol"].append({
-        "id_zewn": "DEMO-B-1", "imie": BOK[0], "nazwisko": BOK[1], "email": _email(*BOK), "rola": "bok", "aktywny": "tak",
-    })
+    for i, (first, last) in enumerate(BOK, start=1):
+        rows["zespol"].append({
+            "id_zewn": f"DEMO-B-{i}", "imie": first, "nazwisko": last, "email": _email(first, last), "rola": "bok",
+            "aktywny": "tak",
+        })
 
     for i, (name, share, tranche, trigger, limit, months, clawback) in enumerate(SUPPLIERS, start=1):
         rows["spolki"].append({
@@ -122,13 +167,18 @@ def demo_rows(today: Optional[date] = None) -> dict[str, list[dict]]:
     sellers = [(_email(f, l), w) for f, l, _, w in TRADERS] + [(mgr_email, 4)]
     bad = _email("Paweł", "Kamiński")
 
+    slots = _client_slots()
+    rng.shuffle(slots)  # kolejność umów nie grupuje się według wielkości
+    tiers = {t[0]: t for t in TIERS}
     # Scenariusze przypisane z góry, reszta to zwykły przebieg.
-    scenarios = (["zerwana_zla"] * 4 + ["zerwana"] * 2 + ["utknieta"] * 4 + ["swieza"] * 5
-                 + ["nowe_przylacze"] * 5 + ["zakonczona"] * 4)
-    scenarios += ["zwykla"] * (len(CLIENTS) - len(scenarios))
+    scenarios = (["zerwana_zla"] * 6 + ["zerwana"] * 3 + ["utknieta"] * 6 + ["swieza"] * 8
+                 + ["nowe_przylacze"] * 8 + ["zakonczona"] * 5)
+    scenarios += ["zwykla"] * (len(slots) - len(scenarios))
     rng.shuffle(scenarios)
 
-    for n, (client, scenario) in enumerate(zip(CLIENTS, scenarios), start=1):
+    for n, (slot, scenario) in enumerate(zip(slots, scenarios), start=1):
+        client = slot["client"]
+        _, _, volumes, margins = tiers[slot["tier"]]
         if scenario == "zerwana_zla":
             seller = bad
         elif scenario == "utknieta" and n % 2 == 0:
@@ -139,7 +189,7 @@ def demo_rows(today: Optional[date] = None) -> dict[str, list[dict]]:
         name, limit = sup[0], sup[4]
         is_gas = rng.random() < 0.15 and "Wspólnota" not in client
         term = rng.choice([12, 24, 36, 36, 48, 60])
-        volume = rng.choice([8, 15, 25] if "Wspólnota" in client else [25, 40, 60, 80, 120, 180, 250, 400, 600, 900, 1500])
+        volume = rng.choice(volumes)
         base = rng.randrange(220, 301, 5) if is_gas else rng.randrange(480, 621, 5)
 
         if scenario == "swieza":
@@ -154,7 +204,7 @@ def demo_rows(today: Optional[date] = None) -> dict[str, list[dict]]:
 
         if name == "Axpo" and signed >= date(today.year, 1, 1):
             limit = 160  # nowe reguły Axpo od początku roku
-        markup = rng.randrange(40, limit + 1, 5)
+        markup = min(rng.choice(margins), limit)
 
         steps = [("Umowa podpisana", signed, "")]
         start = None

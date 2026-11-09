@@ -1008,3 +1008,17 @@ def test_cofniecie_demo_usuwa_targety(client):
     from app.models import SalesTarget
     with SessionLocal() as db:
         assert db.query(SalesTarget).count() == 0
+
+
+def test_wlasciciel_nie_resetuje_wlasnego_hasla_losowym_przyciskiem(client):
+    setup_company(client)
+    login(client, "kris@firma.pl")
+    with SessionLocal() as db:
+        kris_id = db.query(User).filter_by(email="kris@firma.pl").one().id
+    page = client.get(f"/zespol/{kris_id}").text
+    assert "Nadaj nowe hasło" not in page and "Zmień hasło" in page
+    r = post(client, f"/zespol/{kris_id}", f"/zespol/{kris_id}/reset-hasla", {})
+    assert r.status_code == 303 and r.headers["location"] == f"/zespol/{kris_id}"
+    # hasło nie zostało zmienione: stare dalej działa
+    login(client, "kris@firma.pl")
+    assert client.get("/pulpit").status_code == 200

@@ -32,7 +32,7 @@ Zaloguj się do każdej przez dane demonstracyjne (zakładka Konto → Import da
 - **Import danych z Excela**: szablon do pobrania, podgląd z raportem błędów
   wiersz po wierszu, zatwierdzenie, **cofnięcie całej paczki**.
 - **Dane demonstracyjne**: 12 spółek z prawdziwymi nazwami rynkowymi i fikcyjnymi
-  warunkami, 6 handlowców, 1 menedżer, 1 BOK, 60 umów ze scenariuszami (zerwania
+  warunkami, 6 handlowców, 1 menedżer (Michał Lex), 2 osoby BOK (Jessica Kowal, Joanna Dąbrowska), 100 umów ze scenariuszami (zerwania
   z powodem, umowy utknięte w weryfikacji, nowe przyłącza, świeże i zakończone).
   Jeden przycisk usuwa je wszystkie naraz, bez ruszania prawdziwych danych.
 - Strona `/wersja`: numer wdrożonego commitu, bez logowania.
@@ -112,11 +112,11 @@ Zaloguj się do każdej przez dane demonstracyjne (zakładka Konto → Import da
 ## Co konkretnie przetestować teraz (checklista czynności)
 
 1. [ ] Wczytaj dane demonstracyjne (Konto → Import danych).
-2. [ ] Zaloguj się jako menedżer (Tomasz Zieliński) — sprawdź listę umów zespołu,
+2. [ ] Zaloguj się jako menedżer (Michał Lex) — sprawdź listę umów zespołu,
        filtry, sortowanie, plakietki produktów.
 3. [ ] Zaloguj się jako handlowiec z „najgorszym portfelem” (Paweł Kamiński) —
        sprawdź, że widzi tylko swoje umowy.
-4. [ ] Zaloguj się jako BOK (Joanna Dąbrowska) z wyłączonym przełącznikiem — sprawdź
+4. [ ] Zaloguj się jako BOK (Jessica Kowal albo Joanna Dąbrowska) z wyłączonym przełącznikiem — sprawdź
        brak dostępu do Zespołu.
 5. [ ] Włącz BOK-owi „Widzi prowizje…” i sprawdź, że wtedy widzi zespół i może
        zresetować hasło jednego z handlowców, ale nie Twoje.

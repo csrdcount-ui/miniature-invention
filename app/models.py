@@ -181,6 +181,15 @@ class SalesTarget(Base):
     set_by: Mapped[Optional["User"]] = relationship(foreign_keys=[set_by_id])
 
 
+class SystemFlag(Base):
+    """Znaczniki jednorazowych operacji technicznych (np. czysty start), żeby nie powtarzały się."""
+
+    __tablename__ = "system_flags"
+
+    key: Mapped[str] = mapped_column(String(100), primary_key=True)
+    applied_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
 class PermissionChange(Base):
     """Kto, kiedy i jak zmienił uprawnienie BOK."""
 

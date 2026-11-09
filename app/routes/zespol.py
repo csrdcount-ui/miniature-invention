@@ -253,6 +253,11 @@ async def person_reset_password(uid: int, request: Request, user: User = Depends
     """Nadaje osobie nowe, losowe hasło. Pokazuje je raz, w tej jednej odpowiedzi."""
     p = _get_user(db, uid) if user.role == ROLE_OWNER else _get_user_for_bok(db, uid)
     await form_data(request)
+    if p.id == user.id:
+        # Własne hasło zmieniasz na /haslo, podając stare. Losowe hasło pokazane raz na własnym
+        # koncie łatwo zgubić i zostać bez dostępu (nie ma odzyskiwania e-mailem).
+        flash(request, "Własne hasło zmienisz w zakładce Konto, „Zmień hasło”. Tu możesz nadawać hasła innym osobom.")
+        return redirect(f"/zespol/{p.id}")
     password = new_password()
     p.password_hash = hash_password(password)
     db.commit()
