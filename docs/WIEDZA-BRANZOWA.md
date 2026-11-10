@@ -238,3 +238,31 @@ Struktura portfela demo (liczba umów): 17% do 50 MWh, 49% 50–300 MWh, 11% 300
 - Miarą „czystych” nowych leadów jest liczba nowych NIP-ów przekazanych do BOK do
   sprawdzenia (wolny NIP, scoring) w danym okresie.
 - Aplikacja ma pilnować proporcji uwagi: przypominać, gdy brakuje nowych leadów.
+
+## Budowa cenników spółek (na podstawie próbek z 10.11.2026)
+
+Próbki: cennik minimalny dla sprzedaży pośredniej (PST Trade), cennik dla partnerów
+(Ignitis) i publiczny cennik standardowy (Energa). Cen nie przepisujemy: dokumenty
+spółek są poufne. Zapisujemy tylko strukturę.
+
+- Cennik dla brokera to cennik minimalny: cena bazowa, do której doliczamy marżę.
+  Ważny zwykle tydzień („od – do” albo „do publikacji nowego cennika”).
+- Cena zależy od roku dostaw (np. 2025–2028; cennik pokrywa tylko część lat, więc
+  dłuższej umowy nie da się wycenić całej).
+- Wymiary różnią się między spółkami:
+  - grupa taryfowa (B21, B22, B23, C11, C12a, C12b, C13, C21, C22a, C22b, C23) i strefy
+    (I, II, III) — Ignitis;
+  - przedział wolumenu rocznego (np. 0–300 MWh, 300–1000 MWh) bez grup taryfowych — PST.
+- Produkty: cena stała (FIX) albo cena zmienna RDN, gdzie cennik podaje współczynnik
+  kosztowy K (zł/MWh) doliczany do ceny z giełdy.
+- Opłata handlowa (OH) w zł na miesiąc na punkt poboru, zależna od grupy taryfowej albo stała.
+- Zakres cennika: „dla klientów do 2 GWh” albo „do 1000 MWh”; od pewnego progu
+  wycena indywidualna (np. od 1 GWh).
+- Dodatki: gwarancje pochodzenia (zł/MWh i osobna OH), odkup energii od prosumentów
+  (minimalny współczynnik), „w tym prowizja partnera” wliczona w cenę minimalną.
+- Warunki w treści: maksymalna marża ponad cenę minimalną (np. 200 zł/MWh), termin
+  płatności, minimalny okres umowy, terminy złożenia umowy przed startem dostaw,
+  podział marży między partnera i spółkę (to warunek umowy agencyjnej: widzi go
+  tylko właściciel).
+- Cennik standardowy (publiczny, dla odbiorców bez umowy z brokerem) ma podobne grupy
+  i strefy, ale to nie jest cena bazowa dla brokera.
