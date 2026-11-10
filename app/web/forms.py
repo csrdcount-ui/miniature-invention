@@ -20,7 +20,7 @@ def p_dec(form: dict, key: str, label: str, *, required: bool = True, minimum=No
     raw = form.get(key, "")
     if raw == "":
         if required:
-            raise FormError(f"Pole „{label}” jest wymagane.")
+            raise FormError(f"Uzupełnij pole „{label}”.")
         return None
     try:
         val = eng.D(raw)
@@ -50,7 +50,7 @@ def p_date(form: dict, key: str, label: str, *, required: bool = True) -> Option
     raw = form.get(key, "")
     if raw == "":
         if required:
-            raise FormError(f"Pole „{label}” jest wymagane.")
+            raise FormError(f"Uzupełnij pole „{label}”.")
         return None
     try:
         return date.fromisoformat(raw)

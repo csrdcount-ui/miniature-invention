@@ -89,7 +89,7 @@ SHEETS: dict[str, list[Col]] = {
         Col("nip", "NIP, 10 cyfr. Jeden NIP = jeden klient w biurze.", example=""),
         Col("handlowiec_email", "E-mail opiekuna klienta.", "email", True, example="anna.kowalczyk@firma.pl"),
         Col("etap", "Etap w lejku.", "choice", False, tuple(STAGES), "lead"),
-        Col("zrodlo", "Skąd jest lead.", "choice", False, tuple(LEAD_SOURCES), "Polecenie"),
+        Col("zrodlo", "Skąd pochodzi lead.", "choice", False, tuple(LEAD_SOURCES), "Polecenie"),
         Col("osoba_kontaktowa", "Osoba kontaktowa.", example="Jan Michalski"),
         Col("telefon", "Telefon.", example="600 100 200"),
         Col("email", "E-mail klienta.", example=""),

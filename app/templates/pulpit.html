@@ -44,7 +44,7 @@
 <h2>Oferty złożone</h2>
 {% if offers.count %}
 <dl>
-  <dt>Otwarte oferty</dt><dd>{{ offers.count }}</dd>
+  <dt>Oferty czekające na decyzję</dt><dd>{{ offers.count }}</dd>
   <dt>Masa marży, jeśli wszystkie się zamkną</dt><dd>{{ offers.markup|zl }}</dd>
   {% if user.role == ROLE_OWNER %}<dt>Przychód spółki, jeśli wszystkie się zamkną</dt><dd>{{ offers.owner|zl }}</dd>{% endif %}
   {% if user.role == ROLE_MANAGER and offers.override %}<dt>Twój override, jeśli zespół je zamknie</dt><dd>{{ offers.override|zl }}</dd>{% endif %}
@@ -68,7 +68,7 @@
 {% endfor %}
 <p class="podpowiedz">Oferty z kart klientów. Gdy klient podpisze, na karcie klienta stuknij „Klient podpisał: zapisz umowę”. <a href="/klienci?etap=oferta">Klienci z ofertą</a>.</p>
 {% else %}
-<p>Brak otwartych ofert. Ofertę zapiszesz na karcie klienta, w spółce z wolnym NIP-em: <a href="/klienci">klienci</a>.</p>
+<p>Żadna oferta nie czeka na decyzję. Ofertę zapiszesz na karcie klienta, w spółce, w której NIP jest wolny: <a href="/klienci">klienci</a>.</p>
 {% endif %}
 
 {% if user.role == ROLE_OWNER %}

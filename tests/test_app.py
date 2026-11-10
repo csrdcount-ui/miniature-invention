@@ -1056,7 +1056,7 @@ def test_oferty_handlowca_niewidoczne_dla_innego_handlowca(client):
     _dzis_umowa(client, klient="Wózki Widłowe Michalski", status="Oferta")
     login(client, "olek@firma.pl")
     page = client.get("/pulpit").text
-    assert "Wózki Widłowe Michalski" not in page and "Brak otwartych ofert" in page
+    assert "Wózki Widłowe Michalski" not in page and "Żadna oferta nie czeka na decyzję" in page
 
 
 def test_statystyki_sprzedazy_po_miesiacach(client):
@@ -1134,3 +1134,16 @@ def test_stara_oferta_jest_wyrozniona(client):
     _umowa(client, klient="Stara oferta", status="Oferta", podpisana=(date.today() - timedelta(days=20)).isoformat())
     page = client.get("/pulpit").text
     assert "Czeka 20 dni" in page and "bez odpowiedzi od 3+ dni: 1" in page
+
+
+def test_teksty_interfejsu_bez_kalek_i_starych_sformulowan():
+    """Redakcja językowa 10.11.2026: te zwroty nie mogą wrócić do szablonów ani komunikatów."""
+    import pathlib
+    root = pathlib.Path(__file__).resolve().parent.parent / "app"
+    banned = ["klientów w pracy", "w pracy,", "z wolnym NIP-em", "niewolny", "Otwarte oferty", "Polityka biura",
+              "Zapisz politykę", "Skąd jest", "Status w lejku", "raportu zerwań", "W systemie nie ma", "jest wymagane",
+              "Obecnie obowiązujące", "zahedowana", "hedguje", "Narzut nie może", "Narzut wynosi"]
+    for path in list(root.rglob("*.html")) + list(root.rglob("*.py")):
+        text = path.read_text()
+        for phrase in banned:
+            assert phrase not in text, (path.name, phrase)

@@ -39,7 +39,7 @@ from .models import (
     User,
 )
 
-MIN_WORK_THREADS = 3  # mniej niż 3 wątki w pracy = pilny sygnał: dodaj nowych klientów
+MIN_WORK_THREADS = 3  # mniej niż 3 wątki w toku = pilny sygnał: dodaj nowych klientów
 RESERVATION_WARN_DAYS = 7
 DUPLICATE_NIP_MESSAGE = "NIP obsługuje już Twój kolega z biura. Zapytaj BOK o szczegóły."
 
@@ -225,7 +225,7 @@ def add_offer(
     sent_date: date, valid_until: Optional[date] = None,
 ) -> ClientOffer:
     if supplier not in free_suppliers(c, sent_date):
-        raise BusinessError(f"W spółce {supplier.name} nie masz potwierdzonej rezerwacji NIP. Najpierw sprawdzenie w BOK.")
+        raise BusinessError(f"W spółce {supplier.name} nie masz potwierdzonej rezerwacji NIP. Najpierw zleć sprawdzenie w BOK.")
     rs = svc.rule_set_on(db, supplier.id, sent_date)
     if rs is None:
         raise BusinessError(f"Spółka {supplier.name} nie ma reguł prowizji. Właściciel musi je ustawić.")
@@ -248,7 +248,7 @@ def add_offer(
         set_stage(db, c, user, "oferta")
     follow = sent_date + timedelta(days=OFFER_FOLLOWUP_DAYS)
     if not c.next_step_date or c.next_step_date > follow or c.stage == "oferta":
-        c.next_step, c.next_step_date = "Zapytaj o ofertę: jak się podoba, czy coś poprawić", follow
+        c.next_step, c.next_step_date = "Zadzwoń w sprawie oferty: jak się podoba, czy coś poprawić", follow
     return o
 
 

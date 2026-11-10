@@ -12,7 +12,7 @@
   {{ pole("telefon", "Telefon", form.telefon, type="tel") }}
   {{ pole("email", "E-mail", form.email, type="email") }}
   <div class="pole">
-    <label for="f-zrodlo">Skąd jest ten lead</label>
+    <label for="f-zrodlo">Skąd pochodzi ten lead</label>
     <select id="f-zrodlo" name="zrodlo">
       <option value="">Nie wybrano</option>
       {% for s in sources %}<option value="{{ s }}" {% if form.zrodlo == s %}selected{% endif %}>{{ s }}</option>{% endfor %}

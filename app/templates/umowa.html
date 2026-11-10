@@ -60,7 +60,7 @@
 <p>Nie masz udziału w prowizji z tej umowy.</p>
 {% endif %}
 
-<h2>Status w lejku</h2>
+<h2>Status umowy</h2>
 <p>Obecny status: <strong>{{ c.status }}</strong>{% if since %}{% if since.baseline %}, co najmniej od {{ since.date|data }}{% else %}, od {{ since.date|data }}{% endif %} ({{ since.days }} {{ "dzień" if since.days == 1 else "dni" }}){% endif %}.</p>
 {% if can_edit_status %}
 <details class="zwijane"{% if error %} open{% endif %}>

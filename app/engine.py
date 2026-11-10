@@ -54,7 +54,7 @@ def zl(value: Decimal) -> Decimal:
 
 def _pct(value: Decimal, name: str) -> Decimal:
     if value < 0 or value > 100:
-        raise EngineError(f"{name}: procent musi być w zakresie 0–100, podano {value}")
+        raise EngineError(f"{name}: procent musi być w zakresie 0–100, wpisano {value}")
     return value
 
 
@@ -79,7 +79,7 @@ class ContractTerms:
         if self.term_months <= 0:
             raise EngineError("Okres umowy musi być większy od zera")
         if self.markup_pln_mwh < 0:
-            raise EngineError("Narzut nie może być ujemny")
+            raise EngineError("Marża nie może być ujemna")
         _pct(self.broker_share_pct, "Udział brokera")
         _pct(self.first_tranche_pct, "Pierwsza transza")
         _pct(self.trader_share_pct, "Udział handlowca")
@@ -172,7 +172,7 @@ def calculate(terms: ContractTerms) -> Breakdown:
             "właściciel dopłaca do tej umowy."
         )
     if terms.markup_pln_mwh == 0:
-        warnings.append("Narzut wynosi 0 zł/MWh — umowa nie generuje prowizji.")
+        warnings.append("Marża wynosi 0 zł/MWh, więc umowa nie przyniesie prowizji.")
 
     return Breakdown(
         total_volume_mwh=total_volume.quantize(Decimal("0.001"), rounding=ROUND_HALF_UP),
@@ -217,7 +217,7 @@ def clawback(
         raise EngineError("Nieznany tryb korekty")
     ratio = D(earned_ratio)
     if ratio < 0 or ratio > 1:
-        raise EngineError("Zrealizowana część umowy musi być między 0 a 1")
+        raise EngineError("Zrealizowana część umowy musi być w zakresie od 0 do 1")
     if mode == KOREKTA_BRAK:
         return Clawback(ratio, ZERO, ZERO, ZERO, ZERO)
 

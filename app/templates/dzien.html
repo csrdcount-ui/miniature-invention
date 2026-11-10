@@ -19,14 +19,14 @@
 <ul class="karty">
   {% if d.funnel.low %}
   <li class="alarm">
-    <h3>Za mało klientów w pracy: {{ d.funnel.work }}</h3>
-    <p>Pracujesz z mniej niż {{ d.funnel.min }} klientami (kontakt, zbieranie danych, oferty). Z tak małego lejka sprzeda się najwyżej jedna umowa. Dodaj nowych potencjalnych klientów i wyślij ich NIP-y do BOK.</p>
+    <h3>Za mało klientów w toku: {{ d.funnel.work }}</h3>
+    <p>Masz w toku mniej niż {{ d.funnel.min }} klientów (kontakt, zbieranie danych, oferty). Z tak małego lejka sprzeda się najwyżej jedna umowa. Dodaj nowych potencjalnych klientów i wyślij ich NIP-y do BOK.</p>
     <p><a href="/klienci/nowy">Dodaj klienta</a>{% if d.funnel.counts.lead %} albo <a href="/klienci?etap=lead">zadzwoń do zimnych leadów ({{ d.funnel.counts.lead }})</a>{% endif %}.</p>
   </li>
   {% endif %}
   {% for c, o, st in d.followups %}
   <li>
-    <h3><a href="/klienci/{{ c.id }}">{{ c.name }}</a>: zapytaj o ofertę</h3>
+    <h3><a href="/klienci/{{ c.id }}">{{ c.name }}</a>: zadzwoń w sprawie oferty</h3>
     <p>Oferta {{ o.supplier.name }} wysłana {{ st.days }} dni temu, bez odpowiedzi. Zadzwoń: jak się podoba, czy wszystko jest zrozumiałe, czy coś poprawić.{% if c.phone %} Telefon: <a href="tel:{{ c.phone }}">{{ c.phone }}</a>.{% endif %}</p>
   </li>
   {% endfor %}
@@ -85,19 +85,19 @@
 {% if d.waiting_bok %}<p class="podpowiedz">Czeka na BOK: {{ d.waiting_bok|length }} {{ "sprawdzenie" if d.waiting_bok|length == 1 else "sprawdzenia" if d.waiting_bok|length < 5 else "sprawdzeń" }}.</p>{% endif %}
 
 <details class="zwijane">
-  <summary>Mój lejek: {{ d.funnel.work }} w pracy, {{ d.funnel.counts.lead }} zimnych</summary>
+  <summary>Mój lejek: {{ d.funnel.work }} w toku, {{ d.funnel.counts.lead }} zimne</summary>
   <div class="wnetrze">{{ lejek(d.funnel) }}</div>
 </details>
 
 {% if team_funnels is defined %}
 <details class="zwijane">
-  <summary>Lejek zespołu: {{ team_funnel.work }} w pracy{% set low = team_funnels|selectattr("1.low")|list %}{% if low %}, za mało w lejku: {{ low|length }} os.{% endif %}</summary>
+  <summary>Lejek zespołu: {{ team_funnel.work }} w toku{% set low = team_funnels|selectattr("1.low")|list %}{% if low %}, za mało w lejku: {{ low|length }} os.{% endif %}</summary>
   <div class="wnetrze">
     {{ lejek(team_funnel) }}
     <ul class="karty">
     {% for p, f in team_funnels %}
       <li{% if f.low %} class="alarm"{% endif %}>
-        <h3><a href="/klienci?handlowiec={{ p.id }}&etap=w_toku">{{ p.name }}</a>{% if f.low %}: za mało klientów w pracy{% endif %}</h3>
+        <h3><a href="/klienci?handlowiec={{ p.id }}&etap=w_toku">{{ p.name }}</a>{% if f.low %}: za mało klientów w toku{% endif %}</h3>
         <p>Zimne {{ f.counts.lead }}, kontakt {{ f.counts.kontakt }}, dane {{ f.counts.dane }}, oferty {{ f.counts.oferta }}, umowy w tym miesiącu {{ f.signed }}.</p>
       </li>
     {% endfor %}

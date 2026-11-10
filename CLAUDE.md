@@ -312,3 +312,14 @@ Sprawdzone na PostgreSQL 16: baza z poprzedniej wersji, cofnięcie starego demo,
 Nie zrobione (następne): przedłużanie rezerwacji z dowodami, karta spółki dla BOK
 (szablony e-maili), wersje cenników, punkty poboru, kalendarz w telefonie (ICS),
 podpowiedzi rozmów, nazwa firmy z wykazu VAT po NIP, uporządkowanie reszty BOK.
+
+## Redakcja językowa interfejsu (10.11.2026)
+
+Przegląd wszystkich tekstów, zatwierdzony przez właścicielkę. Zasady na przyszłość: „klienci
+w toku” (nie „w pracy”), „spółka, w której NIP jest wolny” (nie „z wolnym NIP-em”), „zasady
+biura” (nie „polityka”), „zabezpieczona” (nie „zahedowana”), „platforma” tylko w nazwie,
+bez „system”/„aplikacja” w zdaniach, imiona w komunikatach po dwukropku (nie da się ich
+odmieniać). Jej słownictwo zostaje: lead, override, target, scoring, wolumen, ofertować,
+masa marży, przychód spółki. Test `test_teksty_interfejsu_bez_kalek_i_starych_sformulowan`
+pilnuje, żeby stare zwroty nie wróciły. W Excelu i adresach filtrów zostaje „narzut”
+(zgodność wsteczna).

@@ -209,7 +209,7 @@ async def contract_create(request: Request, user: User = Depends(current_user), 
         if not trader:
             raise FormError("Wybierz handlowca.")
         if not form.get("klient"):
-            raise FormError("Pole „Nazwa klienta” jest wymagane.")
+            raise FormError("Uzupełnij pole „Nazwa klienta”.")
         nip = "".join(ch for ch in form.get("nip", "") if ch.isdigit())
         if nip and not valid_nip(nip):
             raise FormError("NIP ma niepoprawną sumę kontrolną.")

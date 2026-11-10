@@ -159,7 +159,7 @@ async def policy_save(request: Request, user: User = Depends(owner_only), db: Se
             db.add(PermissionChange(setting=key, old_value=old, new_value=new, changed_by_id=user.id))
             changes.append(f"{label}: {'włączone' if new else 'wyłączone'}")
     db.commit()
-    flash(request, "Zapisano politykę biura. " + ("; ".join(changes) + "." if changes else "Bez zmian."))
+    flash(request, "Zapisano zasady biura. " + ("; ".join(changes) + "." if changes else "Bez zmian."))
     return redirect("/konto#polityka")
 
 

@@ -196,7 +196,7 @@ async def person_target(uid: int, request: Request, user: User = Depends(team_vi
         msg = str(e) if isinstance(e, FormError) else "Podaj miesiąc w formacie RRRR-MM, np. 2026-11."
         return render(request, "osoba.html", _person_ctx(db, user, p, error=msg), 400)
     svc.set_target(db, actor=user, person=p, month=month, amount=amount)
-    flash(request, f"Zapisano target {p.name} na {svc.month_label(month)}: {fmt_zl(amount)}.")
+    flash(request, f"Zapisano target. Osoba: {p.name}, {svc.month_label(month)}: {fmt_zl(amount)}.")
     return redirect(f"/zespol/{p.id}")
 
 
@@ -223,7 +223,7 @@ async def person_rate_add(uid: int, request: Request, user: User = Depends(owner
         )
     db.add(r)
     db.commit()
-    flash(request, f"Zapisano nowe stawki dla {p.name} od {fmt_date(r.valid_from)}.")
+    flash(request, f"Zapisano nowe stawki. Osoba: {p.name}, od {fmt_date(r.valid_from)}.")
     return redirect(f"/zespol/{p.id}")
 
 

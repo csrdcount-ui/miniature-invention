@@ -5,7 +5,7 @@
 <p><a class="przycisk" href="/klienci/nowy">Dodaj klienta</a></p>
 
 {% if funnel %}
-<p>{{ "Lejek zespołu" if user.role == ROLE_MANAGER else "Twój lejek" }}: {% for s in OPEN_STAGES %}{{ STAGES[s]|lower }} {{ funnel.counts[s] }}, {% endfor %}umowy w tym miesiącu {{ funnel.signed }}.{% if funnel.low and user.role == ROLE_TRADER %} <strong class="uwaga">Za mało klientów w pracy: dodaj nowych.</strong>{% endif %}</p>
+<p>{{ "Lejek zespołu" if user.role == ROLE_MANAGER else "Twój lejek" }}: {% for s in OPEN_STAGES %}{{ STAGES[s]|lower }} {{ funnel.counts[s] }}, {% endfor %}umowy w tym miesiącu {{ funnel.signed }}.{% if funnel.low and user.role == ROLE_TRADER %} <strong class="uwaga">Za mało klientów w toku: dodaj nowych.</strong>{% endif %}</p>
 {% endif %}
 
 <form method="get" action="/klienci" class="pasek-filtrow">

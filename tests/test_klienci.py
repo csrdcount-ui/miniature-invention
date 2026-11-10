@@ -105,12 +105,12 @@ def test_oferta_tylko_w_spolce_z_rezerwacja_i_telefon_po_3_dniach(client):
         assert c.stage == "oferta" and o.valid_until == o.sent_date + timedelta(days=7)
         assert c.next_step_date == o.sent_date + timedelta(days=3)
     page = client.get("/dzien").text
-    assert "zapytaj o ofertę" in page and "wysłana 4 dni temu" in page
+    assert "zadzwoń w sprawie oferty" in page and "wysłana 4 dni temu" in page
     # po telefonie przypomnienie znika
     post(client, f"/klienci/{cid}", f"/klienci/{cid}/dzialanie", {
         "rodzaj": "telefon", "wynik": "Klient analizuje, decyzja w piątek", "etap": "oferta",
         "krok": "Telefon: decyzja", "krok_data": (date.today() + timedelta(days=2)).isoformat()})
-    assert "zapytaj o ofertę" not in client.get("/dzien").text
+    assert "zadzwoń w sprawie oferty" not in client.get("/dzien").text
     # klient podpisał: umowa z oferty, klient na etapie „Umowa podpisana”
     with SessionLocal() as db:
         oid = db.query(ClientOffer).one().id
@@ -131,17 +131,17 @@ def test_alarm_malego_lejka_i_lejek_zespolu_u_menedzera(client):
     setup_company(client)
     login(client, "hania@firma.pl")
     page = client.get("/dzien").text
-    assert "Za mało klientów w pracy: 0" in page
+    assert "Za mało klientów w toku: 0" in page
     for i, nip in enumerate([NIP_A, NIP_B, ""]):
         cid = _klient(client, nazwa=f"Firma {i}", nip=nip)
         post(client, f"/klienci/{cid}", f"/klienci/{cid}/dzialanie", {
             "rodzaj": "telefon", "wynik": "Rozmowa", "etap": "kontakt", "krok": "Telefon",
             "krok_data": date.today().isoformat()})
     page = client.get("/dzien").text
-    assert "Za mało klientów w pracy" not in page and "Dziś (3)" in page
+    assert "Za mało klientów w toku" not in page and "Dziś (3)" in page
     login(client, "marek@firma.pl")
     page = client.get("/dzien").text
-    assert "Lejek zespołu: 3 w pracy" in page and "Hania Handlowiec" in page
+    assert "Lejek zespołu: 3 w toku" in page and "Hania Handlowiec" in page
 
 
 def test_przegrana_wymaga_powodu_i_krok_wymagany_w_toku(client):

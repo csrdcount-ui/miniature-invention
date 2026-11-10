@@ -139,7 +139,7 @@ def build_contract(
 ) -> Contract:
     """Buduje umowę z regułami zamrożonymi na dzień podpisania. Bez zatwierdzania zapisu."""
     if not can_assign_trader(actor, trader):
-        raise BusinessError("Nie możesz przypisać umowy do tej osoby.")
+        raise BusinessError("Nie możesz przypisać umowy tej osobie.")
     rs = rule_set_on(db, supplier.id, signed_date)
     if rs is None:
         raise BusinessError(
@@ -391,7 +391,7 @@ def apply_status_change(
         )
     note = (note or "").strip()[:2000]
     if new_status in STATUSES_REQUIRING_NOTE and not note:
-        raise BusinessError(f"Przy statusie „{new_status}” podaj powód. Trafi do raportu zerwań.")
+        raise BusinessError(f"Przy statusie „{new_status}” podaj powód. Powód zapisze się w historii umowy.")
     ev = ContractStatusEvent(
         contract_id=c.id, from_status=c.status, to_status=new_status,
         effective_date=effective_date, changed_by_id=actor.id, note=note,
@@ -426,7 +426,7 @@ def _payout(p: eng.Payout) -> dict:
 
 
 def tranche_b_visible(viewer: User, company: Optional[Company]) -> bool:
-    """Polityka biura: handlowiec może nie widzieć prognozy transzy B (motywacja do bieżącej sprzedaży)."""
+    """Zasady biura: handlowiec może nie widzieć prognozy transzy B (motywacja do bieżącej sprzedaży)."""
     if viewer.role != ROLE_TRADER:
         return True
     return True if company is None else bool(company.traders_see_tranche_b)

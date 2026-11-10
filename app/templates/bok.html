@@ -22,7 +22,7 @@
         {% endfor %}
       </fieldset>
       <div class="pole">
-        <label for="f-do-{{ k.id }}">Rezerwacja ważna do (przy wolnym NIP-ie)</label>
+        <label for="f-do-{{ k.id }}">Rezerwacja ważna do (gdy NIP jest wolny)</label>
         <input id="f-do-{{ k.id }}" name="do" type="date" value="{{ default_until.isoformat() }}">
       </div>
       <div class="pole">

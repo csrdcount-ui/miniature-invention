@@ -10,7 +10,7 @@
 <ul class="karty">
   {% for r in rows %}
   <li>
-    <h3>{{ r.supplier.name }}{% if not r.free %} <span class="podpowiedz">(NIP niesprawdzony albo niewolny)</span>{% endif %}</h3>
+    <h3>{{ r.supplier.name }}{% if not r.free %} <span class="podpowiedz">(NIP zajęty albo jeszcze niesprawdzony)</span>{% endif %}</h3>
     {% if r.error %}
     <p>{{ r.error|capitalize }}.</p>
     {% else %}
@@ -21,7 +21,7 @@
   </li>
   {% endfor %}
 </ul>
-<p class="podpowiedz">To wyliczenie pomocnicze, nic nie zapisuje. Ofertę zapiszesz na karcie klienta.</p>
+<p class="podpowiedz">To tylko wyliczenie. Nic się nie zapisuje. Ofertę zapiszesz na karcie klienta.</p>
 {% endif %}
 
 <form method="get" action="/klienci/{{ c.id }}/kalkulator" class="stack">
@@ -39,7 +39,7 @@
   </div>
   <fieldset>
     <legend>Ceny bazowe z cenników, zł/MWh</legend>
-    <p class="podpowiedz">Wypełnij tylko spółki, które chcesz porównać. Najpierw spółki z wolnym NIP-em.</p>
+    <p class="podpowiedz">Wypełnij tylko spółki, które chcesz porównać. Najpierw spółki, w których NIP jest wolny.</p>
     {% for s in suppliers %}
     <div class="pole">
       <label for="f-baza-{{ s.id }}">{{ s.name }}{% if s.id in free_ids %} (wolny NIP){% endif %}</label>

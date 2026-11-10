@@ -36,7 +36,7 @@
       </select>
     </div>
     <div class="pole">
-      <label for="f-wynik">Wynik, ustalenia</label>
+      <label for="f-wynik">Wynik rozmowy i ustalenia</label>
       <textarea id="f-wynik" name="wynik" rows="3">{{ form.wynik or "" }}</textarea>
     </div>
     <div class="pole">
@@ -82,7 +82,7 @@
     <input type="hidden" name="csrf" value="{{ csrf }}">
     <fieldset>
       <legend>Spółki, w których chcesz ofertować</legend>
-      <p class="podpowiedz">BOK sprawdzi tylko zaznaczone: czy NIP jest wolny, zarezerwuje go i sprawdzi scoring.</p>
+      <p class="podpowiedz">W zaznaczonych spółkach BOK sprawdzi, czy NIP jest wolny, zarezerwuje go i sprawdzi scoring.</p>
       {% for s in suppliers %}
       <div class="pole">
         <label><input type="checkbox" name="spolka" value="{{ s.id }}" {% if s.id in checked and checked[s.id].result == "do_sprawdzenia" %}checked disabled{% endif %}>{{ s.name }}{% if s.id in checked %} ({{ NIP_CHECK_RESULTS[checked[s.id].result]|lower }}){% endif %}</label>
@@ -125,12 +125,12 @@
   <summary>Zapisz złożoną ofertę</summary>
   <div class="wnetrze">
   {% if not free %}
-  <p>Ofertę zapiszesz w spółce, w której BOK potwierdził wolny NIP i rezerwację. Wyślij NIP do BOK.</p>
+  <p>Ofertę zapiszesz w spółce, w której BOK potwierdził, że NIP jest wolny, i zarezerwował go. Wyślij NIP do BOK.</p>
   {% else %}
   <form method="post" action="/klienci/{{ c.id }}/oferta" class="stack">
     <input type="hidden" name="csrf" value="{{ csrf }}">
     <div class="pole">
-      <label for="f-spolka">Spółka (z wolnym NIP-em)</label>
+      <label for="f-spolka">Spółka, w której NIP jest wolny</label>
       <select id="f-spolka" name="spolka">{% for s in free %}<option value="{{ s.id }}" {% if form.spolka == s.id|string %}selected{% endif %}>{{ s.name }}</option>{% endfor %}</select>
     </div>
     <div class="pole">
@@ -149,7 +149,7 @@
     {{ pole("wazna_do", "Ważna do", form.wazna_do or week.isoformat(), type="date", hint="Zwykle tydzień: ceny na giełdzie szybko się zmieniają.") }}
     <button type="submit">Zapisz ofertę</button>
   </form>
-  <p class="podpowiedz">Po zapisaniu aplikacja ustawi telefon do klienta za 3 dni.</p>
+  <p class="podpowiedz">Po zapisaniu pojawi się zadanie: telefon do klienta za 3 dni.</p>
   {% endif %}
   </div>
 </details>
@@ -170,7 +170,7 @@
 
 {% if can_sell %}
 <details class="zwijane"{% if error and form.nazwa is defined %} open{% endif %}>
-  <summary>Dane klienta: zmień</summary>
+  <summary>Zmień dane klienta</summary>
   <div class="wnetrze">
   <form method="post" action="/klienci/{{ c.id }}/dane" class="stack">
     <input type="hidden" name="csrf" value="{{ csrf }}">
@@ -180,7 +180,7 @@
     {{ pole("telefon", "Telefon", form.telefon or c.phone, type="tel") }}
     {{ pole("email", "E-mail", form.email or c.email, type="email") }}
     <div class="pole">
-      <label for="f-zrodlo">Skąd jest ten lead</label>
+      <label for="f-zrodlo">Skąd pochodzi ten lead</label>
       <select id="f-zrodlo" name="zrodlo"><option value="">Nie wybrano</option>{% for s in sources %}<option value="{{ s }}" {% if (form.zrodlo or c.source) == s %}selected{% endif %}>{{ s }}</option>{% endfor %}</select>
     </div>
     <button type="submit">Zapisz dane</button>

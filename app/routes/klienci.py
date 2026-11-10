@@ -249,7 +249,7 @@ async def client_offer(cid: int, request: Request, user: User = Depends(current_
     try:
         s = db.get(Supplier, int(form.get("spolka", "0") or 0)) if form.get("spolka", "").isdigit() else None
         if not s:
-            raise FormError("Wybierz spółkę z wolnym NIP-em.")
+            raise FormError("Wybierz spółkę, w której NIP jest wolny.")
         sent = p_date(form, "wyslana", "Data wysłania", required=False) or date.today()
         pl.add_offer(
             db, c, user, supplier=s, pricing_product=form.get("produkt", "fix"), medium=form.get("medium", "energia"),
@@ -293,7 +293,7 @@ def calculator_page(cid: int, request: Request, user: User = Depends(current_use
     qp = request.query_params
     free_ids = {s.id for s in pl.free_suppliers(c)}
     suppliers = [s for s in db.scalars(select(Supplier).where(Supplier.active.is_(True)).order_by(Supplier.name))]
-    # najpierw spółki z wolnym NIP-em, potem pozostałe (do porównania przed zleceniem do BOK)
+    # najpierw spółki, w których NIP jest wolny, potem pozostałe (do porównania przed zleceniem do BOK)
     suppliers.sort(key=lambda s: (s.id not in free_ids, s.name))
     price, volume = _dec(qp.get("cena", "")), _dec(qp.get("wolumen", ""))
     term = int(qp.get("okres")) if qp.get("okres", "").isdigit() else None

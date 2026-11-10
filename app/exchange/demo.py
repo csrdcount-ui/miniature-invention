@@ -378,7 +378,7 @@ def _pipeline(rows: dict, rng: random.Random, today: date, sellers: list) -> Non
     """Lejek: dawne „oferty złożone” jako karty klientów z ofertą, plus leady, kontakt, dane, przegrane.
 
     Zdrowy lejek mają Anna, Piotr, Katarzyna, Agnieszka i Michał Lex. Michał Wójcik i Paweł Kamiński
-    mają tylko po dwie oferty i zimne leady: mniej niż 3 klientów w pracy, więc widać alarm.
+    mają tylko po dwie oferty i zimne leady: mniej niż 3 klientów w toku, więc widać alarm.
     """
     used: set = set()
     names = iter(PIPELINE_NAMES)
@@ -405,7 +405,7 @@ def _pipeline(rows: dict, rng: random.Random, today: date, sellers: list) -> Non
         seller = sellers[k % len(sellers)][0]
         sup = rng.choice(SUPPLIERS)
         sent = today - timedelta(days=sent_days[k % len(sent_days)])
-        ext = client(seller, name, "oferta", "Zapytaj o ofertę: jak się podoba, czy coś poprawić", sent + timedelta(days=3))
+        ext = client(seller, name, "oferta", "Zadzwoń w sprawie oferty: jak się podoba, czy coś poprawić", sent + timedelta(days=3))
         until = today + timedelta(days=4 if k == 2 else rng.randint(20, 70))
         check(ext, sup[0], "zarezerwowany", until, "Rezerwacja przez portal partnerski.")
         rows["oferty"].append({

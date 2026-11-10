@@ -150,11 +150,11 @@ class Company(Base):
     bok_sees_commissions: Mapped[bool] = mapped_column(Boolean, default=False)
     bok_can_reserve_nip: Mapped[bool] = mapped_column(Boolean, default=True)
     bok_can_reassign_clients: Mapped[bool] = mapped_column(Boolean, default=False)
-    # polityka biura: czy handlowcy widzą prognozę transzy B (domyślnie tak, z zastrzeżeniem)
+    # zasady biura: czy handlowcy widzą prognozę transzy B (domyślnie tak, z zastrzeżeniem)
     traders_see_tranche_b: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
-# Ustawienia polityki biura (nie uprawnienia BOK), zapisywane w tej samej historii zmian.
+# Ustawienia zasad biura (nie uprawnienia BOK), zapisywane w tej samej historii zmian.
 POLICY_SETTINGS = {
     "traders_see_tranche_b": (
         "Handlowcy widzą prognozę transzy B",
@@ -369,7 +369,7 @@ class ImportBatch(Base):
 # --------------------------------------------------------------------------
 
 # Etapy lejka (ustalone z właścicielką 10.11.2026). Sprawdzenie NIP w BOK jest
-# osobnym procesem obok etapów: ofertę można złożyć tylko w spółce z wolnym NIP-em.
+# osobnym procesem obok etapów: ofertę można złożyć tylko w spółce, w której NIP jest wolny.
 STAGES = {
     "lead": "Zimny lead",
     "kontakt": "Kontakt i osoba decyzyjna",

@@ -105,7 +105,7 @@ def _parse(col: Col, raw: Any) -> Any:
     s = _text(raw)
     if s == "":
         if col.required:
-            raise RowError(col.name, "pole jest wymagane")
+            raise RowError(col.name, "uzupełnij to pole")
         return None
     if col.kind in ("text",):
         return s
