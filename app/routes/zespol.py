@@ -29,6 +29,7 @@ from ..models import (
 )
 from ..security import hash_password, new_password
 from ..web.auth import owner_only, owner_or_bok_commissions, team_viewer
+from ..web.forms import is_id
 from ..web.forms import (
     FormError,
     names_error,
@@ -86,7 +87,7 @@ async def team_add(request: Request, user: User = Depends(owner_only), db: Sessi
     err = validate_new_user(form, db)
     manager_id = None
     if not err and form.get("menedzer"):
-        m = db.get(User, int(form["menedzer"])) if form["menedzer"].isdigit() else None
+        m = db.get(User, int(form["menedzer"])) if is_id(form["menedzer"]) else None
         if not m or m.role != ROLE_MANAGER:
             err = "Wybrany menedżer nie istnieje."
         else:
@@ -245,7 +246,7 @@ async def person_update(uid: int, request: Request, user: User = Depends(owner_o
         mid = form.get("menedzer", "")
         if mid == "":
             p.manager_id = None
-        elif mid.isdigit():
+        elif is_id(mid):
             m = db.get(User, int(mid))
             if m and m.role == ROLE_MANAGER and m.id != p.id:
                 p.manager_id = m.id

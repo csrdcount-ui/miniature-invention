@@ -170,3 +170,23 @@ def test_listy_wymagan_edytuje_wlasciciel(client):
     cid = _klient(client)
     page = client.get(f"/klienci/{cid}").text
     assert "<li>Zużycie roczne</li>" in page and "Brak potwierdzonej rezerwacji" in page
+
+
+def test_dziwne_wartosci_w_polach_nie_wywracaja_serwera(client):
+    """NaN, „²” (przechodzi isdigit, ale nie int) i podobne: komunikat albo pusty wynik, nigdy błąd 500."""
+    setup_company(client)
+    login(client, "hania@firma.pl")
+    cid = _klient(client)
+    for v in ("NaN", "sNaN", "Infinity", "²", "1e999999"):
+        r = client.get(f"/klienci/{cid}/kalkulator?produkt=fix&wolumen={v}&start=2027-01&okres={v}"
+                       f"&cena_1={v}&oh={v}&punkty={v}&udzial_1={v}&wszystkie=1")
+        assert r.status_code == 200, (v, r.status_code)
+        assert client.get(f"/umowy?spolka={v}&handlowiec={v}").status_code == 200
+    for v in ("9" * 40, "²"):
+        assert client.get(f"/umowy?spolka={v}&handlowiec={v}").status_code == 200
+        assert client.get(f"/umowy/liczba?spolka={v}&handlowiec={v}").status_code == 200
+        assert client.get(f"/klienci?handlowiec={v}").status_code == 200
+        r = post(client, f"/klienci/{cid}", f"/klienci/{cid}/oferta", {"spolka": v, "marza": "10", "wolumen": "10", "okres": "12"})
+        assert r.status_code == 400, (v, r.status_code)
+        r = post(client, f"/klienci/{cid}", f"/klienci/{cid}/dane", {"nazwa": "Firma testowa", "nip": "²" * 10})
+        assert r.status_code < 500, (v, r.status_code)

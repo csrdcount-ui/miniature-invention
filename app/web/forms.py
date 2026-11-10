@@ -96,8 +96,14 @@ def validate_new_user(form: dict, db: Session, require_role: bool = True) -> Opt
 
 
 def valid_nip(nip: str) -> bool:
-    if len(nip) != 10 or not nip.isdigit():
+    if len(nip) != 10 or not (nip.isascii() and nip.isdigit()):
         return False
     weights = [6, 5, 7, 2, 3, 4, 5, 6, 7]
     check = sum(int(d) * w for d, w in zip(nip, weights)) % 11
     return check != 10 and check == int(nip[9])
+
+
+def is_id(raw) -> bool:
+    """Numer rekordu z formularza lub adresu. isdecimal, nie isdigit („²” to cyfra, ale int() jej
+    nie przyjmie); limit długości, bo 40-cyfrowa liczba nie mieści się w kolumnie bazy."""
+    return isinstance(raw, str) and raw.isdecimal() and len(raw) <= 12

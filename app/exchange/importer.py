@@ -343,7 +343,7 @@ def _apply(db: Session, data: dict, actor: User, batch: ImportBatch, report: Rep
             trader = user_by_email(v["handlowiec_email"])
             if not trader:
                 raise RowError("handlowiec_email", f"nie ma osoby {v['handlowiec_email']} w pliku ani w platformie")
-            nip = "".join(ch for ch in (v["klient_nip"] or "") if ch.isdigit())
+            nip = "".join(ch for ch in (v["klient_nip"] or "") if ch in "0123456789")
             if nip and not svc_valid_nip(nip):
                 raise RowError("klient_nip", "NIP ma niepoprawną sumę kontrolną")
             steps = sorted(history.get(v["id_zewn"], []), key=lambda r: (r[1]["data_zdarzenia"], r[0]))
@@ -417,7 +417,7 @@ def _apply(db: Session, data: dict, actor: User, batch: ImportBatch, report: Rep
             owner = user_by_email(v["handlowiec_email"])
             if not owner or owner.role not in SELLING_ROLES:
                 raise RowError("handlowiec_email", f"nie ma osoby sprzedającej {v['handlowiec_email']}")
-            nip = "".join(ch for ch in (v["nip"] or "") if ch.isdigit())
+            nip = "".join(ch for ch in (v["nip"] or "") if ch in "0123456789")
             if nip and not svc_valid_nip(nip):
                 raise RowError("nip", "NIP ma niepoprawną sumę kontrolną")
             if nip and db.scalar(select(Client).where(Client.nip == nip)):
@@ -490,7 +490,7 @@ def _apply(db: Session, data: dict, actor: User, batch: ImportBatch, report: Rep
 
 def svc_valid_nip(nip: str) -> bool:
     weights = [6, 5, 7, 2, 3, 4, 5, 6, 7]
-    if len(nip) != 10 or not nip.isdigit():
+    if len(nip) != 10 or not (nip.isascii() and nip.isdigit()):
         return False
     check = sum(int(d) * w for d, w in zip(nip, weights)) % 11
     return check != 10 and check == int(nip[9])

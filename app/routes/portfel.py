@@ -35,6 +35,7 @@ from ..models import (
     User,
 )
 from ..web.auth import bok_perms, company_of, current_user
+from ..web.forms import is_id
 from ..web.forms import (
     FormError,
     p_date,
@@ -110,9 +111,9 @@ def _filters_from_query(qp) -> svc.ContractFilters:
     nowe = qp.get("nowe", "")
     return svc.ContractFilters(
         products=tuple(p for p in qp.getlist("produkt") if p in PRICING_PRODUCTS),
-        supplier_id=int(supplier_id) if supplier_id.isdigit() else None,
+        supplier_id=int(supplier_id) if is_id(supplier_id) else None,
         medium=qp.get("medium") if qp.get("medium") in MEDIA else None,
-        trader_id=int(trader_id) if trader_id.isdigit() else None,
+        trader_id=int(trader_id) if is_id(trader_id) else None,
         status=qp.get("status") if qp.get("status") in CONTRACT_STATUSES else None,
         signed_from=_opt_date(qp.get("od", "")),
         signed_to=_opt_date(qp.get("do", "")),
@@ -173,7 +174,7 @@ def _new_contract_ctx(db: Session, user: User, **extra) -> dict:
 
 def _offer_from_query(db: Session, user: User, klient: str, oferta: str):
     """Umowa z oferty na karcie klienta: klient i oferta muszą być widoczne dla zapisującego."""
-    if not (klient.isdigit() and oferta.isdigit()):
+    if not (is_id(klient) and is_id(oferta)):
         return None, None
     c = db.get(Client, int(klient))
     o = db.get(ClientOffer, int(oferta))
@@ -205,12 +206,12 @@ async def contract_create(request: Request, user: User = Depends(current_user), 
         if not supplier or not supplier.active:
             raise FormError("Wybierz spółkę obrotu.")
         tid = form.get("handlowiec") or str(user.id)
-        trader = db.get(User, int(tid)) if tid.isdigit() else None
+        trader = db.get(User, int(tid)) if is_id(tid) else None
         if not trader:
             raise FormError("Wybierz handlowca.")
         if not form.get("klient"):
             raise FormError("Uzupełnij pole „Nazwa klienta”.")
-        nip = "".join(ch for ch in form.get("nip", "") if ch.isdigit())
+        nip = "".join(ch for ch in form.get("nip", "") if ch in "0123456789")
         if nip and not valid_nip(nip):
             raise FormError("NIP ma niepoprawną sumę kontrolną.")
         c = svc.create_contract(

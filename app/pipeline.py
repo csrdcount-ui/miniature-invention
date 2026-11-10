@@ -78,7 +78,7 @@ def can_sell_for(user: User, c: Client) -> bool:
 # --------------------------------------------------------------------------
 
 def clean_nip(raw: str) -> str:
-    return "".join(ch for ch in (raw or "") if ch.isdigit())
+    return "".join(ch for ch in (raw or "") if ch in "0123456789")
 
 
 def valid_nip(nip: str) -> bool:

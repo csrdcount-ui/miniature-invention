@@ -330,3 +330,21 @@ Projekt i stan: `docs/PROJEKT-CENNIKI.md`; ustalenia branżowe: `docs/WIEDZA-BRA
 („Budowa cenników spółek”, „Kalkulator: ustalenia”). Ceny wpisuje i zatwierdza BOK
 (albo właściciel), handlowiec wpisuje tylko ceny dla klienta. Próbki cenników od
 właścicielki są poufne: nie zapisywać ich cen ani treści w repozytorium.
+
+## Przegląd kodu 10.11.2026 (wieczór)
+
+Test „złośliwych danych” po wszystkich stronach i rolach (dane demo, każda rola, wartości
+NaN, „²”, 40 cyfr, daty spoza kalendarza, długie teksty). Poprawione: kalkulator padał
+na NaN (`_dec` w `app/routes/klienci.py` odrzuca NaN i nieskończoność), listy klientów
+i umów oraz formularze padały na „²” (`isdigit` przepuszcza, `int()` nie) — numery
+rekordów czyta teraz `is_id()` w `app/web/forms.py`, NIP filtrowany do cyfr 0–9.
+Start aplikacji przez `lifespan` zamiast przestarzałego `on_event`. Wersje bibliotek
+przypięte w `requirements.txt` (Render instaluje od nowa przy każdym wdrożeniu);
+sprawdzone na Pythonie 3.12. Test: `test_dziwne_wartosci_w_polach_nie_wywracaja_serwera`.
+
+Sprawdzone bez uwag: poufność udziału brokera i przychodu spółki (umowy, pulpit,
+kalkulator, BOK), dostęp do cudzych klientów i umów (404), duże numery w adresach
+na PostgreSQL 16.
+
+Odłożone do testów bezpieczeństwa: brak limitu prób logowania, brak nagłówków
+bezpieczeństwa (np. ochrona przed osadzaniem strony w ramce).

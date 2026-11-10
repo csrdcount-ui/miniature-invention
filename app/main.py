@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import os
 import secrets
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
@@ -29,7 +30,15 @@ from .web.ui import BASE_DIR, redirect, render
 SECRET_KEY = os.environ.get("SECRET_KEY") or secrets.token_urlsafe(48)
 SECURE_COOKIES = os.environ.get("SECURE_COOKIES", "0") == "1"
 
-app = FastAPI(title="Platforma brokerska", docs_url=None, redoc_url=None, openapi_url=None)
+@asynccontextmanager
+async def _lifespan(_app: FastAPI):
+    # Tabele, migracje i konto właściciela przed przyjęciem pierwszego żądania.
+    # (Zamiast przestarzałego @app.on_event("startup").)
+    _startup()
+    yield
+
+
+app = FastAPI(title="Platforma brokerska", docs_url=None, redoc_url=None, openapi_url=None, lifespan=_lifespan)
 app.add_middleware(
     SessionMiddleware,
     secret_key=SECRET_KEY,
@@ -43,7 +52,6 @@ for module in (konto, wymiana, klienci, cenniki, portfel, spolki, zespol, raport
     app.include_router(module.router)
 
 
-@app.on_event("startup")
 def _startup() -> None:
     Base.metadata.create_all(bind=engine)
     migrate.run(engine)

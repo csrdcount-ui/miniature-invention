@@ -38,7 +38,7 @@ from ..models import (
     User,
 )
 from ..web.auth import current_user, owner_only
-from ..web.forms import FormError, p_date, p_dec, p_int
+from ..web.forms import FormError, p_date, p_dec, p_int, is_id
 from ..web.ui import flash, form_data, redirect, render
 
 router = APIRouter()
@@ -94,7 +94,7 @@ def clients_page(request: Request, user: User = Depends(current_user), db: Sessi
     elif stage in STAGES:
         q = q.where(Client.stage == stage)
     owner = qp.get("handlowiec", "")
-    if owner.isdigit():
+    if is_id(owner):
         q = q.where(Client.owner_id == int(owner))
     text = qp.get("szukaj", "").strip()
     if text:
@@ -136,7 +136,7 @@ async def client_create(request: Request, user: User = Depends(current_user), db
     form = await form_data(request)
     try:
         oid = form.get("opiekun") or str(user.id)
-        owner = db.get(User, int(oid)) if oid.isdigit() else None
+        owner = db.get(User, int(oid)) if is_id(oid) else None
         if not owner:
             raise FormError("Wybierz opiekuna klienta.")
         c = pl.create_client(
@@ -237,7 +237,7 @@ async def client_request_check(cid: int, request: Request, user: User = Depends(
     c = _sellable(db, user, cid)
     await form_data(request)  # CSRF
     raw = await request.form()  # Starlette trzyma formularz w pamięci; getlist dla kilku pól wyboru
-    ids = [int(x) for x in raw.getlist("spolka") if str(x).isdigit()]
+    ids = [int(x) for x in raw.getlist("spolka") if is_id(str(x))]
     suppliers = [s for s in (db.get(Supplier, i) for i in ids) if s and s.active]
     try:
         n = pl.request_checks(db, c, user, suppliers)
@@ -253,7 +253,7 @@ async def client_offer(cid: int, request: Request, user: User = Depends(current_
     c = _sellable(db, user, cid)
     form = await form_data(request)
     try:
-        s = db.get(Supplier, int(form.get("spolka", "0") or 0)) if form.get("spolka", "").isdigit() else None
+        s = db.get(Supplier, int(form.get("spolka", "0") or 0)) if is_id(form.get("spolka", "")) else None
         if not s:
             raise FormError("Wybierz spółkę, w której NIP jest wolny.")
         sent = p_date(form, "wyslana", "Data wysłania", required=False) or date.today()
@@ -288,13 +288,15 @@ async def offer_rejected(cid: int, oid: int, request: Request, user: User = Depe
 
 def _dec(raw: str) -> Optional[Decimal]:
     try:
-        return eng.D(raw.replace(",", ".").replace(" ", "")) if raw.strip() else None
+        val = eng.D(raw.replace(",", ".").replace(" ", "")) if raw.strip() else None
     except (InvalidOperation, ValueError):
         return None
+    # NaN i nieskończoność: porównanie z liczbą rzuca wyjątek, a to daje błąd serwera.
+    return val if val is not None and val.is_finite() else None
 
 
 def _int(raw: str, default: int, lo: int, hi: int) -> int:
-    return int(raw) if raw.isdigit() and lo <= int(raw) <= hi else default
+    return int(raw) if is_id(raw) and lo <= int(raw) <= hi else default
 
 
 @router.get("/klienci/{cid}/kalkulator", response_class=HTMLResponse)
