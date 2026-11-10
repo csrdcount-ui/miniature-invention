@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Cennik: {{ pl.supplier.name }}{% endblock %}
+{% block content %}
+<h1>{{ "Projekt cennika" if pl.status == "projekt" else "Cennik" }}: {{ pl.supplier.name }}</h1>
+<p><a href="/cenniki">Wróć do cenników</a></p>
+<dl>
+  <dt>Obowiązuje od</dt><dd>{{ pl.valid_from|data }}</dd>
+  <dt>Obowiązuje do</dt><dd>{{ pl.valid_to|data if pl.valid_to else "do wydania nowego" }}</dd>
+  <dt>Wpisał(a)</dt><dd>{{ pl.created_by.name if pl.created_by else "import" }}</dd>
+  {% if pl.note %}<dt>Uwagi</dt><dd>{{ pl.note }}</dd>{% endif %}
+</dl>
+<h2>Zmiany wobec {{ "poprzedniego cennika od " ~ (prev.valid_from|data) if prev else "— to pierwszy cennik tej spółki" }}</h2>
+<p>Liczb w cenniku: {{ ch.count }}, bez zmian: {{ ch.same }}, zmienionych: {{ ch.changed|length }}.</p>
+{% if ch.changed %}
+<ul>
+  {% for label, old, new in ch.changed %}<li>{{ label }}: {{ old or "brak" }} → <strong>{{ new or "brak" }}</strong></li>{% endfor %}
+</ul>
+{% endif %}
+{% if pl.status == "projekt" %}
+<form method="post" action="/cenniki/projekt/{{ pl.id }}/zatwierdz">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <button type="submit">Zatwierdź cennik</button>
+</form>
+<p><a href="/cenniki/{{ pl.supplier_id }}/nowy">Popraw projekt</a></p>
+<form method="post" action="/cenniki/projekt/{{ pl.id }}/usun">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <button type="submit" class="drugi">Usuń projekt</button>
+</form>
+{% endif %}
+{% endblock %}

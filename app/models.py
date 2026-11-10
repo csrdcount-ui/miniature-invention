@@ -541,3 +541,80 @@ class Checklist(Base):
     body: Mapped[str] = mapped_column(Text, default="")
     updated_by_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+# --------------------------------------------------------------------------
+# Cenniki spółek (wpisuje i zatwierdza BOK, czyta kalkulator)
+# --------------------------------------------------------------------------
+
+PRICE_PRODUCTS = {"fix": "Cena stała (FIX)", "rdn": "Cena zmienna RDN (współczynnik doliczany do giełdy)"}
+TARIFF_GROUPS = ["B21", "B22", "B23", "C11", "C12a", "C12b", "C13", "C21", "C22a", "C22b", "C23", "G11", "G12"]
+OH_MODES = {
+    "stala": "Stała: handlowiec nie może jej zmienić",
+    "z_doplata": "Bazowa: handlowiec może doliczyć swoją kwotę (dodatkowy przychód)",
+}
+
+
+class PriceTemplate(Base):
+    """Budowa cennika spółki, ustawiana raz: lata albo bloki lat, grupy ze strefami albo
+    przedziały wolumenu, produkty, opłata handlowa, zakres cennika."""
+
+    __tablename__ = "price_templates"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    supplier_id: Mapped[int] = mapped_column(ForeignKey("suppliers.id"), unique=True)
+    products: Mapped[str] = mapped_column(String(50), default="fix")  # np. "fix,rdn"
+    # okresy: pojedyncze lata „2026” albo bloki „2027-2029”, oddzielone przecinkami
+    periods: Mapped[str] = mapped_column(String(300), default="")
+    split: Mapped[str] = mapped_column(String(10), default="grupy")  # grupy | wolumen
+    # grupy ze strefami: „C11:1, C12a:2, C23:3”; przedziały: „0-300, 300-1000”
+    segments: Mapped[str] = mapped_column(String(500), default="")
+    oh_mode: Mapped[str] = mapped_column(String(20), default="stala")
+    max_volume_mwh: Mapped[Optional[Decimal]] = mapped_column(Numeric(14, 3), nullable=True)
+    individual_from_mwh: Mapped[Optional[Decimal]] = mapped_column(Numeric(14, 3), nullable=True)
+    note: Mapped[str] = mapped_column(Text, default="")
+    updated_by_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    supplier: Mapped["Supplier"] = relationship()
+
+
+class PriceList(Base):
+    """Jeden cennik spółki. Projekt wpisuje BOK, zatwierdzony trafia do kalkulatora.
+    Nowy zatwierdzony cennik kończy poprzedni z końcem dnia swojego startu."""
+
+    __tablename__ = "price_lists"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    supplier_id: Mapped[int] = mapped_column(ForeignKey("suppliers.id"), index=True)
+    status: Mapped[str] = mapped_column(String(20), default="projekt")  # projekt | zatwierdzony
+    valid_from: Mapped[date] = mapped_column(Date)
+    valid_to: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    note: Mapped[str] = mapped_column(String(500), default="")
+    created_by_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    approved_by_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
+    approved_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    supplier: Mapped["Supplier"] = relationship()
+    created_by: Mapped[Optional[User]] = relationship(foreign_keys=[created_by_id])
+    approved_by: Mapped[Optional[User]] = relationship(foreign_keys=[approved_by_id])
+    items: Mapped[list["PriceItem"]] = relationship(back_populates="price_list", cascade="all, delete-orphan")
+
+
+class PriceItem(Base):
+    """Jedna liczba z cennika. kind: cena (zł/MWh) albo oh (zł/miesiąc/punkt poboru).
+    zone: 1–3 dla grup taryfowych, 1 dla przedziałów wolumenu; dla OH zawsze 0."""
+
+    __tablename__ = "price_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    price_list_id: Mapped[int] = mapped_column(ForeignKey("price_lists.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(5), default="cena")
+    product: Mapped[str] = mapped_column(String(5), default="fix")
+    period: Mapped[str] = mapped_column(String(20), default="")
+    segment: Mapped[str] = mapped_column(String(20), default="")
+    zone: Mapped[int] = mapped_column(Integer, default=1)
+    value: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+
+    price_list: Mapped[PriceList] = relationship(back_populates="items")

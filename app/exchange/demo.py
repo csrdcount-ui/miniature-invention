@@ -437,3 +437,80 @@ def _pipeline(rows: dict, rng: random.Random, today: date, sellers: list) -> Non
 
 def demo_workbook(today: Optional[date] = None) -> bytes:
     return build_workbook(demo_rows(today), demo=True)
+
+
+# --------------------------------------------------------------------------
+# Cenniki demonstracyjne (ceny fikcyjne). Tworzone przy imporcie paczki demo,
+# znikają przy jej cofnięciu razem ze spółkami.
+# --------------------------------------------------------------------------
+
+DEMO_GROUPS = "B21:1, B22:2, B23:3, C11:1, C12a:2, C12b:2, C21:1, C22a:2, C22b:2, C23:3"
+DEMO_OH = {"B": 50, "C2": 25, "C1": 15}
+
+
+def seed_price_lists(db, actor, suppliers, today: date) -> int:
+    """Budowa i zatwierdzone cenniki dla spółek demo. Zwraca liczbę cenników."""
+    from decimal import Decimal
+
+    from ..models import PriceItem, PriceList, PriceTemplate
+
+    rng = random.Random(77)
+    y = today.year
+    by_name = {s.name: s for s in suppliers}
+    names = sorted(by_name)
+    n = 0
+    for i, name in enumerate(names):
+        s = by_name[name]
+        volume_style = i in (3, 8)  # dwie spółki liczą cenę od wolumenu, jak cennik minimalny PST
+        blocks = i == 5  # jedna spółka podaje bloki lat
+        if volume_style:
+            tpl = PriceTemplate(supplier_id=s.id, products="fix,rdn", periods=f"{y + 1}, {y + 2}", split="wolumen",
+                                segments="0-300, 300-1000", oh_mode="stala", max_volume_mwh=Decimal(1000),
+                                note="Cennik minimalny dla sprzedaży pośredniej (dane demonstracyjne).")
+        else:
+            periods = f"{y + 1}-{y + 2}, {y + 1}-{y + 3}, {y + 1}, {y + 2}" if blocks else f"{y}, {y + 1}, {y + 2}, {y + 3}"
+            tpl = PriceTemplate(supplier_id=s.id, products="fix", periods=periods, split="grupy", segments=DEMO_GROUPS,
+                                oh_mode="z_doplata" if i % 2 else "stala", max_volume_mwh=Decimal(2000),
+                                individual_from_mwh=Decimal(1000), note="Dane demonstracyjne, ceny fikcyjne.")
+        db.add(tpl)
+        db.flush()
+
+        def make(valid_from, valid_to, shift):
+            pl = PriceList(supplier_id=s.id, status="zatwierdzony", valid_from=valid_from, valid_to=valid_to,
+                           created_by_id=actor.id, approved_by_id=actor.id, note="Dane demonstracyjne.")
+            base = Decimal(rng.randrange(460, 520)) + shift
+            from .. import cenniki as cn
+            for prod in tpl.products.split(","):
+                for per in cn.parse_periods(tpl.periods):
+                    trend = Decimal((per.first - y) * rng.randrange(3, 9)) + Decimal(per.last - per.first) * 2
+                    for seg in cn.parse_segments(tpl.split, tpl.segments):
+                        for z in range(1, seg.zones + 1):
+                            if prod == "rdn":
+                                v = Decimal(rng.randrange(30, 50)) - (5 if seg.low and seg.low > 0 else 0)
+                            else:
+                                # proporcje stref jak w prawdziwych cennikach: przy 2 strefach I droższa,
+                                # II tańsza; przy 3 strefach najdroższa II (szczyt popołudniowy)
+                                shift_z = {2: {1: 115, 2: -50}, 3: {1: 75, 2: 150, 3: -60}}.get(seg.zones, {1: 0})[z]
+                                v = base + trend + shift_z
+                                if volume_style and seg.low and seg.low > 0:
+                                    v -= 8
+                            pl.items.append(PriceItem(kind="cena", product=prod, period=per.label, segment=seg.key, zone=z,
+                                                      value=Decimal(v).quantize(Decimal("0.01"))))
+            for seg in cn.parse_segments(tpl.split, tpl.segments):
+                oh = 0 if volume_style else DEMO_OH["B" if seg.key.startswith("B") else ("C2" if seg.key.startswith("C2") else "C1")]
+                pl.items.append(PriceItem(kind="oh", product="", period="", segment=seg.key, zone=0, value=Decimal(oh)))
+            db.add(pl)
+            return pl
+
+        if i == 1:  # cennik zmieniony dziś: poprzedni działa do końca dnia
+            make(today - timedelta(days=7), today, Decimal(0))
+            make(today, None, Decimal(12))
+            n += 2
+        elif i == 2:  # cennik wygasł: BOK musi wpisać nowy
+            make(today - timedelta(days=12), today - timedelta(days=5), Decimal(0))
+            n += 1
+        else:
+            make(today - timedelta(days=rng.randint(0, 4)), None, Decimal(0))
+            n += 1
+        db.flush()
+    return n

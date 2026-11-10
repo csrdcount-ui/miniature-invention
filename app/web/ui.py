@@ -92,7 +92,8 @@ def fmt_date(value) -> str:
 
 
 templates.env.filters.update(zip=lambda a, b: list(zip(a, b)), zl=fmt_zl, pct=fmt_pct, mwh=fmt_mwh, data=fmt_date, num=fmt_num,
-                            umowy=plural_umowy, oferty=plural_oferty)
+                            umowy=plural_umowy, oferty=plural_oferty,
+                            zdanie=lambda t: (str(t)[:1].upper() + str(t)[1:]) if t else t)
 templates.env.globals.update(
     ROLES=ROLES,
     TRIGGERS=TRIGGERS,

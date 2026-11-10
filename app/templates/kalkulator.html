@@ -1,52 +1,81 @@
 {% extends "base.html" %}
+{% from "_makra.html" import pole %}
 {% block title %}Kalkulator: {{ c.name }}{% endblock %}
 {% block content %}
 <h1>Kalkulator: {{ c.name }}</h1>
 <p><a href="/klienci/{{ c.id }}">Wróć do karty klienta</a></p>
-<p>Wpisz cenę, jaką chcesz zaproponować klientowi, i ceny bazowe z cenników spółek. Zobaczysz, jaką marżę możesz wziąć w każdej spółce i ile zarobisz. Przy tej samej marży Twoja prowizja jest taka sama w każdej spółce: różnicę robią cena bazowa, limit marży i wielkość pierwszej transzy.</p>
+<p>Ceny bazowe biorę z cenników zatwierdzonych przez BOK. Wpisz cenę dla klienta, a zobaczysz marżę i swoją prowizję w każdej spółce{{ ", w której NIP klienta jest wolny" if only_free }}.</p>
 
 {% if rows %}
 <h2>Wynik</h2>
 <ul class="karty">
   {% for r in rows %}
-  <li>
+  <li{% if r.over_limit %} class="alarm"{% endif %}>
     <h3>{{ r.supplier.name }}{% if not r.free %} <span class="podpowiedz">(NIP zajęty albo jeszcze niesprawdzony)</span>{% endif %}</h3>
+    {% if r.price_list %}<p class="podpowiedz">Cennik od {{ r.price_list.valid_from|data }}{% if r.base and r.base.how %}, {{ r.base.how }}{% endif %}.</p>{% endif %}
+    {% if r.changed_today %}<p><strong class="uwaga">Cennik zmienił się dziś. Oferta z poprzedniego cennika jest ważna tylko do 23:59.</strong></p>{% endif %}
     {% if r.error %}
-    <p>{{ r.error|capitalize }}.</p>
+    <p>{{ r.error|zdanie }}.</p>
     {% else %}
-    <p>Marża: <strong>{{ r.markup|zl }}/MWh</strong>{% if r.over_limit %} <strong class="uwaga">(ucięta do limitu spółki {{ r.limit|zl }}/MWh; cena dla klienta będzie niższa)</strong>{% endif %}</p>
+    {% for bz in r.base.zones %}
+    <p>{{ zone_label(r.base.zones|length, loop.index, true) }}: cena bazowa {{ bz|zl }}, dla klienta {{ r.client_prices[loop.index0]|zl }}, marża <strong>{{ r.margins[loop.index0]|zl }}/MWh</strong></p>
+    {% endfor %}
+    {% if r.over_limit %}<p><strong class="uwaga">Marża ponad limit spółki ({{ r.limit|zl }}/MWh). Obniż cenę dla klienta.</strong></p>{% endif %}
     <p>Masa marży: {{ r.total_markup|zl }}</p>
     <p>Twoja prowizja: <strong>{{ r.commission|zl }}</strong>, w tym pierwsza transza {{ r.tranche_a|zl }}{% if r.first_tranche_pct is not none %} ({{ r.first_tranche_pct|pct }}){% endif %}</p>
+    <p>Opłata handlowa: {{ r.oh_client|zl }} na miesiąc za punkt poboru{% if r.oh_fixed %} (stała, bez zmian){% elif r.oh_extra_total %}, dopłata ponad bazową daje {{ r.oh_extra_total|zl }} w całym okresie (dodatkowy przychód biura, poza prowizją w tym wyliczeniu){% endif %}</p>
+    <p>Koszt klienta rocznie (energia i opłata handlowa, netto): {{ r.client_year_cost|zl }}</p>
+    {% if r.base.warning %}<p class="podpowiedz">{{ r.base.warning|zdanie }}.</p>{% endif %}
+    {% if r.free and not r.over_limit %}
+    <p><a href="/klienci/{{ c.id }}?z_kalkulatora=1&spolka={{ r.supplier.id }}&produkt={{ to_contract_product[form.produkt] }}&cena_bazowa={{ r.base_avg }}&marza={{ r.margin_avg }}&wolumen={{ form.wolumen }}&okres={{ form.okres }}#oferta">Zapisz ofertę w tej spółce</a></p>
+    {% endif %}
     {% endif %}
   </li>
   {% endfor %}
 </ul>
-<p class="podpowiedz">To tylko wyliczenie. Nic się nie zapisuje. Ofertę zapiszesz na karcie klienta.</p>
+<p class="podpowiedz">To tylko wyliczenie. Nic się nie zapisuje, dopóki nie stukniesz „Zapisz ofertę”. Przy kilku strefach marża i cena bazowa w ofercie to średnie ważone udziałem stref.</p>
 {% endif %}
 
 <form method="get" action="/klienci/{{ c.id }}/kalkulator" class="stack">
   <div class="pole">
-    <label for="f-cena">Cena dla klienta, zł/MWh (wymagane)</label>
-    <input id="f-cena" name="cena" inputmode="decimal" value="{{ qp.get('cena', '') }}" required>
+    <label for="f-produkt">Produkt</label>
+    <select id="f-produkt" name="produkt">{% for k, v in PRICE_PRODUCTS.items() %}<option value="{{ k }}" {% if form.produkt == k %}selected{% endif %}>{{ v }}</option>{% endfor %}</select>
+    {% if form.produkt == "rdn" %}<p class="podpowiedz">Przy cenie zmiennej wpisz dodatek do ceny z giełdy dla klienta, a cena bazowa to współczynnik spółki.</p>{% endif %}
   </div>
+  {% if groups %}
   <div class="pole">
-    <label for="f-wolumen">Wolumen roczny, MWh (wymagane)</label>
-    <input id="f-wolumen" name="wolumen" inputmode="decimal" value="{{ qp.get('wolumen', '') }}" required>
+    <label for="f-grupa">Grupa taryfowa</label>
+    <select id="f-grupa" name="grupa">{% for g in groups %}<option value="{{ g }}" {% if form.grupa == g %}selected{% endif %}>{{ g }}</option>{% endfor %}</select>
+    <p class="podpowiedz">Po zmianie grupy stuknij „Policz”: pojawi się właściwa liczba stref.</p>
   </div>
-  <div class="pole">
-    <label for="f-okres">Okres umowy w miesiącach (wymagane)</label>
-    <input id="f-okres" name="okres" type="number" min="1" max="120" value="{{ qp.get('okres', '24') }}" required>
-  </div>
+  {% endif %}
+  {{ pole("wolumen", "Wolumen roczny, MWh", form.wolumen, required=true, extra='inputmode="decimal"') }}
+  {{ pole("start", "Start dostaw", form.start, type="month", hint="Format RRRR-MM, np. 2027-01.", required=true) }}
+  {{ pole("okres", "Okres umowy w miesiącach", form.okres, type="number", required=true, extra='min="1" max="120"') }}
   <fieldset>
-    <legend>Ceny bazowe z cenników, zł/MWh</legend>
-    <p class="podpowiedz">Wypełnij tylko spółki, które chcesz porównać. Najpierw spółki, w których NIP jest wolny.</p>
-    {% for s in suppliers %}
+    <legend>Cena dla klienta, zł/MWh{% if nzones > 1 %}, w każdej strefie{% endif %}</legend>
+    {% for z in range(1, nzones + 1) %}
     <div class="pole">
-      <label for="f-baza-{{ s.id }}">{{ s.name }}{% if s.id in free_ids %} (wolny NIP){% endif %}</label>
-      <input id="f-baza-{{ s.id }}" name="baza_{{ s.id }}" inputmode="decimal" value="{{ qp.get('baza_' ~ s.id, '') }}">
+      <label for="f-cena_{{ z }}">{{ zone_label(nzones, z, true) }}: cena dla klienta (wymagane)</label>
+      <input id="f-cena_{{ z }}" name="cena_{{ z }}" inputmode="decimal" value="{{ qp.get('cena_' ~ z, '') }}" required>
     </div>
+    {% if nzones > 1 %}
+    <div class="pole">
+      <label for="f-udzial_{{ z }}">{{ zone_label(nzones, z, true) }}: udział w zużyciu, %</label>
+      <input id="f-udzial_{{ z }}" name="udzial_{{ z }}" inputmode="decimal" value="{{ qp.get('udzial_' ~ z, '') }}">
+    </div>
+    {% endif %}
     {% endfor %}
+    {% if nzones > 1 %}<p class="podpowiedz">Udział stref weź z faktury klienta. Puste: po równo. Służy do policzenia masy marży i prowizji.</p>{% endif %}
   </fieldset>
+  {{ pole("oh", "Opłata handlowa dla klienta, zł na miesiąc", form.oh, hint="Tylko w spółkach, które pozwalają doliczyć coś do opłaty bazowej. Puste: opłata bazowa.", extra='inputmode="decimal"') }}
+  {{ pole("punkty", "Liczba punktów poboru", form.punkty, type="number", extra='min="1" max="500"') }}
+  {% if free_ids %}
+  <div class="pole"><label><input type="checkbox" name="wszystkie" value="1" {% if not only_free %}checked{% endif %}>Pokaż też spółki, w których NIP nie jest sprawdzony</label></div>
+  {% endif %}
   <button type="submit">Policz</button>
 </form>
+
+<h2>Oferty specjalne</h2>
+<p>Tu pojawią się oferty z ustalonymi z góry warunkami, np. ze stałą marżą, w których handlowiec ma niewielkie pole do negocjacji. Ta część jest w przygotowaniu.</p>
 {% endblock %}

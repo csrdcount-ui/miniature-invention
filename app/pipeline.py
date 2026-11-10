@@ -5,7 +5,6 @@ z datą; klient bez następnego kroku trafia do „Pilne”.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Optional
@@ -266,59 +265,6 @@ def offer_state(o: ClientOffer, c: Client, today: date) -> dict:
         "expired": o.status == "otwarta" and o.valid_until < today,
         "expires_soon": o.status == "otwarta" and today <= o.valid_until <= today + timedelta(days=1),
     }
-
-
-@dataclass
-class CalcRow:
-    supplier: Supplier
-    base_price: Optional[Decimal]
-    markup: Optional[Decimal]
-    limit: Optional[Decimal]
-    over_limit: bool
-    total_markup: Decimal
-    commission: Decimal
-    tranche_a: Decimal
-    first_tranche_pct: Optional[Decimal]
-    free: bool
-    error: str = ""
-
-
-def calculator(db: Session, c: Client, *, client_price: Decimal, volume: Decimal, term_months: int,
-               base_prices: dict[int, Decimal], suppliers: list[Supplier], today: Optional[date] = None) -> list[CalcRow]:
-    """Ta sama cena dla klienta w kilku spółkach: ile marży, prowizji i transzy A w każdej.
-
-    Pokazuje tylko kwoty handlowca (opiekuna klienta). Udział brokera u spółki zostaje ukryty.
-    """
-    today = today or date.today()
-    rate = svc.user_rate_on(db, c.owner_id, today)
-    share = rate.trader_share_pct if rate else Decimal(0)
-    free_ids = {s.id for s in free_suppliers(c, today)}
-    rows = []
-    for s in suppliers:
-        base = base_prices.get(s.id)
-        rs = svc.rule_set_on(db, s.id, today)
-        row = CalcRow(s, base, None, rs.max_markup_pln_mwh if rs else None, False, Decimal(0), Decimal(0), Decimal(0),
-                      rs.first_tranche_pct if rs else None, s.id in free_ids)
-        if rs is None:
-            row.error = "spółka nie ma reguł prowizji"
-        elif base is None:
-            row.error = "wpisz cenę bazową z cennika"
-        else:
-            markup = client_price - base
-            if markup < 0:
-                row.error = "cena bazowa wyższa niż cena dla klienta"
-            else:
-                row.over_limit = rs.max_markup_pln_mwh is not None and markup > rs.max_markup_pln_mwh
-                used = min(markup, rs.max_markup_pln_mwh) if row.over_limit else markup
-                row.markup = used
-                b = eng.calculate(eng.ContractTerms(
-                    annual_volume_mwh=volume, term_months=term_months, markup_pln_mwh=used,
-                    broker_share_pct=eng.D(rs.broker_share_pct), first_tranche_pct=eng.D(rs.first_tranche_pct),
-                    trader_share_pct=eng.D(share),
-                ))
-                row.total_markup, row.commission, row.tranche_a = b.total_markup, b.trader.total, b.trader.tranche1
-        rows.append(row)
-    return rows
 
 
 # --------------------------------------------------------------------------

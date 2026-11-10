@@ -25,6 +25,7 @@
   <li>Zmiany statusów z historii: {{ r.counts.zmiany_statusow }}</li>
   <li>Targety miesięczne: {{ r.counts.get("targety", 0) }}</li>
   <li>Klienci w lejku: {{ r.counts.get("klienci", 0) }}, sprawdzenia NIP: {{ r.counts.get("sprawdzenia", 0) }}, oferty: {{ r.counts.get("oferty", 0) }}</li>
+  {% if r.counts.get("cenniki") %}<li>Cenniki spółek (ceny fikcyjne): {{ r.counts.cenniki }}</li>{% endif %}
 </ul>
 
 {% if r.errors %}

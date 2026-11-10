@@ -323,3 +323,10 @@ odmieniać). Jej słownictwo zostaje: lead, override, target, scoring, wolumen, 
 masa marży, przychód spółki. Test `test_teksty_interfejsu_bez_kalek_i_starych_sformulowan`
 pilnuje, żeby stare zwroty nie wróciły. W Excelu i adresach filtrów zostaje „narzut”
 (zgodność wsteczna).
+
+## Cenniki i kalkulator, etap 1 (10.11.2026)
+
+Projekt i stan: `docs/PROJEKT-CENNIKI.md`; ustalenia branżowe: `docs/WIEDZA-BRANZOWA.md`
+(„Budowa cenników spółek”, „Kalkulator: ustalenia”). Ceny wpisuje i zatwierdza BOK
+(albo właściciel), handlowiec wpisuje tylko ceny dla klienta. Próbki cenników od
+właścicielki są poufne: nie zapisywać ich cen ani treści w repozytorium.

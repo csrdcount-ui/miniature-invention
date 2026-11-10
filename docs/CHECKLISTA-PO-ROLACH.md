@@ -17,6 +17,17 @@ Zaloguj się do każdej przez dane demonstracyjne (zakładka Konto → Import da
 - Dane demonstracyjne: 100 umów + 14 ofert (np. „Wózki Widłowe Michalski”). Uwaga: demo
   nie ustawia targetów — ustaw je w Zespół → osoba → „Target masy marży”.
 
+## Nowość: cenniki i kalkulator (do sprawdzenia po wdrożeniu)
+
+Najpierw: Konto → Import danych → cofnij starą paczkę demo → wczytaj nową (dochodzą cenniki).
+- BOK (Jessica Kowal): Zlecenia → Cenniki. ENGIE nie ma obowiązującego cennika (alarm),
+  Axpo zmieniło cennik dziś. „Nowy cennik” otwiera formularz z poprzednimi cenami,
+  po zapisaniu widać zmiany, potem „Zatwierdź”.
+- Handlowiec (Anna Kowalczyk): karta klienta → Kalkulator. Wybierz grupę C12a, wpisz ceny
+  dla klienta w obu strefach i udział stref; zaznacz „Pokaż też spółki…”, żeby zobaczyć
+  wszystkie. „Zapisz ofertę w tej spółce” przepisuje dane do oferty.
+- Właściciel: Spółki → Cenniki (to samo, co BOK).
+
 ## Nowość: dzień handlowca (do sprawdzenia po wdrożeniu)
 
 Najpierw: Konto → Import danych → cofnij starą paczkę demo → wczytaj nową.

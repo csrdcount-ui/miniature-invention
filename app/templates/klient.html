@@ -121,12 +121,13 @@
 {% endif %}
 {% if can_sell and c.stage in OPEN_STAGES %}
 <p><a href="/klienci/{{ c.id }}/kalkulator">Kalkulator: gdzie się bardziej opłaca</a></p>
-<details class="zwijane"{% if error and form.marza is defined %} open{% endif %}>
+<details class="zwijane" id="oferta"{% if form.marza is defined %} open{% endif %}>
   <summary>Zapisz złożoną ofertę</summary>
   <div class="wnetrze">
   {% if not free %}
   <p>Ofertę zapiszesz w spółce, w której BOK potwierdził, że NIP jest wolny, i zarezerwował go. Wyślij NIP do BOK.</p>
   {% else %}
+  {% if from_calc is defined and from_calc %}<p role="status">Dane przepisane z kalkulatora. Sprawdź datę wysłania i zapisz.</p>{% endif %}
   <form method="post" action="/klienci/{{ c.id }}/oferta" class="stack">
     <input type="hidden" name="csrf" value="{{ csrf }}">
     <div class="pole">

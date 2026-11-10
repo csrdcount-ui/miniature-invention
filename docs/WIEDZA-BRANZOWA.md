@@ -266,3 +266,15 @@ spółek są poufne. Zapisujemy tylko strukturę.
   tylko właściciel).
 - Cennik standardowy (publiczny, dla odbiorców bez umowy z brokerem) ma podobne grupy
   i strefy, ale to nie jest cena bazowa dla brokera.
+
+## Kalkulator: ustalenia z 10.11.2026
+
+- W ofertach strefowych handlowiec może dodać do każdej strefy inną marżę.
+- Przy umowach wieloletnich w 99% przypadków liczy się średnią ważoną cenę. Nowe cenniki
+  podają też gotowe bloki cen dla okresów (np. 2027–2029 cena X, 2027–2030 cena Y),
+  na rok, dwa, trzy, cztery, pięć lat.
+- Opłata handlowa: w wielu spółkach jest źródłem dodatkowego przychodu (bazowa plus
+  dopłata handlowca, jak cena bazowa plus marża); w innych jest stała i nie można jej zmienić.
+- Gwarancje pochodzenia i wycena indywidualna: osobne procesy, później.
+- Oferty specjalne (np. stała marża 5 zł/MWh, bardzo dobra oferta, mało pola do negocjacji):
+  osobna sekcja kalkulatora, na razie tylko miejsce.

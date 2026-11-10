@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% from "_makra.html" import pole %}
+{% block title %}Budowa cennika: {{ s.name }}{% endblock %}
+{% block content %}
+<h1>Budowa cennika: {{ s.name }}</h1>
+<p><a href="/cenniki">Wróć do cenników</a></p>
+<p>Ustawiasz to raz. Na tej podstawie co tydzień dostaniesz gotowy formularz z polami na ceny.</p>
+<form method="post" action="/cenniki/{{ s.id }}/budowa" class="stack">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <fieldset>
+    <legend>Produkty w cenniku</legend>
+    {% for k, v in PRICE_PRODUCTS.items() %}
+    <div class="pole"><label><input type="checkbox" name="produkty" value="{{ k }}" {% if k in (form.produkty or ["fix"]) %}checked{% endif %}>{{ v }}</label></div>
+    {% endfor %}
+  </fieldset>
+  {{ pole("okresy", "Okresy dostaw", form.okresy, required=true, hint="Pojedyncze lata albo bloki lat, po przecinku, np. „2026, 2027, 2028” albo „2027-2029, 2027-2030”. Dla umowy wieloletniej kalkulator weźmie blok, który dokładnie pasuje do okresu umowy, a jeśli go nie ma — średnią ważoną z lat.") }}
+  <fieldset>
+    <legend>Od czego zależy cena</legend>
+    <div class="pole"><label><input type="radio" name="podzial" value="grupy" {% if (form.podzial or "grupy") == "grupy" %}checked{% endif %}>Grupa taryfowa i strefy</label></div>
+    <div class="pole"><label><input type="radio" name="podzial" value="wolumen" {% if form.podzial == "wolumen" %}checked{% endif %}>Przedział rocznego wolumenu, bez grup</label></div>
+  </fieldset>
+  {{ pole("segmenty", "Grupy taryfowe albo przedziały wolumenu", form.segmenty, required=true, hint="Grupy z liczbą stref po dwukropku, np. „C11:1, C12a:2, C23:3, B21:1”. Przedziały w MWh, np. „0-300, 300-1000”. Grupy: " ~ TARIFF_GROUPS|join(", ") ~ ".") }}
+  <fieldset>
+    <legend>Opłata handlowa</legend>
+    {% for k, v in OH_MODES.items() %}
+    <div class="pole"><label><input type="radio" name="oh" value="{{ k }}" {% if (form.oh or "stala") == k %}checked{% endif %}>{{ v }}</label></div>
+    {% endfor %}
+  </fieldset>
+  {{ pole("zakres", "Cennik dla klientów do (MWh rocznie)", form.zakres, hint="Np. 2000. Powyżej kalkulator powie: potrzebna wycena indywidualna. Puste: bez ograniczenia.", extra='inputmode="decimal"') }}
+  {{ pole("indywidualna", "Wycena indywidualna możliwa od (MWh rocznie)", form.indywidualna, hint="Np. 1000. Kalkulator podpowie handlowcowi, że może poprosić o wycenę.", extra='inputmode="decimal"') }}
+  <div class="pole">
+    <label for="f-uwagi">Uwagi dla BOK (warunki z cennika)</label>
+    <textarea id="f-uwagi" name="uwagi" rows="3">{{ form.uwagi or "" }}</textarea>
+  </div>
+  <button type="submit">Zapisz budowę cennika</button>
+</form>
+{% endblock %}

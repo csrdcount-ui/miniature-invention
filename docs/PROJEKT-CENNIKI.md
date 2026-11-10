@@ -29,7 +29,17 @@ Czytanie PDF przez AI to etap 2: wypełnia ten sam formularz jako projekt do zat
   wolumen ponad zakres cennika (wycena indywidualna), marża ponad limit, cennik z dziś.
 - Oferta zapamiętuje wersję cennika.
 
-## Otwarte pytania (zadane 10.11.2026)
-Patrz rozmowa: strefy (jedna marża na wszystkie strefy?), umowy wieloletnie (jedna cena
-czy cena na każdy rok?), „w tym prowizja partnera”, OH i gwarancje pochodzenia
-w kalkulatorze.
+## Stan (10.11.2026)
+
+ZROBIONE etap 1: `app/cenniki.py`, `app/routes/cenniki.py`, modele PriceTemplate, PriceList,
+PriceItem (nowe tabele). Zakładka BOK „Zlecenia” → podsekcja „Cenniki”; właściciel: Spółki →
+Cenniki. Kalkulator na karcie klienta czyta tylko zatwierdzone cenniki. Bloki lat wygrywają,
+gdy pokrywają dokładnie lata umowy; inaczej średnia ważona miesiącami. Marża osobno na
+każdą strefę, udział stref do masy marży. OH stała albo z dopłatą (dopłata pokazana jako
+przychód biura, poza prowizją handlowca — podział do ustalenia). „Zapisz ofertę w tej
+spółce” przepisuje średnią ważoną cenę bazową i marżę do formularza oferty. Demo: 13
+cenników 12 spółek (fikcyjne ceny), w tym zmiana cennika dziś i wygasły cennik.
+
+Otwarte: „w tym prowizja partnera” (PST), udział handlowca w dopłacie do OH, import
+cennika z Excela, czytanie PDF przez AI (etap 2), oferty specjalne, gwarancje pochodzenia,
+wycena indywidualna, zapamiętanie wersji cennika w ofercie.

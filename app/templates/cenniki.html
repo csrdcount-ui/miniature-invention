@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Cenniki{% endblock %}
+{% block content %}
+<h1>Cenniki spółek</h1>
+<p>Handlowcy liczą oferty tylko z zatwierdzonych cenników. Nowy cennik zastępuje poprzedni od dnia startu; poprzedni działa do końca tego dnia.</p>
+<ul class="karty">
+{% for r in rows %}
+  <li{% if r.tpl and r.stale %} class="alarm"{% endif %}>
+    <h2 class="h3">{{ r.s.name }}</h2>
+    {% if not r.tpl %}
+    <p>Nie ustawiono budowy cennika.</p>
+    <p><a href="/cenniki/{{ r.s.id }}/budowa">Ustaw budowę cennika</a></p>
+    {% else %}
+    {% if r.pl %}
+    <p>Obowiązuje cennik od {{ r.pl.valid_from|data }}{% if r.pl.valid_to %} do {{ r.pl.valid_to|data }}{% endif %}{% if r.pl.approved_by %}, zatwierdził(a): {{ r.pl.approved_by.name }}{% endif %}.</p>
+    {% if r.stale %}<p><strong class="uwaga">Cennik starszy niż {{ STALE_DAYS }} dni albo wygasa. Sprawdź, czy spółka wydała nowy.</strong></p>{% endif %}
+    {% else %}
+    <p><strong class="uwaga">Brak obowiązującego cennika: handlowcy nie policzą oferty w tej spółce.</strong></p>
+    {% endif %}
+    {% if r.draft %}<p><a href="/cenniki/projekt/{{ r.draft.id }}">Projekt cennika od {{ r.draft.valid_from|data }}: sprawdź i zatwierdź</a></p>{% endif %}
+    <p><a class="przycisk" href="/cenniki/{{ r.s.id }}/nowy">{{ "Popraw projekt" if r.draft else "Nowy cennik" }}</a></p>
+    <p><a href="/cenniki/{{ r.s.id }}/budowa">Zmień budowę cennika</a></p>
+    {% endif %}
+  </li>
+{% endfor %}
+</ul>
+{% if not rows %}<p>Nie ma aktywnych spółek obrotu.</p>{% endif %}
+{% endblock %}

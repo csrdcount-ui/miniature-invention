@@ -26,6 +26,8 @@ from ..models import (
     SELLING_ROLES,
     OFFER_VALID_DAYS,
     Checklist,
+    PriceList,
+    PriceTemplate,
     Client,
     ClientEvent,
     ClientOffer,
@@ -480,6 +482,11 @@ def _apply(db: Session, data: dict, actor: User, batch: ImportBatch, report: Rep
             report.counts["oferty"] += 1
         _row(db, report, "oferty", rownum, add_client_offer)
 
+    # 6. Dane demonstracyjne: cenniki spółek (ceny fikcyjne), żeby dało się sprawdzić kalkulator.
+    if report.demo and suppliers:
+        from .demo import seed_price_lists
+        report.counts["cenniki"] = seed_price_lists(db, actor, list({s.id: s for s in suppliers.values()}.values()), date.today())
+
 
 def svc_valid_nip(nip: str) -> bool:
     weights = [6, 5, 7, 2, 3, 4, 5, 6, 7]
@@ -601,6 +608,9 @@ def revert(db: Session, batch: ImportBatch) -> dict:
         db.execute(update(ClientOffer).where(ClientOffer.created_by_id.in_(user_ids)).values(created_by_id=None))
         db.execute(update(ClientEvent).where(ClientEvent.user_id.in_(user_ids)).values(user_id=None))
         db.execute(update(Checklist).where(Checklist.updated_by_id.in_(user_ids)).values(updated_by_id=None))
+        db.execute(update(PriceList).where(PriceList.created_by_id.in_(user_ids)).values(created_by_id=None))
+        db.execute(update(PriceList).where(PriceList.approved_by_id.in_(user_ids)).values(approved_by_id=None))
+        db.execute(update(PriceTemplate).where(PriceTemplate.updated_by_id.in_(user_ids)).values(updated_by_id=None))
     counts["klienci"] = 0
     for cl in db.scalars(select(Client).where(Client.import_batch_id == bid)):
         db.delete(cl)
@@ -617,6 +627,12 @@ def revert(db: Session, batch: ImportBatch) -> dict:
     for u in batch_users:
         db.delete(u)
         counts["osoby"] += 1
+    db.flush()
+    batch_sups = select(Supplier.id).where(Supplier.import_batch_id == bid)
+    for pl_ in db.scalars(select(PriceList).where(PriceList.supplier_id.in_(batch_sups))):
+        db.delete(pl_)  # cenniki spółek z paczki znikają razem ze spółkami
+    for t in db.scalars(select(PriceTemplate).where(PriceTemplate.supplier_id.in_(batch_sups))):
+        db.delete(t)
     db.flush()
     for s in db.scalars(select(Supplier).where(Supplier.import_batch_id == bid)):
         db.delete(s)

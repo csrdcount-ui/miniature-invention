@@ -159,21 +159,6 @@ def test_przegrana_wymaga_powodu_i_krok_wymagany_w_toku(client):
         assert c.stage == "przegrana" and c.lost_reason == "Cena" and c.next_step_date is None
 
 
-def test_kalkulator_pokazuje_tylko_kwoty_handlowca(client):
-    setup_company(client)
-    login(client, "hania@firma.pl")
-    cid = _klient(client)
-    page = client.get(f"/klienci/{cid}/kalkulator?cena=600&wolumen=100&okres=60&baza_1=500&baza_2=450").text
-    # Spółka A: marża 100 → masa 50 000, Hania 40% = 20 000; Spółka B: marża 150 → 75 000, 30 000
-    txt = page.replace(" ", " ")
-    assert "Twoja prowizja: <strong>30 000,00 zł</strong>" in txt and "Twoja prowizja: <strong>20 000,00 zł</strong>" in txt
-    assert txt.index("30 000,00 zł") < txt.index("20 000,00 zł")  # najpierw korzystniejsza
-    assert "77" not in txt.split("Wynik", 1)[1].split("</ul>", 1)[0]  # bez udziału brokera (77%)
-    # limit spółki A: 200 zł/MWh
-    txt = client.get(f"/klienci/{cid}/kalkulator?cena=800&wolumen=100&okres=12&baza_1=500").text
-    assert "ucięta do limitu" in txt
-
-
 def test_listy_wymagan_edytuje_wlasciciel(client):
     setup_company(client)
     login(client, "kris@firma.pl")

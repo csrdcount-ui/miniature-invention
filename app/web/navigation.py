@@ -12,10 +12,10 @@ from ..models import ROLE_BOK, ROLE_MANAGER, ROLE_OWNER, ROLE_TRADER, User
 # Na telefonie najwyżej 5 zakładek; Raporty (na razie zapowiedź) są podsekcją Portfela.
 TABS = [
     ("dzien", "Mój dzień", "/dzien", ("/dzien",), "seller"),
-    ("bok", "Zlecenia", "/bok", ("/bok",), "bokq"),
+    ("bok", "Zlecenia", "/bok", ("/bok", "/cenniki"), "bokq"),
     ("klienci", "Klienci", "/klienci", ("/klienci",), False),
     ("portfel", "Portfel", "/pulpit", ("/pulpit", "/umowy", "/raporty"), False),
-    ("spolki", "Spółki", "/spolki", ("/spolki",), "owner"),
+    ("spolki", "Spółki", "/spolki", ("/spolki", "/cenniki"), "owner"),
     ("zespol", "Zespół", "/zespol", ("/zespol",), "team"),
     ("konto", "Konto", "/konto", ("/konto", "/haslo"), False),
 ]
@@ -26,7 +26,8 @@ OWNER_ONLY_SUBTABS = {"/konto/import", "/zespol/nowa", "/konto/listy"}
 SUBTABS = {
     "portfel": [("Podsumowanie", "/pulpit"), ("Umowy", "/umowy"), ("Nowa umowa", "/umowy/nowa"), ("Raporty", "/raporty")],
     "klienci": [("Lista klientów", "/klienci"), ("Nowy klient", "/klienci/nowy")],
-    "spolki": [("Lista spółek", "/spolki"), ("Dodaj spółkę", "/spolki/nowa")],
+    "spolki": [("Lista spółek", "/spolki"), ("Cenniki", "/cenniki"), ("Dodaj spółkę", "/spolki/nowa")],
+    "bok": [("Do sprawdzenia", "/bok"), ("Cenniki", "/cenniki")],
     "zespol": [("Lista osób", "/zespol"), ("Dodaj osobę", "/zespol/nowa")],
     "konto": [("Moje konto", "/konto"), ("Moje dane", "/konto/dane"), ("Zmiana hasła", "/haslo"),
               ("Listy wymagań", "/konto/listy"), ("Import danych", "/konto/import")],

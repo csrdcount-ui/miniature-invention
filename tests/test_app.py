@@ -491,7 +491,7 @@ def test_logika_biznesowa_nie_zalezy_od_warstwy_stron():
     import ast
     import pathlib
     root = pathlib.Path(__file__).resolve().parent.parent / "app"
-    for name in ["engine.py", "services.py", "models.py", "migrate.py", "pipeline.py"]:
+    for name in ["engine.py", "services.py", "models.py", "migrate.py", "pipeline.py", "cenniki.py"]:
         tree = ast.parse((root / name).read_text())
         for node in ast.walk(tree):
             if isinstance(node, ast.ImportFrom):

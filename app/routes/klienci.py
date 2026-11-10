@@ -11,6 +11,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from .. import engine as eng
+from .. import cenniki as cn
 from .. import pipeline as pl
 from .. import services as svc
 from ..db import get_db
@@ -22,6 +23,7 @@ from ..models import (
     NIP_CHECK_RESULTS,
     OFFER_STATUSES,
     OPEN_STAGES,
+    PRICE_PRODUCTS,
     PRICING_PRODUCTS,
     ROLE_BOK,
     ROLE_MANAGER,
@@ -177,7 +179,11 @@ def _client_ctx(db: Session, user: User, c: Client, **extra) -> dict:
 @router.get("/klienci/{cid}", response_class=HTMLResponse)
 def client_page(cid: int, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
     c = _get_client(db, user, cid)
-    return render(request, "klient.html", _client_ctx(db, user, c))
+    qp = request.query_params
+    form = {}
+    if qp.get("z_kalkulatora"):  # oferta przepisana z kalkulatora (ceny z zatwierdzonego cennika)
+        form = {k: qp.get(k, "") for k in ("spolka", "produkt", "cena_bazowa", "marza", "wolumen", "okres")}
+    return render(request, "klient.html", _client_ctx(db, user, c, form=form, from_calc=bool(form)))
 
 
 def _error(request: Request, db: Session, user: User, c: Client, e: Exception, form: dict):
@@ -287,29 +293,61 @@ def _dec(raw: str) -> Optional[Decimal]:
         return None
 
 
+def _int(raw: str, default: int, lo: int, hi: int) -> int:
+    return int(raw) if raw.isdigit() and lo <= int(raw) <= hi else default
+
+
 @router.get("/klienci/{cid}/kalkulator", response_class=HTMLResponse)
 def calculator_page(cid: int, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Kalkulator: ceny bazowe z zatwierdzonych cenników, handlowiec wpisuje tylko ceny dla klienta."""
     c = _sellable(db, user, cid)
     qp = request.query_params
+    today = date.today()
     free_ids = {s.id for s in pl.free_suppliers(c)}
-    suppliers = [s for s in db.scalars(select(Supplier).where(Supplier.active.is_(True)).order_by(Supplier.name))]
-    # najpierw spółki, w których NIP jest wolny, potem pozostałe (do porównania przed zleceniem do BOK)
-    suppliers.sort(key=lambda s: (s.id not in free_ids, s.name))
-    price, volume = _dec(qp.get("cena", "")), _dec(qp.get("wolumen", ""))
-    term = int(qp.get("okres")) if qp.get("okres", "").isdigit() else None
-    bases = {s.id: v for s in suppliers if (v := _dec(qp.get(f"baza_{s.id}", ""))) is not None}
+    suppliers = list(db.scalars(select(Supplier).where(Supplier.active.is_(True)).order_by(Supplier.name)))
+    only_free = qp.get("wszystkie") != "1"
+    shown = [s for s in suppliers if s.id in free_ids] if only_free and free_ids else suppliers
+    last = c.offers[0] if c.offers else None
+    groups = sorted({seg.key for s in suppliers if (t := cn.template_of(db, s.id)) and t.split == "grupy"
+                     for seg in cn.parse_segments(t.split, t.segments)}, key=lambda g: (g[0], g))
+    zones_of = {}
+    for s in suppliers:
+        t = cn.template_of(db, s.id)
+        if t and t.split == "grupy":
+            for seg in cn.parse_segments(t.split, t.segments):
+                zones_of[seg.key] = max(zones_of.get(seg.key, 1), seg.zones)
+    group = qp.get("grupa", "") if qp.get("grupa", "") in zones_of else (groups[0] if groups else "")
+    nzones = zones_of.get(group, 1)
+    form = {
+        "produkt": qp.get("produkt") if qp.get("produkt") in PRICE_PRODUCTS else "fix",
+        "grupa": group,
+        "wolumen": qp.get("wolumen", f"{last.annual_volume_mwh.normalize():f}" if last else ""),
+        "start": qp.get("start", (svc.add_months(svc.month_start(today), 1)).strftime("%Y-%m")),
+        "okres": qp.get("okres", str(last.term_months) if last else "24"),
+        "punkty": qp.get("punkty", "1"), "oh": qp.get("oh", ""),
+    }
     rows, error = [], None
-    if "cena" in qp:
-        if not price or price <= 0 or not volume or volume <= 0 or not term or not 1 <= term <= 120:
-            error = "Podaj cenę dla klienta, wolumen roczny i okres (1–120 miesięcy)."
-        elif not bases:
-            error = "Wpisz cenę bazową z cennika co najmniej jednej spółki."
+    if "cena_1" in qp:
+        volume = _dec(form["wolumen"])
+        start = svc.parse_month(form["start"])
+        months = _int(form["okres"], 0, 1, 120)
+        prices = [_dec(qp.get(f"cena_{z}", "")) for z in range(1, nzones + 1)]
+        shares = [_dec(qp.get(f"udzial_{z}", "")) for z in range(1, nzones + 1)]
+        if not volume or volume <= 0 or not start or not months:
+            error = "Podaj wolumen roczny, start dostaw (RRRR-MM) i okres umowy w miesiącach (1–120)."
+        elif any(p is None or p <= 0 for p in prices):
+            error = "Podaj cenę dla klienta " + ("w każdej strefie." if nzones > 1 else "w zł/MWh.")
         else:
-            rows = pl.calculator(db, c, client_price=price, volume=volume, term_months=term, base_prices=bases,
-                                 suppliers=[s for s in suppliers if s.id in bases])
-            rows.sort(key=lambda r: (bool(r.error), -r.commission))
+            shares = [w if w is not None and w >= 0 else Decimal(100) / nzones for w in shares]
+            rows = cn.calculate(
+                db, owner_id=c.owner_id, suppliers=shown, free_ids=free_ids, product=form["produkt"], group=group,
+                volume=volume, start=start, months=months, client_prices=prices, shares=shares,
+                oh_client=_dec(form["oh"]), points=_int(form["punkty"], 1, 1, 500), today=today,
+            )
     return render(request, "kalkulator.html", {
-        "user": user, "c": c, "suppliers": suppliers, "free_ids": free_ids, "qp": qp, "rows": rows, "error": error,
+        "user": user, "c": c, "qp": qp, "form": form, "rows": rows, "error": error, "groups": groups,
+        "nzones": nzones, "zone_label": cn.zone_label, "free_ids": free_ids, "only_free": only_free and bool(free_ids),
+        "PRICE_PRODUCTS": PRICE_PRODUCTS, "to_contract_product": {"fix": "fix", "rdn": "spot"},
     })
 
 

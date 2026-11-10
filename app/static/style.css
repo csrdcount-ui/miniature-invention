@@ -175,3 +175,4 @@ a.przycisk {
 ul.karty li.alarm { border: 2px solid var(--blad); background: var(--blad-tlo); }
 ul.lejek { list-style: none; padding: 0; display: grid; gap: .35rem; margin: 0; }
 ul.lejek a { display: inline-flex; align-items: center; min-height: 44px; }
+ul.karty h2.h3 { font-size: 1.1rem; margin: 0 0 .25rem; }

@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% from "_makra.html" import pole %}
+{% block title %}Cennik: {{ s.name }}{% endblock %}
+{% block content %}
+<h1>Cennik: {{ s.name }}</h1>
+<p><a href="/cenniki">Wróć do cenników</a></p>
+{% if source %}<p role="status">Pola wypełnione cenami {{ "z projektu" if draft else "z cennika od " ~ (source.valid_from|data) }}. Popraw tylko to, co się zmieniło.</p>{% endif %}
+<p>Ceny w zł/MWh netto, z przecinkiem albo kropką. Puste pole oznacza, że spółka nie podaje tej ceny. Po zapisaniu zobaczysz zmiany i zatwierdzisz cennik.</p>
+<form method="post" action="/cenniki/{{ s.id }}/nowy" class="stack">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  {{ pole("od", "Obowiązuje od", meta.od, type="date", required=true) }}
+  {{ pole("do", "Obowiązuje do", meta.do, type="date", hint="Puste: do wydania nowego cennika.") }}
+  {% for sec in secs.sections %}
+  <details class="zwijane"{% if loop.first %} open{% endif %}>
+    <summary>{{ sec.title }}</summary>
+    <div class="wnetrze stack">
+    {% for row in sec.rows %}
+      <fieldset>
+        <legend>{{ row.segment.label }}</legend>
+        {% for f in row.fields %}
+        <div class="pole">
+          <label for="f-{{ f.key }}">{{ f.label }}</label>
+          <input id="f-{{ f.key }}" name="{{ f.key }}" inputmode="decimal" value="{{ values.get(f.key, '') }}">
+        </div>
+        {% endfor %}
+      </fieldset>
+    {% endfor %}
+    </div>
+  </details>
+  {% endfor %}
+  <details class="zwijane">
+    <summary>Opłata handlowa ({{ OH_MODES[tpl.oh_mode]|lower }})</summary>
+    <div class="wnetrze stack">
+    {% for f in secs.oh %}
+      <div class="pole">
+        <label for="f-{{ f.key }}">{{ f.label }}</label>
+        <input id="f-{{ f.key }}" name="{{ f.key }}" inputmode="decimal" value="{{ values.get(f.key, '') }}">
+      </div>
+    {% endfor %}
+    </div>
+  </details>
+  <div class="pole">
+    <label for="f-uwagi">Uwagi do tego cennika</label>
+    <input id="f-uwagi" name="uwagi" maxlength="500" value="{{ meta.uwagi }}">
+  </div>
+  <button type="submit">Zapisz projekt i sprawdź zmiany</button>
+</form>
+{% endblock %}
