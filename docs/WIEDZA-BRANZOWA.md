@@ -278,3 +278,14 @@ spółek są poufne. Zapisujemy tylko strukturę.
 - Gwarancje pochodzenia i wycena indywidualna: osobne procesy, później.
 - Oferty specjalne (np. stała marża 5 zł/MWh, bardzo dobra oferta, mało pola do negocjacji):
   osobna sekcja kalkulatora, na razie tylko miejsce.
+
+## Skąd biorą się ceny w cennikach (10.11.2026)
+
+- Spółka wyznacza ceny z rynku terminowego: bierze notowania BASE i PEAK na dany rok
+  (np. Y-27, Y-28) i według standardowego profilu branżowego wylicza cenę dla grup
+  taryfowych (C11, C12 i tak dalej).
+- Obecnie najczęściej ceny płaskie, bez podziału na strefy; strefy stosują pojedyncze spółki.
+- Rząd wielkości (listopad 2026): cennik ≈ notowanie BASE na dany rok + 40–45 zł/MWh;
+  blok kilku lat ≈ średnia lat.
+- Prowizja handlowca od dopłaty do opłaty handlowej: w tym samym procencie co od sprzedaży
+  (junior 35% → 35% dopłaty).

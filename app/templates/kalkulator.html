@@ -23,7 +23,7 @@
     {% if r.over_limit %}<p><strong class="uwaga">Marża ponad limit spółki ({{ r.limit|zl }}/MWh). Obniż cenę dla klienta.</strong></p>{% endif %}
     <p>Masa marży: {{ r.total_markup|zl }}</p>
     <p>Twoja prowizja: <strong>{{ r.commission|zl }}</strong>, w tym pierwsza transza {{ r.tranche_a|zl }}{% if r.first_tranche_pct is not none %} ({{ r.first_tranche_pct|pct }}){% endif %}</p>
-    <p>Opłata handlowa: {{ r.oh_client|zl }} na miesiąc za punkt poboru{% if r.oh_fixed %} (stała, bez zmian){% elif r.oh_extra_total %}, dopłata ponad bazową daje {{ r.oh_extra_total|zl }} w całym okresie (dodatkowy przychód biura, poza prowizją w tym wyliczeniu){% endif %}</p>
+    <p>Opłata handlowa: {{ r.oh_client|zl }} na miesiąc za punkt poboru{% if r.oh_fixed %} (stała, bez zmian){% elif r.oh_extra_total %}, dopłata ponad bazową daje {{ r.oh_extra_total|zl }} w całym okresie, z tego Twoja prowizja {{ r.oh_commission|zl }} (jest już w kwocie prowizji wyżej){% endif %}</p>
     <p>Koszt klienta rocznie (energia i opłata handlowa, netto): {{ r.client_year_cost|zl }}</p>
     {% if r.base.warning %}<p class="podpowiedz">{{ r.base.warning|zdanie }}.</p>{% endif %}
     {% if r.free and not r.over_limit %}

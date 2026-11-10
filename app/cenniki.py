@@ -408,6 +408,7 @@ class Row:
     oh_client: Optional[Decimal] = None
     oh_fixed: bool = True
     oh_extra_total: Decimal = Decimal(0)
+    oh_commission: Decimal = Decimal(0)
     client_year_cost: Decimal = Decimal(0)
     changed_today: bool = False
     error: str = ""
@@ -485,6 +486,9 @@ def calculate(db: Session, *, owner_id: int, suppliers: list[Supplier], free_ids
         else:
             r.oh_client = max(oh_client, base_oh)
             r.oh_extra_total = eng.zl((r.oh_client - base_oh) * months * points)
+            # prowizja od dopłaty do OH w tym samym procencie co od sprzedaży (ustalenie 10.11.2026)
+            r.oh_commission = eng.zl(r.oh_extra_total * share / 100)
+            r.commission += r.oh_commission
         avg_price = sum((p * w for p, w in zip(prices_z, shares_z)), Decimal(0))
         r.client_year_cost = eng.zl(volume * avg_price + r.oh_client * 12 * points)
         rows.append(r)

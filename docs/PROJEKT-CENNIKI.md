@@ -40,6 +40,8 @@ przychód biura, poza prowizją handlowca — podział do ustalenia). „Zapisz 
 spółce” przepisuje średnią ważoną cenę bazową i marżę do formularza oferty. Demo: 13
 cenników 12 spółek (fikcyjne ceny), w tym zmiana cennika dziś i wygasły cennik.
 
-Otwarte: „w tym prowizja partnera” (PST), udział handlowca w dopłacie do OH, import
+Rozstrzygnięte 10.11.2026: prowizja od dopłaty do OH w procencie handlowca (liczona w kalkulatorze);
+ceny demo = BASE Y-27/Y-28 z TGE (sesja 6.11.2026) + 40–45 zł, blok = średnia, bez lat po 2028.
+Otwarte: „w tym prowizja partnera” (PST), transza A od dopłaty do OH, import
 cennika z Excela, czytanie PDF przez AI (etap 2), oferty specjalne, gwarancje pochodzenia,
 wycena indywidualna, zapamiętanie wersji cennika w ofercie.

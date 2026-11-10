@@ -140,9 +140,10 @@ def test_kalkulator_z_cennika_strefy_oplata_handlowa_i_oferta(client):
     assert "Strefa I: cena bazowa 600,00 zł, dla klienta 700,00 zł, marża <strong>100,00 zł/MWh</strong>" in page
     assert "Strefa II: cena bazowa 450,00 zł, dla klienta 520,00 zł, marża <strong>70,00 zł/MWh</strong>" in page
     # marża średnia 88 zł x 100 MWh x 1 rok = 8 800; Hania 40% = 3 520
-    assert "Masa marży: 8 800,00 zł" in page and "Twoja prowizja: <strong>3 520,00 zł</strong>" in page
+    # prowizja: 40% z 8 800 = 3 520 plus 40% z dopłaty do OH (960) = 384, razem 3 904
+    assert "Masa marży: 8 800,00 zł" in page and "Twoja prowizja: <strong>3 904,00 zł</strong>" in page
     # C12a nie ma OH w cenniku testowym: bazowa 0, dopłata 40 zł x 12 mies. x 2 punkty
-    assert "960,00 zł w całym okresie" in page
+    assert "960,00 zł w całym okresie, z tego Twoja prowizja 384,00 zł" in page
     assert "77" not in page.split("Wynik", 1)[1].split("Oferty specjalne", 1)[0]  # bez udziału brokera
     assert "Oferty specjalne" in page
     # ponad limit spółki A (200 zł/MWh)
@@ -186,3 +187,8 @@ def test_demo_ma_cenniki_i_cofniecie_je_usuwa(client):
     post(client, f"/konto/import/{bid}", f"/konto/import/{bid}/cofnij", {"potwierdzam": "1"})
     with SessionLocal() as db:
         assert db.query(PriceTemplate).count() == 0 and db.query(PriceList).count() == 0 and db.query(PriceItem).count() == 0
+
+
+def test_ceny_demo_z_rynku_plus_40_45_zl_i_blok_jako_srednia():
+    from app.exchange.demo import MARKET_BASE
+    assert MARKET_BASE[2027] == D("551.20") and MARKET_BASE[2028] == D("530.00")

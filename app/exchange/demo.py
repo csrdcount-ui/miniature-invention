@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import calendar
 import random
+from decimal import Decimal
 from datetime import date, timedelta
 from typing import Optional
 
@@ -444,54 +445,63 @@ def demo_workbook(today: Optional[date] = None) -> bytes:
 # znikają przy jej cofnięciu razem ze spółkami.
 # --------------------------------------------------------------------------
 
-DEMO_GROUPS = "B21:1, B22:2, B23:3, C11:1, C12a:2, C12b:2, C21:1, C22a:2, C22b:2, C23:3"
+# Ceny demo oparte na rynku (ustalenie właścicielki 10.11.2026): cennik = notowanie BASE
+# na dany rok + 40–45 zł/MWh, blok lat = średnia lat. Notowania: TGE, kurs rozliczeniowy DKR,
+# sesja 6.11.2026 (raport cenowy z 9.11.2026). Brak notowań PEAK w raporcie, więc różnice
+# między grupami taryfowymi (profil) są tu przybliżone. Najczęściej ceny płaskie, bez stref;
+# podział na strefy stosują pojedyncze spółki.
+MARKET_BASE = {2027: Decimal("551.20"), 2028: Decimal("530.00")}
+MARKET_SOURCE = "TGE DKR, sesja 6.11.2026: BASE Y-27 551,20 zł/MWh, BASE Y-28 530,00 zł/MWh"
+DEMO_GROUPS_FLAT = "B21:1, B22:1, B23:1, C11:1, C12a:1, C12b:1, C21:1, C22a:1, C22b:1, C23:1"
+DEMO_GROUPS_ZONES = "B21:1, B22:2, B23:3, C11:1, C12a:2, C12b:2, C21:1, C22a:2, C22b:2, C23:3"
+# dopłata za profil grupy względem BASE (przybliżenie, zł/MWh)
+PROFILE = {"C11": 6, "C12a": 9, "C12b": 4, "C13": 10, "C21": 3, "C22a": 6, "C22b": 2, "C23": 7,
+           "B21": 0, "B22": 3, "B23": 4}
+ZONE_SHIFT = {2: {1: 60, 2: -45}, 3: {1: 40, 2: 90, 3: -50}}
 DEMO_OH = {"B": 50, "C2": 25, "C1": 15}
 
 
 def seed_price_lists(db, actor, suppliers, today: date) -> int:
     """Budowa i zatwierdzone cenniki dla spółek demo. Zwraca liczbę cenników."""
-    from decimal import Decimal
-
     from ..models import PriceItem, PriceList, PriceTemplate
 
     rng = random.Random(77)
-    y = today.year
+    years = sorted(MARKET_BASE)
     by_name = {s.name: s for s in suppliers}
     names = sorted(by_name)
     n = 0
     for i, name in enumerate(names):
         s = by_name[name]
         volume_style = i in (3, 8)  # dwie spółki liczą cenę od wolumenu, jak cennik minimalny PST
-        blocks = i == 5  # jedna spółka podaje bloki lat
+        zoned = i in (0, 6)  # dwie spółki dzielą cenę na strefy
+        periods = ", ".join(str(y) for y in years) + f", {years[0]}-{years[-1]}"
         if volume_style:
-            tpl = PriceTemplate(supplier_id=s.id, products="fix,rdn", periods=f"{y + 1}, {y + 2}", split="wolumen",
+            tpl = PriceTemplate(supplier_id=s.id, products="fix,rdn", periods=periods, split="wolumen",
                                 segments="0-300, 300-1000", oh_mode="stala", max_volume_mwh=Decimal(1000),
                                 note="Cennik minimalny dla sprzedaży pośredniej (dane demonstracyjne).")
         else:
-            periods = f"{y + 1}-{y + 2}, {y + 1}-{y + 3}, {y + 1}, {y + 2}" if blocks else f"{y}, {y + 1}, {y + 2}, {y + 3}"
-            tpl = PriceTemplate(supplier_id=s.id, products="fix", periods=periods, split="grupy", segments=DEMO_GROUPS,
+            tpl = PriceTemplate(supplier_id=s.id, products="fix", periods=periods, split="grupy",
+                                segments=DEMO_GROUPS_ZONES if zoned else DEMO_GROUPS_FLAT,
                                 oh_mode="z_doplata" if i % 2 else "stala", max_volume_mwh=Decimal(2000),
-                                individual_from_mwh=Decimal(1000), note="Dane demonstracyjne, ceny fikcyjne.")
+                                individual_from_mwh=Decimal(1000), note="Dane demonstracyjne. " + MARKET_SOURCE + " plus 40–45 zł/MWh.")
         db.add(tpl)
         db.flush()
+        premium = Decimal(rng.randrange(400, 451)) / 10  # 40,0–45,0 zł/MWh ponad rynek
 
         def make(valid_from, valid_to, shift):
-            pl = PriceList(supplier_id=s.id, status="zatwierdzony", valid_from=valid_from, valid_to=valid_to,
-                           created_by_id=actor.id, approved_by_id=actor.id, note="Dane demonstracyjne.")
-            base = Decimal(rng.randrange(460, 520)) + shift
             from .. import cenniki as cn
+            pl = PriceList(supplier_id=s.id, status="zatwierdzony", valid_from=valid_from, valid_to=valid_to,
+                           created_by_id=actor.id, approved_by_id=actor.id, note="Dane demonstracyjne. " + MARKET_SOURCE)
             for prod in tpl.products.split(","):
                 for per in cn.parse_periods(tpl.periods):
-                    trend = Decimal((per.first - y) * rng.randrange(3, 9)) + Decimal(per.last - per.first) * 2
+                    market = sum((MARKET_BASE[y] for y in range(per.first, per.last + 1)), Decimal(0)) / (per.last - per.first + 1)
                     for seg in cn.parse_segments(tpl.split, tpl.segments):
                         for z in range(1, seg.zones + 1):
                             if prod == "rdn":
                                 v = Decimal(rng.randrange(30, 50)) - (5 if seg.low and seg.low > 0 else 0)
                             else:
-                                # proporcje stref jak w prawdziwych cennikach: przy 2 strefach I droższa,
-                                # II tańsza; przy 3 strefach najdroższa II (szczyt popołudniowy)
-                                shift_z = {2: {1: 115, 2: -50}, 3: {1: 75, 2: 150, 3: -60}}.get(seg.zones, {1: 0})[z]
-                                v = base + trend + shift_z
+                                v = market + premium + shift + PROFILE.get(seg.key, 0)
+                                v += ZONE_SHIFT.get(seg.zones, {1: 0})[z]
                                 if volume_style and seg.low and seg.low > 0:
                                     v -= 8
                             pl.items.append(PriceItem(kind="cena", product=prod, period=per.label, segment=seg.key, zone=z,
@@ -503,8 +513,8 @@ def seed_price_lists(db, actor, suppliers, today: date) -> int:
             return pl
 
         if i == 1:  # cennik zmieniony dziś: poprzedni działa do końca dnia
-            make(today - timedelta(days=7), today, Decimal(0))
-            make(today, None, Decimal(12))
+            make(today - timedelta(days=7), today, Decimal(4))
+            make(today, None, Decimal(0))
             n += 2
         elif i == 2:  # cennik wygasł: BOK musi wpisać nowy
             make(today - timedelta(days=12), today - timedelta(days=5), Decimal(0))
