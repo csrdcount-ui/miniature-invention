@@ -162,6 +162,8 @@ Następne (w tej kolejności, po odpowiedziach na pytania niżej):
   dane przykładowe (wersja robocza 0.1, do akceptacji).
 - `docs/PROJEKT-DZIEN-HANDLOWCA.md` — projekt ekranu „Mój dzień”, lejka, kalendarza i
   podpowiedzi (10.11.2026, do akceptacji). Następny temat: uporządkowanie BOK.
+- `docs/PROJEKT-EXCEL-BOK.md` — plan Excela dla BOK: arkusz cennika spółki, wgranie jako
+  projekt do zatwierdzenia, etapy A–D, pilot, testy (11.11.2026, do akceptacji; 6 pytań).
 - `docs/CHECKLISTA-PO-ROLACH.md` — co wdrożone a co nie, po każdej roli (właściciel,
   menedżer, handlowiec, BOK), do aktualizacji po każdym większym kroku.
 
@@ -357,3 +359,6 @@ na /konto/import (`add_demo_price_lists`, `demo_suppliers_without_prices` w
 `app/exchange/importer.py`): dopisuje fikcyjne cenniki tylko spółkom demo bez struktury
 cennika, bez ruszania umów i klientów; cofnięcie demo usuwa je razem ze spółkami.
 Ceny prawdziwych spółek wpisuje BOK ręcznie; import cenników z Excela nadal otwarty.
+
+Wdrożenie 0fe1ba9 (przycisk cenników demo) przeszło w Renderze 11.11.2026 o 09:29 UTC.
+Następny temat: plan Excela dla BOK (`docs/PROJEKT-EXCEL-BOK.md`), czeka na odpowiedzi.
