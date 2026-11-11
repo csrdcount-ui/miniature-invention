@@ -192,3 +192,34 @@ def test_demo_ma_cenniki_i_cofniecie_je_usuwa(client):
 def test_ceny_demo_z_rynku_plus_40_45_zl_i_blok_jako_srednia():
     from app.exchange.demo import MARKET_BASE
     assert MARKET_BASE[2027] == D("551.20") and MARKET_BASE[2028] == D("530.00")
+
+
+def test_dopisanie_cennikow_demo_do_wczesniej_wczytanego_demo(client):
+    """Serwer miał demo wczytane przed cennikami: przycisk dopisuje je bez ruszania reszty."""
+    from .test_import import _commit, _demo_preview
+    from app.models import Contract, Supplier
+    setup_company(client)
+    login(client, "kris@firma.pl")
+    bid = _demo_preview(client)
+    _commit(client, bid)
+    with SessionLocal() as db:  # stan jak na serwerze: demo bez cenników
+        for pl_ in db.query(PriceList): db.delete(pl_)
+        for t in db.query(PriceTemplate): db.delete(t)
+        db.commit()
+        umowy = db.query(Contract).count()
+    page = client.get("/konto/import").text
+    assert "Dodaj cenniki demo" in page and "12 spółek demo nie ma" in page
+    r = post(client, "/konto/import", "/konto/import/demo-cenniki", {})
+    assert r.status_code == 303
+    with SessionLocal() as db:
+        assert db.query(PriceTemplate).count() == 12 and db.query(PriceList).count() == 13
+        assert db.query(Contract).count() == umowy
+        sup_before = db.query(Supplier).count()
+    page = client.get("/konto/import").text
+    assert "Dodaj cenniki demo" not in page  # nic do dopisania
+    post(client, "/konto/import", "/konto/import/demo-cenniki", {})  # drugi raz: bez duplikatów
+    with SessionLocal() as db:
+        assert db.query(PriceTemplate).count() == 12 and db.query(PriceList).count() == 13
+    post(client, f"/konto/import/{bid}", f"/konto/import/{bid}/cofnij", {"potwierdzam": "1"})
+    with SessionLocal() as db:
+        assert db.query(PriceTemplate).count() == 0 and db.query(PriceItem).count() == 0

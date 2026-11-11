@@ -649,4 +649,28 @@ def demo_active(db: Session) -> bool:
     ) is not None
 
 
-__all__ = ["preview", "commit", "reject", "revert", "blockers", "demo_active", "Report", "ROLE_OWNER", "CONTRACT_STATUSES"]
+def demo_suppliers_without_prices(db: Session) -> list[Supplier]:
+    """Spółki z aktywnej paczki demo, które nie mają jeszcze żadnej struktury cennika."""
+    ids = list(db.scalars(select(ImportBatch.id).where(ImportBatch.is_demo.is_(True), ImportBatch.status == "zatwierdzony")))
+    if not ids:
+        return []
+    have = select(PriceTemplate.supplier_id)
+    return list(db.scalars(
+        select(Supplier).where(Supplier.import_batch_id.in_(ids), Supplier.id.not_in(have)).order_by(Supplier.name)
+    ))
+
+
+def add_demo_price_lists(db: Session, actor: User) -> int:
+    """Dopisuje cenniki demo (ceny fikcyjne) spółkom demo, które ich nie mają. Nie rusza reszty danych;
+    cofnięcie paczki demo usuwa je razem ze spółkami."""
+    from .demo import seed_price_lists
+
+    suppliers = demo_suppliers_without_prices(db)
+    if not suppliers:
+        return 0
+    n = seed_price_lists(db, actor, suppliers, date.today())
+    db.commit()
+    return n
+
+
+__all__ = ["demo_suppliers_without_prices", "add_demo_price_lists", "preview", "commit", "reject", "revert", "blockers", "demo_active", "Report", "ROLE_OWNER", "CONTRACT_STATUSES"]

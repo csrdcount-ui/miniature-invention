@@ -13,6 +13,15 @@
 </form>
 <p><a href="/konto/import/demo.xlsx">Pobierz plik demonstracyjny (Excel)</a>, żeby go obejrzeć albo wgrać ręcznie poniżej.</p>
 
+{% if demo_prices_missing %}
+<h3>Cenniki demonstracyjne</h3>
+<p>{{ demo_prices_missing }} {{ "spółka demo nie ma" if demo_prices_missing == 1 else "spółek demo nie ma" }} jeszcze cennika, więc kalkulator nie ma z czego liczyć. Przycisk dopisuje fikcyjne ceny (rynek BASE plus 40–45 zł) tylko tym spółkom. Umowy, klienci i zespół zostają bez zmian. Cofnięcie danych demo usuwa też te cenniki.</p>
+<form method="post" action="/konto/import/demo-cenniki">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <button type="submit">Dodaj cenniki demo</button>
+</form>
+{% endif %}
+
 <h2>Wgraj plik</h2>
 <p><a href="/konto/import/szablon.xlsx">Pobierz pusty szablon (Excel)</a>. Pierwszy arkusz, README, opisuje każdą kolumnę.</p>
 <form method="post" action="/konto/import" enctype="multipart/form-data" class="stack">

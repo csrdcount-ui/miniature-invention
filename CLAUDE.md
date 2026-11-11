@@ -348,3 +348,12 @@ na PostgreSQL 16.
 
 Odłożone do testów bezpieczeństwa: brak limitu prób logowania, brak nagłówków
 bezpieczeństwa (np. ochrona przed osadzaniem strony w ramce).
+
+## Cenniki demo na serwerze (11.11.2026)
+
+Wersja 20b7e5d wdrożona i potwierdzona przez właścicielkę (/wersja). Demo na serwerze było
+wczytane PRZED cennikami, więc kalkulator nie miał cen. Dodano przycisk „Dodaj cenniki demo”
+na /konto/import (`add_demo_price_lists`, `demo_suppliers_without_prices` w
+`app/exchange/importer.py`): dopisuje fikcyjne cenniki tylko spółkom demo bez struktury
+cennika, bez ruszania umów i klientów; cofnięcie demo usuwa je razem ze spółkami.
+Ceny prawdziwych spółek wpisuje BOK ręcznie; import cenników z Excela nadal otwarty.
