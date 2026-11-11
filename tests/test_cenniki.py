@@ -223,3 +223,49 @@ def test_dopisanie_cennikow_demo_do_wczesniej_wczytanego_demo(client):
     post(client, f"/konto/import/{bid}", f"/konto/import/{bid}/cofnij", {"potwierdzam": "1"})
     with SessionLocal() as db:
         assert db.query(PriceTemplate).count() == 0 and db.query(PriceItem).count() == 0
+
+
+def test_cenniki_demo_sieguja_2_do_5_lat_wiekszosc_3_do_5(client):
+    """Zgłoszenie 11.11.2026: po filtrze na 4 lata zostawał jeden wynik, bo demo miało tylko 2027–2028."""
+    from .test_import import _commit, _demo_preview
+    setup_company(client)
+    login(client, "kris@firma.pl")
+    _commit(client, _demo_preview(client))
+    with SessionLocal() as db:
+        def ile(months):
+            n = 0
+            for t in db.query(PriceTemplate):
+                pl_ = cn.current_list(db, t.supplier_id)
+                if not pl_:
+                    continue
+                b = cn.base_for(t, pl_, product="fix", group="C11" if t.split == "grupy" else "", volume=D(100),
+                                start=date(2027, 1, 1), months=months)
+                n += 0 if b.error else 1
+            return n
+        z = {m: ile(m * 12) for m in (2, 3, 4, 5, 6)}
+        # 11 z 12 spółek ma cennik na dziś (jeden wygasł); wymagamy rozsądnego rozkładu zasięgu
+        assert z[2] >= 10 and z[3] >= 8 and z[4] >= 5 and z[5] >= 2 and z[6] == 0, z
+        assert z[2] >= z[3] >= z[4] >= z[5]
+        assert all("założenie demonstracyjne" in (p.note or "") for p in db.query(PriceList))
+
+
+def test_podmiana_cennikow_demo_zmienia_stare_na_nowy_wzor(client):
+    from .test_import import _commit, _demo_preview
+    from app.models import Contract
+    setup_company(client)
+    login(client, "kris@firma.pl")
+    bid = _demo_preview(client)
+    _commit(client, bid)
+    with SessionLocal() as db:  # stary wzór: tylko 2027–2028
+        for t in db.query(PriceTemplate):
+            t.periods = "2027, 2028, 2027-2028"
+        for it in db.query(PriceItem).filter(PriceItem.period.in_(["2029", "2030", "2031"])): db.delete(it)
+        db.commit()
+        umowy = db.query(Contract).count()
+    assert "Podmień cenniki demo" in client.get("/konto/import").text
+    r = post(client, "/konto/import", "/konto/import/demo-cenniki", {"zastap": "1"})
+    assert r.status_code == 303
+    with SessionLocal() as db:
+        assert db.query(PriceTemplate).count() == 12 and db.query(PriceList).count() == 13
+        assert db.query(PriceItem).filter(PriceItem.period == "2030").count() > 0
+        assert db.query(Contract).count() == umowy

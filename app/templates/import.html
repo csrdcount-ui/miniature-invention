@@ -21,6 +21,15 @@
   <button type="submit">Dodaj cenniki demo</button>
 </form>
 {% endif %}
+{% if demo_prices_present %}
+<h3>Podmień cenniki demonstracyjne</h3>
+<p>Usuwa cenniki spółek demo i tworzy je od nowa, z cenami na lata 2027–2031. Spółki mają różny zasięg: dwie do 2028, trzy do 2029, cztery do 2030, trzy do 2031. Ceny na 2027 i 2028 pochodzą z notowań TGE, na 2029–2031 to założenie demonstracyjne. Dotyczy tylko spółek z danych demo; własnych cenników i spółek spoza demo nie rusza. Jeśli zmieniałaś ceny demo ręcznie, te zmiany znikną.</p>
+<form method="post" action="/konto/import/demo-cenniki">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <input type="hidden" name="zastap" value="1">
+  <button type="submit">Podmień cenniki demo</button>
+</form>
+{% endif %}
 
 <h2>Wgraj plik</h2>
 <p><a href="/konto/import/szablon.xlsx">Pobierz pusty szablon (Excel)</a>. Pierwszy arkusz, README, opisuje każdą kolumnę.</p>

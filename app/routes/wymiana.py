@@ -41,7 +41,8 @@ def import_page(request: Request, user: User = Depends(owner_only), db: Session 
     batches = list(db.scalars(select(ImportBatch).where(ImportBatch.status != "odrzucony").order_by(ImportBatch.id.desc()).limit(30)))
     rows = [(b, importer.Report.from_json(b.summary)) for b in batches]
     missing = len(importer.demo_suppliers_without_prices(db))
-    return render(request, "import.html", {"user": user, "batches": rows, "demo_prices_missing": missing})
+    return render(request, "import.html", {"user": user, "batches": rows, "demo_prices_missing": missing,
+                                           "demo_prices_present": importer.demo_suppliers_with_prices(db)})
 
 
 @router.get("/konto/import/szablon.xlsx")
@@ -80,9 +81,11 @@ async def import_demo(request: Request, user: User = Depends(owner_only), db: Se
 
 @router.post("/konto/import/demo-cenniki")
 async def import_demo_prices(request: Request, user: User = Depends(owner_only), db: Session = Depends(get_db)):
-    await form_data(request)
-    n = importer.add_demo_price_lists(db, user)
-    flash(request, f"Dodano {n} cenników demonstracyjnych (ceny fikcyjne). Sprawdź je w Spółki, Cenniki, potem w kalkulatorze na karcie klienta."
+    form = await form_data(request)
+    replace = form.get("zastap") == "1"
+    n = importer.add_demo_price_lists(db, user, replace=replace)
+    flash(request, f"{'Podmieniono' if replace else 'Dodano'} {n} cenników demonstracyjnych (ceny fikcyjne, sięgają 2–5 lat). "
+                   "Sprawdź je w Spółki, Cenniki, potem w kalkulatorze na karcie klienta."
           if n else "Wszystkie spółki demo mają już cenniki.")
     return redirect("/konto/import")
 

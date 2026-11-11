@@ -452,6 +452,13 @@ def demo_workbook(today: Optional[date] = None) -> bytes:
 # podział na strefy stosują pojedyncze spółki.
 MARKET_BASE = {2027: Decimal("551.20"), 2028: Decimal("530.00")}
 MARKET_SOURCE = "TGE DKR, sesja 6.11.2026: BASE Y-27 551,20 zł/MWh, BASE Y-28 530,00 zł/MWh"
+# Lata 2029–2031: nie mamy notowań, to ZAŁOŻENIE demo (łagodnie malejąca krzywa), tylko po to,
+# żeby cenniki demo sięgały 3–5 lat jak w prawdziwych spółkach. Nie wolno ich pokazywać jako rynku.
+MARKET_ASSUMED = {2029: Decimal("515.00"), 2030: Decimal("505.00"), 2031: Decimal("500.00")}
+MARKET_ALL = {**MARKET_BASE, **MARKET_ASSUMED}
+MARKET_ASSUMPTION_NOTE = "Lata 2029–2031: założenie demonstracyjne, nie notowania."
+# Ostatni rok cennika spółki demo (po kolei wg nazwy): większość 3–5 lat dostaw, dwie tylko 2.
+DEMO_LAST_YEAR = [2030, 2031, 2029, 2029, 2030, 2031, 2030, 2028, 2029, 2031, 2030, 2028]
 DEMO_GROUPS_FLAT = "B21:1, B22:1, B23:1, C11:1, C12a:1, C12b:1, C21:1, C22a:1, C22b:1, C23:1"
 DEMO_GROUPS_ZONES = "B21:1, B22:2, B23:3, C11:1, C12a:2, C12b:2, C21:1, C22a:2, C22b:2, C23:3"
 # dopłata za profil grupy względem BASE (przybliżenie, zł/MWh)
@@ -466,7 +473,7 @@ def seed_price_lists(db, actor, suppliers, today: date) -> int:
     from ..models import PriceItem, PriceList, PriceTemplate
 
     rng = random.Random(77)
-    years = sorted(MARKET_BASE)
+    all_years = sorted(MARKET_ALL)
     by_name = {s.name: s for s in suppliers}
     names = sorted(by_name)
     n = 0
@@ -474,7 +481,9 @@ def seed_price_lists(db, actor, suppliers, today: date) -> int:
         s = by_name[name]
         volume_style = i in (3, 8)  # dwie spółki liczą cenę od wolumenu, jak cennik minimalny PST
         zoned = i in (0, 6)  # dwie spółki dzielą cenę na strefy
-        periods = ", ".join(str(y) for y in years) + f", {years[0]}-{years[-1]}"
+        years = [y for y in all_years if y <= DEMO_LAST_YEAR[i % len(DEMO_LAST_YEAR)]]
+        # lata osobno i bloki od pierwszego roku (2027-2028, 2027-2029, ...), jak w nowych cennikach spółek
+        periods = ", ".join([str(y) for y in years] + [f"{years[0]}-{y}" for y in years[1:]])
         if volume_style:
             tpl = PriceTemplate(supplier_id=s.id, products="fix,rdn", periods=periods, split="wolumen",
                                 segments="0-300, 300-1000", oh_mode="stala", max_volume_mwh=Decimal(1000),
@@ -483,7 +492,7 @@ def seed_price_lists(db, actor, suppliers, today: date) -> int:
             tpl = PriceTemplate(supplier_id=s.id, products="fix", periods=periods, split="grupy",
                                 segments=DEMO_GROUPS_ZONES if zoned else DEMO_GROUPS_FLAT,
                                 oh_mode="z_doplata" if i % 2 else "stala", max_volume_mwh=Decimal(2000),
-                                individual_from_mwh=Decimal(1000), note="Dane demonstracyjne. " + MARKET_SOURCE + " plus 40–45 zł/MWh.")
+                                individual_from_mwh=Decimal(1000), note="Dane demonstracyjne. " + MARKET_SOURCE + " plus 40–45 zł/MWh. " + MARKET_ASSUMPTION_NOTE)
         db.add(tpl)
         db.flush()
         premium = Decimal(rng.randrange(400, 451)) / 10  # 40,0–45,0 zł/MWh ponad rynek
@@ -491,10 +500,10 @@ def seed_price_lists(db, actor, suppliers, today: date) -> int:
         def make(valid_from, valid_to, shift):
             from .. import cenniki as cn
             pl = PriceList(supplier_id=s.id, status="zatwierdzony", valid_from=valid_from, valid_to=valid_to,
-                           created_by_id=actor.id, approved_by_id=actor.id, note="Dane demonstracyjne. " + MARKET_SOURCE)
+                           created_by_id=actor.id, approved_by_id=actor.id, note="Dane demonstracyjne. " + MARKET_SOURCE + ". " + MARKET_ASSUMPTION_NOTE)
             for prod in tpl.products.split(","):
                 for per in cn.parse_periods(tpl.periods):
-                    market = sum((MARKET_BASE[y] for y in range(per.first, per.last + 1)), Decimal(0)) / (per.last - per.first + 1)
+                    market = sum((MARKET_ALL[y] for y in range(per.first, per.last + 1)), Decimal(0)) / (per.last - per.first + 1)
                     for seg in cn.parse_segments(tpl.split, tpl.segments):
                         for z in range(1, seg.zones + 1):
                             if prod == "rdn":

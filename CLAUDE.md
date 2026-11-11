@@ -362,3 +362,15 @@ Ceny prawdziwych spółek wpisuje BOK ręcznie; import cenników z Excela nadal 
 
 Wdrożenie 0fe1ba9 (przycisk cenników demo) przeszło w Renderze 11.11.2026 o 09:29 UTC.
 Następny temat: plan Excela dla BOK (`docs/PROJEKT-EXCEL-BOK.md`), czeka na odpowiedzi.
+
+## Cenniki demo na 2–5 lat (11.11.2026)
+
+Zgłoszenie: po filtrze na 4 lata zostawał jeden wynik, bo cenniki demo miały ceny tylko na
+2027–2028 (moja decyzja z 10.11: „bez lat po 2028”, bo były tylko dwa notowania). Teraz demo
+ma lata 2027–2031 i różny zasięg spółek (`DEMO_LAST_YEAR` w `app/exchange/demo.py`: dwie do
+2028, trzy do 2029, cztery do 2030, trzy do 2031), z blokami od 2027 (2027-2028 … 2027-2031).
+UWAGA: prawdziwe notowania TGE są tylko na 2027 i 2028; ceny 2029–2031 to założenie demo
+(`MARKET_ASSUMED`), oznaczone w notatce cennika i nie wolno ich pokazywać jako rynku.
+Przycisk „Podmień cenniki demo” na /konto/import (`add_demo_price_lists(replace=True)`)
+odtwarza cenniki spółek demo w nowym wzorze; własnych cenników i spółek spoza demo nie rusza.
+Do rozstrzygnięcia z właścicielką: czy dać prawdziwe notowania na 2029–2031, gdy je poda.

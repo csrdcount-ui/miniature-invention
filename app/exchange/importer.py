@@ -13,7 +13,7 @@ from io import BytesIO
 from typing import Any, Optional
 
 from openpyxl import load_workbook
-from sqlalchemy import or_, select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.orm import Session
 
 from .. import engine as eng
@@ -660,11 +660,29 @@ def demo_suppliers_without_prices(db: Session) -> list[Supplier]:
     ))
 
 
-def add_demo_price_lists(db: Session, actor: User) -> int:
+def _demo_supplier_ids(db: Session) -> list[int]:
+    ids = list(db.scalars(select(ImportBatch.id).where(ImportBatch.is_demo.is_(True), ImportBatch.status == "zatwierdzony")))
+    return list(db.scalars(select(Supplier.id).where(Supplier.import_batch_id.in_(ids)))) if ids else []
+
+
+def demo_suppliers_with_prices(db: Session) -> int:
+    ids = _demo_supplier_ids(db)
+    return db.scalar(select(func.count(PriceTemplate.id)).where(PriceTemplate.supplier_id.in_(ids))) if ids else 0
+
+
+def add_demo_price_lists(db: Session, actor: User, replace: bool = False) -> int:
     """Dopisuje cenniki demo (ceny fikcyjne) spółkom demo, które ich nie mają. Nie rusza reszty danych;
-    cofnięcie paczki demo usuwa je razem ze spółkami."""
+    cofnięcie paczki demo usuwa je razem ze spółkami. replace=True najpierw usuwa istniejące cenniki
+    spółek demo (tylko demo, nigdy innych spółek) i tworzy je od nowa w bieżącym wzorze."""
     from .demo import seed_price_lists
 
+    if replace:
+        ids = _demo_supplier_ids(db)
+        for pl_ in db.scalars(select(PriceList).where(PriceList.supplier_id.in_(ids))):
+            db.delete(pl_)
+        for t in db.scalars(select(PriceTemplate).where(PriceTemplate.supplier_id.in_(ids))):
+            db.delete(t)
+        db.flush()
     suppliers = demo_suppliers_without_prices(db)
     if not suppliers:
         return 0
@@ -673,4 +691,4 @@ def add_demo_price_lists(db: Session, actor: User) -> int:
     return n
 
 
-__all__ = ["demo_suppliers_without_prices", "add_demo_price_lists", "preview", "commit", "reject", "revert", "blockers", "demo_active", "Report", "ROLE_OWNER", "CONTRACT_STATUSES"]
+__all__ = ["demo_suppliers_with_prices", "demo_suppliers_without_prices", "add_demo_price_lists", "preview", "commit", "reject", "revert", "blockers", "demo_active", "Report", "ROLE_OWNER", "CONTRACT_STATUSES"]
