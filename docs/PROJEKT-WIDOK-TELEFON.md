@@ -17,6 +17,15 @@ bez przewijania wielu ekranów. Szczegóły zostają tam, gdzie są, o jedno stu
   Ekran i jasność, Wielkość tekstu). Kto ma w telefonie powiększony tekst, w platformie
   widzi zwykły rozmiar. Na Androidzie przeglądarka Chrome zwykle to uwzględnia.
 
+## Odpowiedzi z 12.11.2026
+
+- Małe literki: Android, ekran 6,3 cala. Na emulacji Androida (Pixel 7, Galaxy S8) żadna
+  strona nie wychodzi poza ekran, więc Chrome nie ma powodu pomniejszać. Zgodne z opisem
+  (bardzo małe litery, brak dolnej belki) jest włączone „Wersja na komputer”: układ 980 px
+  na ekranie 412 px, tekst realnie ok. 7,6 px, belka u góry. Zrobione: platforma wykrywa ten
+  tryb i pokazuje komunikat, jak go wyłączyć (`#tryb-komputer` w `base.html`).
+- Skrót: potrzebny jako osobny panel na telefonie, pomaga organizować zadania.
+
 ## Zasady skrótu
 
 1. Jeden ekran, najwyżej półtora. Do 6 kafelków.
@@ -73,8 +82,8 @@ bez przewijania wielu ekranów. Szczegóły zostają tam, gdzie są, o jedno stu
 
 ## Etapy
 
-- **A.** Systemowa wielkość tekstu, większe podpisy w belce, krótsza ramka demo.
-  Mała zmiana, od razu do sprawdzenia na Twoim telefonie.
+- **A. ZROBIONE 12.11.2026:** systemowa wielkość tekstu na iPhonie, podpisy w belce 16 px,
+  krótsza ramka demo, ostrzeżenie o trybie „Wersja na komputer”.
 - **B.** Skrót właściciela i menedżera, nowa dolna belka z „Start” i „Więcej”.
 - **C.** Lista umów po 20 i skrócone karty w Zespole.
 

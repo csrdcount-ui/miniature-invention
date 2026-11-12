@@ -397,3 +397,7 @@ Wdrożenie cf2070c (udział w masie marży biura) przeszło w Renderze 12.11.202
 Pomiar telefonu 12.11 (iPhone 13, demo): tekst 18 px, bez poziomego przewijania; problem to
 długość stron (Zespół 12 ekranów, umowy 40) i brak systemowej wielkości tekstu na iPhonie.
 Plan: `docs/PROJEKT-WIDOK-TELEFON.md`, czeka na odpowiedzi.
+Odpowiedź 12.11: małe literki na Androidzie 6,3". Przyczyna (wysoce prawdopodobna, czeka na
+potwierdzenie): „Wersja na komputer” w przeglądarce — emulacja daje tekst ~7,6 px i belkę u
+góry. Zrobione: wykrywanie trybu i komunikat (`#tryb-komputer`, skrypt na końcu `base.html`),
+etap A planu telefonu. Skrót (etap B) zaakceptowany co do idei; kafelki wg planu.

@@ -75,12 +75,12 @@ def test_demo_podglad_niczego_nie_zapisuje_a_zatwierdzenie_tak(client):
     assert len(passwords) == 9
     assert all(re.fullmatch(r"[a-z2-9]{4}-[a-z2-9]{4}-[a-z2-9]{4}", p) for _, p in passwords)
     # baner demo dla zalogowanych
-    assert "Dane demonstracyjne." in client.get("/pulpit").text
+    assert "Dane demonstracyjne:" in client.get("/pulpit").text
     # handlowiec demo loguje się hasłem z raportu i nie widzi warunków właściciela
     email, pw = next((e, p) for e, p in passwords if e.startswith("anna.kowalczyk"))
     login(client, email, pw)
     html = client.get("/umowy").text
-    assert "Dane demonstracyjne." in html
+    assert "Dane demonstracyjne:" in html
     with SessionLocal() as db:
         anna = db.query(User).filter_by(email=email).one()
         cid = db.query(Contract).filter_by(trader_id=anna.id).first().id
@@ -134,7 +134,7 @@ def test_cofniecie_demo_zostawia_prawdziwe_dane(client):
     r = post(client, f"/konto/import/{bid}", f"/konto/import/{bid}/cofnij", {"potwierdzam": "1"})
     assert r.status_code == 303
     assert _counts() == before
-    assert "Dane demonstracyjne." not in client.get("/pulpit").text
+    assert "Dane demonstracyjne:" not in client.get("/pulpit").text
     with SessionLocal() as db:
         assert db.get(ImportBatch, bid).status == "cofniety"
 

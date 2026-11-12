@@ -1147,3 +1147,11 @@ def test_teksty_interfejsu_bez_kalek_i_starych_sformulowan():
         text = path.read_text()
         for phrase in banned:
             assert phrase not in text, (path.name, phrase)
+
+
+def test_ostrzezenie_o_trybie_wersji_na_komputer(client):
+    """Android z „Wersją na komputer”: strona 980 px na ekranie ~400 px, litery ~7 px (zgłoszenie 12.11.2026).
+    Komunikat jest w HTML ukryty; skrypt odkrywa go tylko, gdy układ jest dużo szerszy niż ekran telefonu."""
+    page = client.get("/logowanie", follow_redirects=True).text
+    assert 'id="tryb-komputer"' in page and "hidden" in page.split('id="tryb-komputer"')[1].split(">")[0]
+    assert "odznacz „Wersja na komputer”" in page and "screen.width" in page

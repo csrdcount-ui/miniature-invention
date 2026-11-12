@@ -35,6 +35,13 @@
 }
 * { box-sizing: border-box; }
 html { font-size: 112.5%; }
+/* iPhone i iPad: wielkość tekstu z ustawień systemu (Ekran i jasność, Wielkość tekstu).
+   Tylko ekrany dotykowe: na Macu ta sama czcionka systemowa ma 13 px i byłaby za mała. */
+@media (hover: none) and (pointer: coarse) {
+  @supports (font: -apple-system-body) {
+    html { font: -apple-system-body; }
+  }
+}
 body {
   margin: 0;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -76,7 +83,7 @@ nav ul { list-style: none; margin: 0; padding: 0; }
     padding-bottom: env(safe-area-inset-bottom);
   }
   .zakladki li { max-width: none; }
-  .zakladki a { border-bottom: 0; border-top: 3px solid transparent; font-size: .8rem; }
+  .zakladki a { border-bottom: 0; border-top: 3px solid transparent; font-size: .9rem; }
   .zakladki a[aria-current="page"] { border-top-color: var(--marka); }
   body.z-menu { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
 }

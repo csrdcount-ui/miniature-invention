@@ -35,8 +35,12 @@
   {% endif %}
   {% endif %}
   <main id="tresc" tabindex="-1">
+    <div id="tryb-komputer" class="error" role="alert" hidden>
+      <p><strong>Telefon pokazuje platformę w trybie „Wersja na komputer”.</strong> Dlatego litery są bardzo małe, a menu jest u góry zamiast na dole ekranu.</p>
+      <p>Jak wyłączyć w Chrome: stuknij menu z trzema kropkami w prawym górnym rogu i odznacz „Wersja na komputer”. W innych przeglądarkach podobna opcja nazywa się zwykle tak samo albo „Wersja komputerowa”.</p>
+    </div>
     {% if demo_active %}
-    <p class="demo-baner">Dane demonstracyjne. Osoby i klienci są zmyśleni, warunki umów agencyjnych ze spółkami są fikcyjne.</p>
+    <p class="demo-baner">Dane demonstracyjne: osoby, klienci i warunki ze spółkami są zmyślone.</p>
     {% endif %}
     {% if flashes %}
     <div role="status" class="flash">
@@ -48,5 +52,16 @@
     {% endif %}
     {% block content %}{% endblock %}
   </main>
+  <script>
+    /* Telefon w trybie „Wersja na komputer”: strona ma ~980 px szerokości na ekranie ~400 px,
+       więc wszystko jest pomniejszone o ponad połowę. Bez JavaScriptu komunikat po prostu się nie pokaże. */
+    (function () {
+      var s = window.screen && Math.min(screen.width, screen.height);
+      if (s && s <= 820 && window.innerWidth > s * 1.5) {
+        var el = document.getElementById("tryb-komputer");
+        if (el) { el.hidden = false; }
+      }
+    })();
+  </script>
 </body>
 </html>
