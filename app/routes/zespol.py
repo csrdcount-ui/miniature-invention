@@ -70,9 +70,21 @@ def team_page(request: Request, user: User = Depends(team_viewer), db: Session =
         p.id: svc.monthly_stats(list(db.scalars(select(Contract).where(Contract.trader_id == p.id))), start, month)["active"]
         for p, _, m in rows if m is not None
     }
+    # Udział w masie marży biura: tylko właściciel i menedżer. Handlowcy i BOK go nie widzą
+    # (decyzja właścicielki 12.11.2026: osoby z końca listy by to demotywowało).
+    shares = None
+    if user.role in (ROLE_OWNER, ROLE_MANAGER):
+        sellers = [p.id for p, _, m in rows if m is not None]
+        shares = svc.office_markup_shares(db, sellers, month) if sellers else None
+        if shares:
+            people = {p.id: p for p, _, m in rows if m is not None}
+            shares["rows"] = sorted(
+                ((people[uid], d) for uid, d in shares["people"].items()),
+                key=lambda pd: (pd[1]["current"] is None, -(pd[1]["current"] or 0), pd[0].name),
+            )
     return render(request, "zespol.html", {
         "user": user, "rows": rows, "month_label": svc.month_label(month),
-        "ranking": svc.team_ranking(rows), "rhythm": rhythm,
+        "ranking": svc.team_ranking(rows), "rhythm": rhythm, "shares": shares,
     })
 
 
@@ -96,7 +108,7 @@ async def team_add(request: Request, user: User = Depends(owner_only), db: Sessi
     sells = form.get("rola") in SELLING_ROLES
     if not err and sells:
         try:
-            share = p_dec(form, "udzial", "Udział w narzucie", minimum=0, maximum=100)
+            share = p_dec(form, "udzial", "Prowizja (procent masy marży z własnych umów)", minimum=0, maximum=100)
             override = p_dec(form, "override", "Override", required=False, minimum=0, maximum=100) or Decimal(0)
             rate = (share, override)
         except FormError as e:
@@ -209,7 +221,7 @@ async def person_rate_add(uid: int, request: Request, user: User = Depends(owner
         r = UserRate(
             user_id=p.id,
             valid_from=p_date(form, "od", "Obowiązuje od"),
-            trader_share_pct=p_dec(form, "udzial", "Udział w narzucie", minimum=0, maximum=100),
+            trader_share_pct=p_dec(form, "udzial", "Prowizja (procent masy marży z własnych umów)", minimum=0, maximum=100),
             override_pct=(p_dec(form, "override", "Override", required=False, minimum=0, maximum=100) or Decimal(0))
             if p.role == ROLE_MANAGER
             else Decimal(0),

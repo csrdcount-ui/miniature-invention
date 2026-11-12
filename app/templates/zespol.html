@@ -13,6 +13,34 @@
 </ol>
 {% endif %}
 
+{% if shares %}
+<h2>Udział w masie marży biura</h2>
+<p>Jaką część całej masy marży biura przyniosła każda osoba: umowy podpisane w miesiącu, bez zerwanych i bez ofert. W każdym miesiącu udziały wszystkich osób w biurze sumują się do 100%. Bieżący miesiąc liczy się do dziś. Widzisz to tylko Ty{% if user.role == ROLE_MANAGER %} i właściciel{% else %} i menedżerowie (swoje zespoły){% endif %}; handlowcy i biuro obsługi tego nie widzą.</p>
+{% if user.role == ROLE_MANAGER %}
+<p>Twój zespół, {{ month_label }}: <strong>{{ shares.team_current|pct if shares.team_current is not none else "brak sprzedaży w biurze" }}</strong> masy marży biura.</p>
+{% else %}
+<p>Masa marży biura, {{ month_label }}: <strong>{{ shares.total_current|zl }}</strong>.</p>
+{% endif %}
+<ol class="ranking">
+{% for p, d in shares.rows %}
+  <li>
+    <a href="/zespol/{{ p.id }}">{{ p.name }}</a>: <strong>{{ d.current|pct if d.current is not none else "brak sprzedaży w biurze" }}</strong> ({{ month_label }}, do dziś).
+    Średnia z miesięcy {{ shares.first_label }} – {{ shares.prev_label }}: {{ d.avg_prev|pct if d.avg_prev is not none else "brak danych" }}.
+    Ocena: {{ d.trend }}.
+    <details class="zwijane">
+      <summary>Miesiąc po miesiącu: {{ p.name }}</summary>
+      <ul class="wnetrze">
+      {% for label, s in d.months %}
+        <li>{{ label }}: {{ s|pct if s is not none else "biuro bez sprzedaży" }}</li>
+      {% endfor %}
+      </ul>
+    </details>
+  </li>
+{% endfor %}
+</ol>
+<p class="podpowiedz">Ocena: ile miesięcy z rzędu, kończąc na bieżącym, udział był niższy o ponad jedną piątą od własnej średniej z poprzednich miesięcy. Jeden słabszy miesiąc to „słabszy bieżący miesiąc”, trzy i więcej to „trwała tendencja spadkowa”. Na początku miesiąca bieżący udział bywa przypadkowy.</p>
+{% endif %}
+
 <h2>Osoby</h2>
 <ul class="karty">
 {% for p, r, m in rows %}
@@ -26,7 +54,7 @@
     {% if p.id in rhythm %}<p>Rytm: umowy w {{ rhythm[p.id] }} z ostatnich 6 miesięcy{% if rhythm[p.id] <= 3 %} — <strong class="uwaga">nieregularnie</strong>{% endif %}.</p>{% endif %}
     {% if p.role in (ROLE_MANAGER, ROLE_TRADER) %}<p>Ostatnie logowanie: {{ p.last_login_at.strftime("%d.%m.%Y %H:%M") if p.last_login_at else "jeszcze nie" }}.</p>{% endif %}
     {% if r and p.role in (ROLE_MANAGER, ROLE_TRADER) %}
-    <p>Udział w całej masie marży: {{ r.trader_share_pct|pct }}{% if p.role == ROLE_MANAGER %}, override {{ r.override_pct|pct }} {{ OVERRIDE_BASES.get(r.override_base) }}{% endif %}</p>
+    <p>Prowizja: {{ r.trader_share_pct|pct }} masy marży z własnych umów{% if p.role == ROLE_MANAGER %}, override {{ r.override_pct|pct }} {{ OVERRIDE_BASES.get(r.override_base) }}{% endif %}</p>
     {% endif %}
   </li>
 {% endfor %}

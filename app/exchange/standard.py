@@ -35,7 +35,7 @@ SHEETS: dict[str, list[Col]] = {
         Col("rola", "Rola w platformie. Właściciela się nie importuje.", "choice", True, ROLE_CHOICES, "handlowiec"),
         Col("menedzer_email", "E-mail menedżera, do którego zespołu należy osoba (z pliku albo z platformy).", "email", example="tomasz.zielinski@firma.pl"),
         Col("aktywny", "Czy konto jest aktywne. Domyślnie tak.", "bool", example="tak"),
-        Col("udzial_w_narzucie_proc", "Udział w całej masie marży z własnej sprzedaży, w procentach. Wymagany dla menedżera i handlowca.", "dec", example="40"),
+        Col("udzial_w_narzucie_proc", "Prowizja: procent masy marży z własnych umów (nie udział w masie marży biura). Wymagany dla menedżera i handlowca.", "dec", example="40"),
         Col("override_proc", "Tylko menedżer: override od umów zespołu, w procentach.", "dec", example="5"),
         Col("baza_override", "Tylko menedżer: od czego liczony override.", "choice", False, eng.OVERRIDE_BASES, eng.OVERRIDE_OD_NARZUTU),
     ],

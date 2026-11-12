@@ -374,3 +374,19 @@ UWAGA: prawdziwe notowania TGE są tylko na 2027 i 2028; ceny 2029–2031 to za�
 Przycisk „Podmień cenniki demo” na /konto/import (`add_demo_price_lists(replace=True)`)
 odtwarza cenniki spółek demo w nowym wzorze; własnych cenników i spółek spoza demo nie rusza.
 Do rozstrzygnięcia z właścicielką: czy dać prawdziwe notowania na 2029–2031, gdy je poda.
+
+## Prowizja a udział w masie marży biura (12.11.2026)
+
+Pytanie właścicielki: „8 handlowców po ~30% się nie sumuje”. Wyjaśnione: `trader_share_pct`
+to STAWKA prowizji od masy marży z WŁASNYCH umów, nie udział w biurze. Podpis zmieniony
+wszędzie (Zespół, strona osoby, formularze, komunikaty, opis kolumny importu) na
+„Prowizja: X% masy marży z własnych umów”. Technicznej nazwy kolumny importu nie ruszono.
+
+Nowe w Zespole: „Udział w masie marży biura” (`office_markup_shares`, `share_trend` w
+`app/services.py`): bieżący miesiąc i 5 poprzednich, te same umowy co sprzedaż miesiąca
+(`NOT_SALE_STATUSES`), suma osób w miesiącu = 100%. Widzi TYLKO właściciel (z kwotą masy
+biura) i menedżer (swoi ludzie + udział zespołu, bez kwot biura). Handlowiec i BOK — nigdy
+(decyzja: demotywowałoby osoby z końca listy); test `tests/test_udzial_biura.py`.
+Ocena: miesiące z rzędu (do bieżącego) poniżej 80% własnej średniej z poprzednich miesięcy:
+1 = słabszy bieżący miesiąc, 2 = drugi z rzędu, 3+ = trwała tendencja; powyżej 120% = powyżej
+średniej. Próg do potwierdzenia z właścicielką.

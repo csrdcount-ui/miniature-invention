@@ -17,7 +17,7 @@
       {% for m in managers %}<option value="{{ m.id }}" {% if form.menedzer == m.id|string %}selected{% endif %}>{{ m.name }}</option>{% endfor %}
     </select>
   </div>
-  {{ pole("udzial", "Udział w całej masie marży z własnej sprzedaży, w procentach", form.udzial, hint="Na przykład 40. Liczony od całej masy marży, nie od udziału brokera. Wymagany dla handlowca, menedżera i właściciela. Dla biura obsługi zostaw puste.", extra='inputmode="decimal"') }}
+  {{ pole("udzial", "Prowizja: procent masy marży z własnych umów", form.udzial, hint="Na przykład 40. Liczony od całej masy marży, nie od udziału brokera. Wymagany dla handlowca, menedżera i właściciela. Dla biura obsługi zostaw puste.", extra='inputmode="decimal"') }}
   <fieldset>
     <legend>Tylko dla menedżera</legend>
     {{ pole("override", "Override od umów zespołu, w procentach", form.override, hint="Zostaw puste, jeśli osoba nie jest menedżerem.", extra='inputmode="decimal"') }}

@@ -748,7 +748,7 @@ def test_bok_z_prowizjami_resetuje_haslo_handlowca_ale_nie_wlasciciela(client):
     # BOK nie widzi ani nie edytuje stawek/ustawień konta na stronie handlowca
     page = client.get(f"/zespol/{hania_id}").text
     assert "Zmień stawki" not in page and "Ustawienia konta" not in page
-    assert "Udział w całej masie marży" in page  # odczyt stawki zostaje
+    assert "masy marży z własnych umów" in page  # odczyt stawki zostaje
 
 
 def test_ostatnie_logowanie_i_wylogowanie_wszystkich_urzadzen(client):

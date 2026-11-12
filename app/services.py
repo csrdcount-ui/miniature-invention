@@ -824,6 +824,96 @@ def team_ranking(rows: list) -> list:
     return sorted(sellers, key=lambda pm: (pm[1]["pct"] is None, -(pm[1]["pct"] or 0), -pm[1]["markup"]))
 
 
+# --------------------------------------------------------------------------
+# Udział w masie marży biura (tylko właściciel i menedżer, nigdy handlowiec i BOK)
+# --------------------------------------------------------------------------
+
+SHARE_MONTHS = 6          # bieżący miesiąc i 5 poprzednich
+SHARE_TREND_DROP = Decimal("0.8")  # „słabiej”: udział poniżej 80% własnej średniej z poprzednich miesięcy
+SHARE_TREND_RISE = Decimal("1.2")
+
+
+def _share(part: Decimal, total: Decimal) -> Optional[Decimal]:
+    if total <= 0:
+        return None
+    return (part / total * 100).quantize(Decimal("0.1"))
+
+
+def share_trend(shares: list[Optional[Decimal]]) -> str:
+    """Ocena udziału (od najstarszego miesiąca do bieżącego): słabszy miesiąc czy tendencja.
+
+    Punkt odniesienia: średnia osoby z poprzednich miesięcy. Liczymy, ile miesięcy z rzędu,
+    kończąc na bieżącym, udział był wyraźnie niższy (poniżej 80% średniej). Miesiące, w których
+    biuro nic nie sprzedało (brak udziału), przerywają serię."""
+    current = shares[-1]
+    prev = [x for x in shares[:-1] if x is not None]
+    if current is None:
+        return "brak sprzedaży w biurze w tym miesiącu"
+    if not prev:
+        return "za krótka historia"
+    base = sum(prev, Decimal(0)) / len(prev)
+    if base == 0:
+        return "powyżej średniej" if current > 0 else "brak sprzedaży od 6 miesięcy"
+    streak = 0
+    for x in reversed(shares):
+        if x is None or x >= base * SHARE_TREND_DROP:
+            break
+        streak += 1
+    if streak >= 3:
+        return f"trwała tendencja spadkowa: {streak} miesiące z rzędu poniżej średniej"
+    if streak == 2:
+        return "słabiej drugi miesiąc z rzędu: warto przyjrzeć się z bliska"
+    if streak == 1:
+        return "słabszy bieżący miesiąc, wcześniej było lepiej"
+    if current > base * SHARE_TREND_RISE:
+        return "powyżej średniej"
+    return "w normie"
+
+
+def office_markup_shares(db: Session, user_ids: list[int], month: date) -> dict:
+    """Udział osób w całkowitej masie marży BIURA, miesiąc po miesiącu (bieżący i 5 poprzednich).
+
+    Mianownik: masa marży wszystkich umów biura podpisanych w miesiącu (bez zerwanych
+    i bez Lead/Kontakt/Oferta, jak sprzedaż miesiąca). Licznik: umowy, w których osoba
+    jest handlowcem. Suma udziałów wszystkich osób w miesiącu = 100%.
+    """
+    months = [add_months(month, -i) for i in range(SHARE_MONTHS - 1, -1, -1)]
+    total = {m: Decimal(0) for m in months}
+    by_user = {uid: {m: Decimal(0) for m in months} for uid in user_ids}
+    q = select(Contract).where(
+        Contract.signed_date >= months[0],
+        Contract.signed_date < _next_month(month),
+        Contract.status.not_in(NOT_SALE_STATUSES),
+    )
+    for c in db.scalars(q):
+        m = month_start(c.signed_date)
+        markup = calculate_contract(c).total_markup
+        total[m] += markup
+        if c.trader_id in by_user:
+            by_user[c.trader_id][m] += markup
+    people = {}
+    for uid in user_ids:
+        shares = [_share(by_user[uid][m], total[m]) for m in months]
+        prev = [s for s in shares[:-1] if s is not None]
+        people[uid] = {
+            "months": [(month_label(m), s) for m, s in zip(months, shares)],
+            "current": shares[-1],
+            "avg_prev": (sum(prev, Decimal(0)) / len(prev)).quantize(Decimal("0.1")) if prev else None,
+            "trend": share_trend(shares),
+        }
+    team = [_share(sum((by_user[u][m] for u in user_ids), Decimal(0)), total[m]) for m in months]
+    return {
+        "months": [month_label(m) for m in months],
+        "first_label": month_label(months[0]),
+        "prev_label": month_label(months[-2]),
+        "people": people,
+        "team_current": team[-1],
+        "team_months": list(zip([month_label(m) for m in months], team)),
+        "total_current": total[month],
+        "total_months": [(month_label(m), total[m]) for m in months],
+    }
+
+
 def plural_umowy(n: int) -> str:
     if n == 1:
         return "1 umowa"
