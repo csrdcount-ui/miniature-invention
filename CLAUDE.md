@@ -164,6 +164,8 @@ Następne (w tej kolejności, po odpowiedziach na pytania niżej):
   podpowiedzi (10.11.2026, do akceptacji). Następny temat: uporządkowanie BOK.
 - `docs/PROJEKT-EXCEL-BOK.md` — plan Excela dla BOK: arkusz cennika spółki, wgranie jako
   projekt do zatwierdzenia, etapy A–D, pilot, testy (11.11.2026, do akceptacji; 6 pytań).
+- `docs/PROJEKT-WIDOK-TELEFON.md` — plan skrótu na telefon dla właściciela i menedżera,
+  nowa dolna belka, pomiar z 12.11.2026, etapy A–C (do akceptacji; 5 pytań).
 - `docs/CHECKLISTA-PO-ROLACH.md` — co wdrożone a co nie, po każdej roli (właściciel,
   menedżer, handlowiec, BOK), do aktualizacji po każdym większym kroku.
 
@@ -390,3 +392,8 @@ biura) i menedżer (swoi ludzie + udział zespołu, bez kwot biura). Handlowiec 
 Ocena: miesiące z rzędu (do bieżącego) poniżej 80% własnej średniej z poprzednich miesięcy:
 1 = słabszy bieżący miesiąc, 2 = drugi z rzędu, 3+ = trwała tendencja; powyżej 120% = powyżej
 średniej. Próg do potwierdzenia z właścicielką.
+
+Wdrożenie cf2070c (udział w masie marży biura) przeszło w Renderze 12.11.2026 o 07:48 UTC.
+Pomiar telefonu 12.11 (iPhone 13, demo): tekst 18 px, bez poziomego przewijania; problem to
+długość stron (Zespół 12 ekranów, umowy 40) i brak systemowej wielkości tekstu na iPhonie.
+Plan: `docs/PROJEKT-WIDOK-TELEFON.md`, czeka na odpowiedzi.
