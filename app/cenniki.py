@@ -263,7 +263,31 @@ def save_draft(db: Session, supplier: Supplier, user: User, form: dict, *, valid
     return draft
 
 
-def approve(db: Session, pl: PriceList, user: User) -> None:
+KEEP_APPROVED = 2  # zasada właścicielki (13.11.2026): obowiązujący i poprzedni, reszta do usunięcia
+
+
+def prune_old_lists(db: Session, supplier_id: int, today: Optional[date] = None) -> int:
+    """Usuwa zatwierdzone cenniki spółki poza obowiązującym i poprzednim. Zwraca liczbę usuniętych.
+
+    Zostają: dwa najnowsze zatwierdzone cenniki, które już zaczęły obowiązywać (obowiązujący albo,
+    gdy wygasł, ostatni, oraz poprzedni), wszystkie z datą startu w przyszłości (jeszcze nie weszły
+    w życie) i projekt w toku. Nic innego nie odwołuje się do cenników: umowy i oferty mają własne,
+    zapisane ceny i parametry z dnia zawarcia."""
+    today = today or date.today()
+    started = list(db.scalars(
+        select(PriceList).where(PriceList.supplier_id == supplier_id, PriceList.status == "zatwierdzony",
+                                PriceList.valid_from <= today)
+        .order_by(PriceList.valid_from.desc(), PriceList.id.desc())
+    ))
+    old = started[KEEP_APPROVED:]
+    for pl in old:
+        db.delete(pl)
+    db.flush()
+    return len(old)
+
+
+def approve(db: Session, pl: PriceList, user: User) -> int:
+    """Zatwierdza cennik i usuwa nadmiarowe stare. Zwraca liczbę usuniętych cenników."""
     if pl.status != "projekt":
         raise BusinessError("Ten cennik jest już zatwierdzony.")
     pl.status, pl.approved_by_id, pl.approved_at = "zatwierdzony", user.id, datetime.utcnow()
@@ -275,6 +299,7 @@ def approve(db: Session, pl: PriceList, user: User) -> None:
         if old.valid_to is None or old.valid_to > pl.valid_from:
             old.valid_to = pl.valid_from
     db.flush()
+    return prune_old_lists(db, pl.supplier_id)
 
 
 def template_of(db: Session, supplier_id: int) -> Optional[PriceTemplate]:

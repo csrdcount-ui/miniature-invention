@@ -150,13 +150,14 @@ async def draft_approve(pid: int, request: Request, user: User = Depends(bok_or_
     if not pl:
         raise HTTPException(status_code=404)
     try:
-        cn.approve(db, pl, user)
+        removed = cn.approve(db, pl, user)
         db.commit()
     except svc.BusinessError as e:
         db.rollback()
         flash(request, f"Nie zatwierdzono: {e}")
         return redirect(f"/cenniki/projekt/{pid}")
-    flash(request, f"Zatwierdzono cennik: {pl.supplier.name}, od {pl.valid_from:%d.%m.%Y}. Handlowcy widzą go w kalkulatorze.")
+    flash(request, f"Zatwierdzono cennik: {pl.supplier.name}, od {pl.valid_from:%d.%m.%Y}. Handlowcy widzą go w kalkulatorze."
+          + (f" Usunięto {removed} starszych cenników: zostają obowiązujący i poprzedni." if removed else ""))
     return redirect("/cenniki")
 
 

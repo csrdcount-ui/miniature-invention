@@ -45,3 +45,14 @@ ceny demo = BASE Y-27/Y-28 z TGE (sesja 6.11.2026) + 40–45 zł, blok = średni
 Otwarte: „w tym prowizja partnera” (PST), transza A od dopłaty do OH, import
 cennika z Excela, czytanie PDF przez AI (etap 2), oferty specjalne, gwarancje pochodzenia,
 wycena indywidualna, zapamiętanie wersji cennika w ofercie.
+
+## Zasada przechowywania (13.11.2026, właścicielka)
+
+Dla każdej spółki zawsze zostają tylko dwa cenniki: obowiązujący i poprzedni. Starsze są usuwane
+przy zatwierdzeniu nowego (`prune_old_lists` w `app/cenniki.py`). Zostaje też cennik z datą
+startu w przyszłości, projekt w toku oraz wygasły cennik bez następcy (potrzebny do alarmu
+„cennik wygasł”). Warunek bezpieczeństwa: umowy i oferty trzymają własne, zapisane ceny i
+parametry (cena bazowa, marża, udziały zamrożone w dniu podpisania), więc nic nie odwołuje się do
+cenników. Dotyczy to też przyszłej „wersji cennika w ofercie”: oferta ma zapisać same ceny i datę
+cennika, nie wskazanie na rekord, który zniknie. Wgrywanie z Excela (`docs/PROJEKT-EXCEL-BOK.md`)
+przechodzi przez to samo zatwierdzenie, więc zasada obowiązuje bez dodatkowej pracy.

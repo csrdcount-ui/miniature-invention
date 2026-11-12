@@ -401,3 +401,12 @@ Odpowiedź 12.11: małe literki na Androidzie 6,3". Przyczyna (wysoce prawdopodo
 potwierdzenie): „Wersja na komputer” w przeglądarce — emulacja daje tekst ~7,6 px i belkę u
 góry. Zrobione: wykrywanie trybu i komunikat (`#tryb-komputer`, skrypt na końcu `base.html`),
 etap A planu telefonu. Skrót (etap B) zaakceptowany co do idei; kafelki wg planu.
+
+## Zasada: dwa cenniki na spółkę (13.11.2026)
+
+Decyzja właścicielki: zawsze obowiązujący i poprzedni, reszta usuwana po zatwierdzeniu nowego
+(`prune_old_lists`, `KEEP_APPROVED` w `app/cenniki.py`, wołane z `approve`). Szczegóły i
+wyjątki w `docs/PROJEKT-CENNIKI.md`. Oferta/umowa nie mogą wskazywać na rekord cennika: mają
+przechowywać same ceny. Sprawdzona rozmowa o bazie: dane demo ~2,5 MB, ok. 8 KB na umowę;
+w bazie leżą też wgrane pliki Excela z importów (do 2 MB każdy, nigdy nie usuwane) — propozycja
+usuwania treści pliku po zatwierdzeniu importu czeka na zgodę.

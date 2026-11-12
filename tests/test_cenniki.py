@@ -269,3 +269,55 @@ def test_podmiana_cennikow_demo_zmienia_stare_na_nowy_wzor(client):
         assert db.query(PriceTemplate).count() == 12 and db.query(PriceList).count() == 13
         assert db.query(PriceItem).filter(PriceItem.period == "2030").count() > 0
         assert db.query(Contract).count() == umowy
+
+
+def test_zostaja_dwa_cenniki_obowiazujacy_i_poprzedni_reszta_usuwana(client):
+    """Zasada właścicielki 13.11.2026: tylko obowiązujący i poprzedni; umowy i oferty mają własne ceny."""
+    from app.models import Contract, Supplier
+    from .test_import import _commit, _demo_preview
+    setup_company(client)
+    login(client, "kris@firma.pl")
+    _commit(client, _demo_preview(client))
+    today = date.today()
+    with SessionLocal() as db:
+        sid = db.query(PriceTemplate).filter(PriceTemplate.split == "grupy").first().supplier_id
+        db.query(PriceList).filter(PriceList.supplier_id == sid).delete()  # czysty start dla tej spółki
+        for i, days in enumerate((40, 30, 20, 10)):  # cztery starsze zatwierdzone cenniki
+            db.add(PriceList(supplier_id=sid, status="zatwierdzony", valid_from=today - timedelta(days=days),
+                             valid_to=today - timedelta(days=days - 10), note=f"stary {i}",
+                             items=[PriceItem(kind="cena", product="fix", period="2027", segment="C11", zone=1, value=D(500 + i))]))
+        db.add(PriceList(supplier_id=sid, status="zatwierdzony", valid_from=today + timedelta(days=5), note="przyszły",
+                         items=[PriceItem(kind="cena", product="fix", period="2027", segment="C11", zone=1, value=D(600))]))
+        db.commit()
+        umowy = [(c.id, c.base_price_pln_mwh, c.markup_pln_mwh) for c in db.query(Contract)]
+    # nowy projekt, zatwierdzony przez stronę
+    r = post(client, f"/cenniki/{sid}/nowy", f"/cenniki/{sid}/nowy", {
+        "od": today.isoformat(), cn.price_key("fix", "2027", "C11", 1): "555"})
+    assert r.status_code == 303, r.text
+    pid = int(r.headers["location"].rsplit("/", 1)[1])
+    r = post(client, f"/cenniki/projekt/{pid}", f"/cenniki/projekt/{pid}/zatwierdz", {})
+    assert r.status_code == 303
+    with SessionLocal() as db:
+        notes = sorted((p.valid_from, p.note or "") for p in db.query(PriceList).filter(PriceList.supplier_id == sid, PriceList.status == "zatwierdzony"))
+        # zostają: dwa najnowsze z już obowiązujących (nowy z dziś i „stary 3”), oraz przyszły
+        assert len(notes) == 3 and notes[0][1] == "stary 3" and notes[-1][1] == "przyszły", notes
+        assert db.query(PriceItem).join(PriceList).filter(PriceList.supplier_id == sid).count() == 3  # pozycje usuniętych znikają razem z nimi
+        assert [(c.id, c.base_price_pln_mwh, c.markup_pln_mwh) for c in db.query(Contract)] == umowy
+        assert cn.current_list(db, sid).note != "stary 3"
+    # kolejne zatwierdzenie nie usuwa dalej niż zasada każe i nie tyka projektu w toku
+    with SessionLocal() as db:
+        assert cn.prune_old_lists(db, sid) == 0
+
+
+def test_przycinanie_nie_rusza_projektu_ani_cennika_wygaslego_bez_nastepcy():
+    from app.db import Base, engine
+    Base.metadata.drop_all(bind=engine); Base.metadata.create_all(bind=engine)
+    from app.models import Supplier
+    today = date.today()
+    with SessionLocal() as db:
+        s = Supplier(name="Spółka X"); db.add(s); db.flush()
+        db.add(PriceList(supplier_id=s.id, status="zatwierdzony", valid_from=today - timedelta(days=12), valid_to=today - timedelta(days=5)))
+        db.add(PriceList(supplier_id=s.id, status="projekt", valid_from=today))
+        db.commit()
+        assert cn.prune_old_lists(db, s.id) == 0  # wygasły cennik zostaje: alarm „cennik wygasł” go potrzebuje
+        assert db.query(PriceList).filter(PriceList.supplier_id == s.id).count() == 2
