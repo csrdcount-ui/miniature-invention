@@ -6,6 +6,9 @@ Bez FastAPI (jak engine i pipeline). Metoda liczenia wolumenu od właścicielki 
 - albo dwie faktury oddalone o co najmniej 10 miesięcy: różnica stanów licznika
   (na każdej fakturze jest stan licznika), przeliczona na rok.
 
+Zdjęcia faktur: BOK je pobiera do dokumentacji biura i usuwa z platformy dopiero po potwierdzeniu
+(zasada właścicielki 13.11.2026), patrz finish_task, mark_downloaded, archive_photos.
+
 Miejsce na płatną opcję rozpoznawania faktur przez AI: `extractor()` zwraca dziś None.
 Gdy biuro ją wykupi (umowa powierzenia danych, koszt jednej faktury w abonamencie),
 rozpoznane dane trafią jako InvoiceReading z source="ai" i verified=False, a BOK je zatwierdzi.
@@ -249,14 +252,76 @@ def request_task(db: Session, c: Client, user: User, files: list[bytes], note: s
 
 
 def finish_task(db: Session, t: InvoiceTask, user: User, note: str, *, cancel: bool = False) -> None:
-    """BOK kończy zadanie. Zdjęcia są usuwane: zostają wprowadzone dane, nie kopie faktur."""
+    """BOK kończy zadanie (dane wpisane albo nieczytelne). Zdjęcia ZOSTAJĄ: BOK pobiera je do
+    dokumentacji biura dla spółki obrotu i dopiero potem, po potwierdzeniu, usuwa (archive_photos)."""
     if t.status != "czeka":
         raise BusinessError("To zadanie jest już zamknięte.")
     t.status = "anulowane" if cancel else "zrobione"
     t.done_by_id, t.done_at, t.done_note = user.id, datetime.utcnow(), note.strip()[:1000]
-    t.photos.clear()  # delete-orphan: zdjęcia znikają z bazy przy zapisie
     add_event(db, t.client, user, "bok", ("BOK anulował zadanie z fakturami" if cancel else "BOK wprowadził dane z faktur")
               + (f": {t.done_note}" if t.done_note else "."))
+
+
+def mark_downloaded(photos: list[InvoicePhoto], user: User) -> None:
+    now = datetime.utcnow()
+    for ph in photos:
+        ph.downloaded_at, ph.downloaded_by_id = now, user.id
+
+
+def all_downloaded(t: InvoiceTask) -> bool:
+    return bool(t.photos) and all(ph.downloaded_at for ph in t.photos)
+
+
+def archive_photos(db: Session, t: InvoiceTask, user: User, *, confirmed: bool, without_download: bool = False) -> int:
+    """Usuwa zdjęcia z platformy dopiero po potwierdzeniu, że są w dokumentacji biura.
+    Niepobrane pliki wymagają osobnego potwierdzenia, że nie są potrzebne."""
+    if t.status == "czeka":
+        raise BusinessError("Najpierw wpisz dane i zamknij zadanie, potem zarchiwizuj zdjęcia.")
+    if not t.photos:
+        raise BusinessError("W tym zadaniu nie ma już zdjęć.")
+    if not confirmed:
+        raise BusinessError("Zaznacz potwierdzenie, że pliki są zapisane w dokumentacji biura.")
+    if not all_downloaded(t) and not without_download:
+        raise BusinessError("Nie wszystkie pliki zostały pobrane. Pobierz je albo potwierdź, że nie są potrzebne.")
+    n = len(t.photos)
+    t.photos.clear()  # delete-orphan: pliki znikają z bazy przy zapisie
+    t.archived_at, t.archived_by_id = datetime.utcnow(), user.id
+    add_event(db, t.client, user, "bok", f"BOK zarchiwizował faktury ({n}) w dokumentacji biura i usunął je z platformy.")
+    return n
+
+
+def _slug(text: str) -> str:
+    import unicodedata
+    text = text.translate(str.maketrans("łŁ", "lL"))  # „ł” nie rozkłada się w NFKD i by znikało
+    ascii_ = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
+    return "".join(ch if ch.isalnum() else "-" for ch in ascii_).strip("-")[:60] or "klient"
+
+
+def photo_filename(t: InvoiceTask, ph: InvoicePhoto, index: int) -> str:
+    """Nazwa pliku do dokumentacji: klient, NIP, data przesłania, numer strony."""
+    ext = "pdf" if ph.content_type == "application/pdf" else "jpg"
+    nip = f"_NIP{t.client.nip}" if t.client.nip else ""
+    return f"{_slug(t.client.name)}{nip}_faktury_{t.requested_at:%Y-%m-%d}_{index}.{ext}"
+
+
+def zip_name(t: InvoiceTask) -> str:
+    nip = f"_NIP{t.client.nip}" if t.client.nip else ""
+    return f"{_slug(t.client.name)}{nip}_faktury_{t.requested_at:%Y-%m-%d}.zip"
+
+
+def zip_task(t: InvoiceTask) -> bytes:
+    import zipfile
+    out = BytesIO()
+    with zipfile.ZipFile(out, "w", zipfile.ZIP_STORED) as z:  # JPEG i PDF są już skompresowane
+        for i, ph in enumerate(t.photos, 1):
+            z.writestr(photo_filename(t, ph, i), ph.data)
+    return out.getvalue()
+
+
+def to_archive(db: Session) -> list[InvoiceTask]:
+    """Zamknięte zadania, w których zdjęcia czekają na pobranie i archiwizację przez BOK."""
+    return [t for t in db.scalars(select(InvoiceTask).where(InvoiceTask.status != "czeka", InvoiceTask.archived_at.is_(None))
+                                  .order_by(InvoiceTask.done_at)) if t.photos]
 
 
 def pending_tasks(db: Session) -> list[InvoiceTask]:

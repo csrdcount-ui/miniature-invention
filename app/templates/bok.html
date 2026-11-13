@@ -5,7 +5,7 @@
 
 {% if invoice_tasks %}
 <h2>Faktury do wprowadzenia: {{ invoice_tasks|length }}</h2>
-<p>Handlowcy przesłali zdjęcia faktur. Wpisz dane na karcie klienta (ekran „Dane”), potem zamknij zadanie: zdjęcia zostaną usunięte.</p>
+<p>Handlowcy przesłali zdjęcia faktur. Wpisz dane na karcie klienta (ekran „Dane”) i zamknij zadanie. Pliki zostają do pobrania do dokumentacji biura.</p>
 <ul class="karty">
   {% for t in invoice_tasks %}
   <li>
@@ -13,6 +13,16 @@
     <p>{{ t.photos|length }} {{ "plik" if t.photos|length == 1 else "pliki" if t.photos|length < 5 else "plików" }}, handlowiec: {{ t.client.owner.name }}, przesłane {{ t.requested_at.strftime("%d.%m.%Y %H:%M") }}</p>
     {% if t.note %}<p>Uwagi: {{ t.note }}</p>{% endif %}
   </li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+{% if to_archive %}
+<h2>Faktury do zarchiwizowania: {{ to_archive|length }}</h2>
+<p>Dane są już wpisane. Pobierz pliki, zapisz je na dysku biura i usuń z platformy.</p>
+<ul>
+  {% for t in to_archive %}
+  <li><a href="/bok/faktury/{{ t.id }}">{{ t.client.name }}</a>: {{ t.photos|length }} {{ "plik" if t.photos|length == 1 else "pliki" if t.photos|length < 5 else "plików" }}{% if t.photos|selectattr("downloaded_at")|list|length == t.photos|length %}, pobrane{% else %}, <strong class="uwaga">niepobrane</strong>{% endif %}</li>
   {% endfor %}
 </ul>
 {% endif %}

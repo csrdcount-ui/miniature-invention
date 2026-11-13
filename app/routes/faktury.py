@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from .. import faktury as fk
 from .. import services as svc
 from ..db import get_db
-from ..models import INVOICE_TASK_STATUSES, InvoicePhoto, InvoiceTask, MeteringPoint, User
+from ..models import INVOICE_TASK_STATUSES, ROLE_BOK, ROLE_OWNER, InvoicePhoto, InvoiceTask, MeteringPoint, User
 from ..pipeline import can_view_client
 from ..web.auth import current_user
 from ..web.forms import FormError, p_date, p_dec, p_int
@@ -119,18 +119,54 @@ def _task(db: Session, tid: int) -> InvoiceTask:
 @router.get("/bok/faktury/{tid}", response_class=HTMLResponse)
 def task_page(tid: int, request: Request, user: User = Depends(_bok_user), db: Session = Depends(get_db)):
     t = _task(db, tid)
-    return render(request, "bok_faktury.html", {"user": user, "t": t, "STATUSES": INVOICE_TASK_STATUSES})
+    return render(request, "bok_faktury.html", {"user": user, "t": t, "STATUSES": INVOICE_TASK_STATUSES,
+                                                "all_downloaded": fk.all_downloaded(t)})
 
 
 @router.get("/bok/faktury/{tid}/zdjecie/{phid}")
-def task_photo(tid: int, phid: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def task_photo(tid: int, phid: int, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
     t = _task(db, tid)
     if not can_view_client(user, t.client):
         raise HTTPException(status_code=404)
     ph = db.get(InvoicePhoto, phid)
     if not ph or ph.task_id != t.id:
         raise HTTPException(status_code=404)
-    return Response(ph.data, media_type=ph.content_type, headers={"Cache-Control": "private, no-store"})
+    headers = {"Cache-Control": "private, no-store"}
+    if request.query_params.get("pobierz") == "1" and user.role in (ROLE_BOK, ROLE_OWNER):
+        # pobranie do dokumentacji biura: zapisujemy kto i kiedy (warunek bezpiecznego usunięcia)
+        fk.mark_downloaded([ph], user)
+        db.commit()
+        name = fk.photo_filename(t, ph, t.photos.index(ph) + 1)
+        headers["Content-Disposition"] = f'attachment; filename="{name}"'
+    return Response(ph.data, media_type=ph.content_type, headers=headers)
+
+
+@router.get("/bok/faktury/{tid}/pobierz")
+def task_zip(tid: int, user: User = Depends(_bok_user), db: Session = Depends(get_db)):
+    t = _task(db, tid)
+    if not t.photos:
+        raise HTTPException(status_code=404)
+    data = fk.zip_task(t)
+    fk.mark_downloaded(list(t.photos), user)
+    db.commit()
+    return Response(data, media_type="application/zip", headers={
+        "Content-Disposition": f'attachment; filename="{fk.zip_name(t)}"', "Cache-Control": "private, no-store"})
+
+
+@router.post("/bok/faktury/{tid}/archiwizuj")
+async def task_archive(tid: int, request: Request, user: User = Depends(_bok_user), db: Session = Depends(get_db)):
+    t = _task(db, tid)
+    form = await form_data(request)
+    try:
+        n = fk.archive_photos(db, t, user, confirmed=form.get("potwierdzam") == "1",
+                              without_download=form.get("bez_pobrania") == "1")
+        db.commit()
+    except svc.BusinessError as e:
+        db.rollback()
+        flash(request, f"Nie usunięto: {e}")
+        return redirect(f"/bok/faktury/{t.id}")
+    flash(request, f"Usunięto z platformy {n} {'plik' if n == 1 else 'pliki' if n < 5 else 'plików'}: {t.client.name}. Dane na karcie klienta zostają.")
+    return redirect("/bok")
 
 
 @router.post("/bok/faktury/{tid}/zamknij")
@@ -144,5 +180,5 @@ async def task_close(tid: int, request: Request, user: User = Depends(_bok_user)
         db.rollback()
         flash(request, f"Nie zapisano: {e}")
         return redirect(f"/bok/faktury/{t.id}")
-    flash(request, f"Zamknięto zadanie: {t.client.name}. Zdjęcia faktur zostały usunięte.")
-    return redirect("/bok")
+    flash(request, f"Zamknięto zadanie: {t.client.name}. Faktury czekają na pobranie do dokumentacji biura.")
+    return redirect(f"/bok/faktury/{t.id}")

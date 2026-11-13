@@ -94,7 +94,7 @@
     <div class="pole">
       <label for="f-zdjecia">Zdjęcia albo pliki PDF faktur (do {{ fk.MAX_PHOTOS }})</label>
       <input id="f-zdjecia" name="zdjecia" type="file" accept="image/*,application/pdf" multiple required>
-      <p class="podpowiedz">Telefon zaproponuje aparat albo galerię. Zdjęcia są usuwane, gdy BOK wpisze dane.</p>
+      <p class="podpowiedz">Telefon zaproponuje aparat albo galerię. BOK wpisze dane i zapisze faktury w dokumentacji biura.</p>
     </div>
     {{ pole("uwagi", "Uwagi dla BOK", "", hint="Np. który punkt poboru, czego szukać.") }}
     <button type="submit">Wyślij do BOK</button>

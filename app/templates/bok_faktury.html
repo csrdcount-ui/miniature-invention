@@ -4,28 +4,33 @@
 <h1>Faktury: {{ t.client.name }}</h1>
 <p><a href="/bok">Wróć do zleceń</a></p>
 <dl>
-  <dt>Status</dt><dd><strong>{{ STATUSES[t.status] }}</strong></dd>
+  <dt>Status</dt><dd><strong>{{ STATUSES[t.status] }}</strong>{% if t.archived_at %}, pliki zarchiwizowane i usunięte z platformy {{ t.archived_at.strftime("%d.%m.%Y %H:%M") }}{% if t.archived_by %} ({{ t.archived_by.name }}){% endif %}{% endif %}</dd>
   <dt>Handlowiec</dt><dd>{{ t.client.owner.name }}</dd>
+  <dt>NIP</dt><dd>{{ t.client.nip or "nie podano" }}</dd>
   <dt>Przesłane</dt><dd>{{ t.requested_at.strftime("%d.%m.%Y %H:%M") }}</dd>
   {% if t.note %}<dt>Uwagi handlowca</dt><dd>{{ t.note }}</dd>{% endif %}
   {% if t.done_at %}<dt>Zamknięte</dt><dd>{{ t.done_at.strftime("%d.%m.%Y %H:%M") }}{% if t.done_by %}, {{ t.done_by.name }}{% endif %}{% if t.done_note %}: {{ t.done_note }}{% endif %}</dd>{% endif %}
 </dl>
 
-{% if t.status == "czeka" %}
-<p><a class="przycisk" href="/klienci/{{ t.client_id }}#dane">Wpisz dane na karcie klienta</a></p>
-
-<h2>Zdjęcia faktur: {{ t.photos|length }}</h2>
+{% if t.photos %}
+<h2>Pliki faktur: {{ t.photos|length }}</h2>
+<p><a class="przycisk" href="/bok/faktury/{{ t.id }}/pobierz">Pobierz wszystkie faktury (ZIP)</a></p>
+<p class="podpowiedz">Zapisz je na dysku biura, w dokumentacji klienta dla spółki obrotu. Nazwy plików zawierają nazwę klienta, NIP i datę.</p>
 <ul class="faktury-zdjecia">
   {% for ph in t.photos %}
   <li>
-    {% if ph.content_type == "application/pdf" %}
-    <a href="/bok/faktury/{{ t.id }}/zdjecie/{{ ph.id }}">Faktura {{ loop.index }} z {{ t.photos|length }} (PDF)</a>
-    {% else %}
+    {% if ph.content_type != "application/pdf" %}
     <a href="/bok/faktury/{{ t.id }}/zdjecie/{{ ph.id }}"><img src="/bok/faktury/{{ t.id }}/zdjecie/{{ ph.id }}" alt="Faktura, zdjęcie {{ loop.index }} z {{ t.photos|length }}" loading="lazy"></a>
     {% endif %}
+    <p><a href="/bok/faktury/{{ t.id }}/zdjecie/{{ ph.id }}?pobierz=1">Pobierz plik {{ loop.index }} z {{ t.photos|length }}{% if ph.content_type == "application/pdf" %} (PDF){% endif %}</a>.
+    {% if ph.downloaded_at %}Pobrano {{ ph.downloaded_at.strftime("%d.%m.%Y %H:%M") }}{% if ph.downloaded_by %} ({{ ph.downloaded_by.name }}){% endif %}.{% else %}<strong class="uwaga">Jeszcze nie pobrano.</strong>{% endif %}</p>
   </li>
   {% endfor %}
 </ul>
+{% endif %}
+
+{% if t.status == "czeka" %}
+<p><a class="przycisk" href="/klienci/{{ t.client_id }}#dane">Wpisz dane na karcie klienta</a></p>
 
 <h2>Zamknij zadanie</h2>
 <form method="post" action="/bok/faktury/{{ t.id }}/zamknij" class="stack">
@@ -39,7 +44,20 @@
     <label for="f-uwagi">Uwagi dla handlowca</label>
     <input id="f-uwagi" name="uwagi" maxlength="1000">
   </div>
-  <button type="submit">Zamknij zadanie i usuń zdjęcia</button>
+  <button type="submit">Zamknij zadanie</button>
+</form>
+<p class="podpowiedz">Zamknięcie zadania nie usuwa plików. Usuniesz je dopiero po zapisaniu w dokumentacji biura.</p>
+{% elif t.photos %}
+<h2>Usuń pliki z platformy</h2>
+<p>Czy faktury są już zapisane na dysku biura, w dokumentacji klienta? Dopiero wtedy usuń je z platformy. Dane wpisane na kartę klienta zostają.</p>
+<form method="post" action="/bok/faktury/{{ t.id }}/archiwizuj" class="stack">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <div class="pole"><label><input type="checkbox" name="potwierdzam" value="1" required>Potwierdzam: faktury są zapisane w dokumentacji biura</label></div>
+  {% if not all_downloaded %}
+  <p><strong class="uwaga">Nie wszystkie pliki zostały pobrane z platformy.</strong></p>
+  <div class="pole"><label><input type="checkbox" name="bez_pobrania" value="1" required>Potwierdzam: niepobrane pliki nie są potrzebne (np. nieczytelne albo zapisane inną drogą)</label></div>
+  {% endif %}
+  <button type="submit">Usuń pliki z platformy</button>
 </form>
 {% endif %}
 {% endblock %}

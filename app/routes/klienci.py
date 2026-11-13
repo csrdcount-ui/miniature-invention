@@ -389,7 +389,7 @@ def bok_page(request: Request, user: User = Depends(_bok_user), db: Session = De
     from .. import faktury as fk
     return render(request, "bok.html", {
         "user": user, "groups": list(groups.values()), "count": len(checks), "recent": recent,
-        "invoice_tasks": fk.pending_tasks(db),
+        "invoice_tasks": fk.pending_tasks(db), "to_archive": fk.to_archive(db),
         "NIP_CHECK_RESULTS": NIP_CHECK_RESULTS, "default_until": date.today() + timedelta(days=30),
     })
 

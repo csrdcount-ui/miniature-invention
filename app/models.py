@@ -693,17 +693,22 @@ class InvoiceTask(Base):
     done_by_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
     done_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     done_note: Mapped[str] = mapped_column(String(1000), default="")
+    # Zdjęcia usuwane dopiero, gdy BOK pobierze je, zapisze w dokumentacji biura i potwierdzi usunięcie.
+    archived_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    archived_by_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
 
     client: Mapped[Client] = relationship(back_populates="invoice_tasks")
     requested_by: Mapped[Optional[User]] = relationship(foreign_keys=[requested_by_id])
     done_by: Mapped[Optional[User]] = relationship(foreign_keys=[done_by_id])
+    archived_by: Mapped[Optional[User]] = relationship(foreign_keys=[archived_by_id])
     photos: Mapped[list["InvoicePhoto"]] = relationship(
         back_populates="task", cascade="all, delete-orphan", order_by="InvoicePhoto.id"
     )
 
 
 class InvoicePhoto(Base):
-    """Zdjęcie faktury (pomniejszone). Usuwane, gdy BOK zamknie zadanie: trzymamy dane, nie zdjęcia."""
+    """Zdjęcie faktury (pomniejszone) albo PDF. Zostaje, dopóki BOK go nie pobierze do dokumentacji
+    biura (dysk biura) i nie potwierdzi usunięcia z platformy."""
 
     __tablename__ = "invoice_photos"
 
@@ -712,5 +717,8 @@ class InvoicePhoto(Base):
     content_type: Mapped[str] = mapped_column(String(50), default="image/jpeg")
     data: Mapped[bytes] = mapped_column(LargeBinary)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    downloaded_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    downloaded_by_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
 
     task: Mapped[InvoiceTask] = relationship(back_populates="photos")
+    downloaded_by: Mapped[Optional[User]] = relationship()

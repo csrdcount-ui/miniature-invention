@@ -121,7 +121,16 @@ przez CSS scroll-snap tylko na telefonie, linki z „Mój dzień” prowadzą do
 punkty poboru (`MeteringPoint`), dane z faktur (`InvoiceReading`, źródło handlowiec/BOK/ai,
 `verified`), wolumen roczny i profil (`app/faktury.py`), termin wypowiedzenia, kalkulator
 z wolumenem i grupą z karty, „Odeślij zdjęcia faktur do BOK” (`InvoiceTask`, `InvoicePhoto`,
-zdjęcia pomniejszane do JPEG, PDF bez zmian, w bazie tylko do zamknięcia zadania), kolejka BOK
+zdjęcia pomniejszane do JPEG, PDF bez zmian), kolejka BOK
 „Faktury do wprowadzenia”, „dane z faktur gotowe” w „Mój dzień”. Miejsce na AI: `extractor()`
 zwraca None. Nie zrobione: szybki wynik rozmowy, spotkanie z godziną i adresem, kalendarz ICS,
 kalkulator z przyciskami ±5 zł, podpowiedzi rozmów.
+
+## Archiwizacja faktur przez BOK (decyzja 13.11.2026)
+
+Zdjęcia faktur są potrzebne biuru w dokumentacji dla spółki obrotu, więc nie znikają przy
+zamknięciu zadania. BOK pobiera je (paczka ZIP albo pojedyncze pliki; nazwy: klient, NIP, data),
+zapisuje na dysku biura i dopiero wtedy, po pytaniu „czy faktury są zapisane w dokumentacji
+biura?” i potwierdzeniu, usuwa z platformy. Platforma zapisuje, kto i kiedy pobrał każdy plik;
+niepobrane pliki wymagają osobnego potwierdzenia. Później możliwy bezpośredni zapis na dysk
+biura (Google Drive, OneDrive lub SharePoint) — po ustaleniu, z czego biuro korzysta.

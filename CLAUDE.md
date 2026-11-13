@@ -431,7 +431,11 @@ Karta klienta (`klient.html`) ma cztery ekrany: `#kontakt`, `#dane` (`_klient_da
 `#teren`, `#oferta-umowa`; `CLIENT_SCREENS` w `app/routes/klienci.py`. Punkty poboru, faktury,
 wolumen i profil: `app/faktury.py` (bez FastAPI), strony: `app/routes/faktury.py`. Nowe tabele:
 metering_points, invoice_readings, invoice_tasks, invoice_photos (bez zmian w starych tabelach).
-Zdjęcia faktur w bazie (bytea) tylko do zamknięcia zadania przez BOK — tymczasowo, do decyzji
-o magazynie plików i okresie przechowywania. Dane może wpisać opiekun, jego menedżer,
+Zdjęcia faktur w bazie (bytea). ZASADA właścicielki (13.11.2026): nie usuwać ich przy zamknięciu
+zadania; BOK pobiera je („Pobierz wszystkie faktury (ZIP)” albo pojedynczo, zapis kto i kiedy:
+`downloaded_at`), zapisuje na dysku biura (dokumentacja dla spółki obrotu; dysk Google, Microsoft
+albo serwer biura — nie wiadomo który) i dopiero po pytaniu i potwierdzeniu usuwa z platformy
+(`archive_photos`; niepobrane pliki wymagają osobnego potwierdzenia). Kolejka BOK „Faktury do
+zarchiwizowania”. Bezpośredni zapis na dysk biura (integracja) — możliwy później. Dane może wpisać opiekun, jego menedżer,
 właściciel i BOK (`can_enter_data`); odesłać zdjęcia: opiekun, menedżer, właściciel.
 Biblioteka `pillow` przypięta w requirements. Szczegóły: `docs/PROJEKT-MARSZRUTA-KLIENTA.md`.

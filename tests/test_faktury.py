@@ -154,7 +154,7 @@ def test_zdjecia_faktur_do_bok_bok_wpisuje_dane_i_zamyka_zdjecia_znikaja(client)
     login(client, "basia@firma.pl")
     assert "Faktury do wprowadzenia: 1" in client.get("/bok").text
     page = client.get(f"/bok/faktury/{tid}").text
-    assert 'alt="Faktura, zdjęcie 1 z 2"' in page and "Faktura 2 z 2 (PDF)" in page
+    assert 'alt="Faktura, zdjęcie 1 z 2"' in page and "Pobierz plik 2 z 2 (PDF)" in page and "Pobierz wszystkie faktury (ZIP)" in page
     ph = client.get(f"/bok/faktury/{tid}/zdjecie/{photos[0][0]}")
     assert ph.status_code == 200 and ph.headers["content-type"] == "image/jpeg" and "no-store" in ph.headers["cache-control"]
     r = post(client, f"/klienci/{cid}", f"/klienci/{cid}/punkty", {"ppe": "PL001", "grupa": "C11"})
@@ -168,13 +168,45 @@ def test_zdjecia_faktur_do_bok_bok_wpisuje_dane_i_zamyka_zdjecia_znikaja(client)
     assert r.status_code == 303
     with SessionLocal() as db:
         t = db.get(InvoiceTask, tid)
-        assert t.status == "zrobione" and db.query(InvoicePhoto).count() == 0
+        # zamknięcie NIE usuwa plików: BOK musi je zarchiwizować w dokumentacji biura
+        assert t.status == "zrobione" and db.query(InvoicePhoto).count() == 2
         assert db.query(InvoiceReading).one().source == "bok"
-    # handlowiec widzi odpowiedź BOK na ekranie dnia
+    assert "Faktury do zarchiwizowania: 1" in client.get("/bok").text
+    # bez potwierdzenia nic nie znika
+    r = post(client, f"/bok/faktury/{tid}", f"/bok/faktury/{tid}/archiwizuj", {})
+    assert r.status_code == 303
+    with SessionLocal() as db:
+        assert db.query(InvoicePhoto).count() == 2
+    # pobranie jednego pliku zapisuje, kto i kiedy; drugi niepobrany wymaga osobnego potwierdzenia
+    one = client.get(f"/bok/faktury/{tid}/zdjecie/{photos[0][0]}?pobierz=1")
+    assert one.status_code == 200 and "attachment" in one.headers["content-disposition"]
+    assert "Jeszcze nie pobrano" in client.get(f"/bok/faktury/{tid}").text
+    r = post(client, f"/bok/faktury/{tid}", f"/bok/faktury/{tid}/archiwizuj", {"potwierdzam": "1"})
+    with SessionLocal() as db:
+        assert db.query(InvoicePhoto).count() == 2
+    # paczka ZIP: wszystkie pliki, czytelne nazwy, oznaczone jako pobrane
+    z = client.get(f"/bok/faktury/{tid}/pobierz")
+    assert z.status_code == 200 and z.headers["content-type"] == "application/zip"
+    assert 'filename="Wozki-Widlowe-Michalski_NIP5260250274_faktury_' in z.headers["content-disposition"]
+    import zipfile
+    names = zipfile.ZipFile(BytesIO(z.content)).namelist()
+    assert len(names) == 2 and names[0].endswith("_1.jpg") and names[1].endswith("_2.pdf")
+    # handlowiec nie pobierze paczki BOK
     login(client, "hania@firma.pl")
+    assert client.get(f"/bok/faktury/{tid}/pobierz").status_code == 403
+    # handlowiec widzi odpowiedź BOK na ekranie dnia
     assert "dane z faktur gotowe" in client.get("/dzien").text
-    page = client.get(f"/klienci/{cid}").text
-    assert "BOK wprowadził dane" in page
+    assert "BOK wprowadził dane" in client.get(f"/klienci/{cid}").text
+    # po potwierdzeniu: pliki usunięte, dane zostają, ślad na osi zdarzeń
+    login(client, "basia@firma.pl")
+    r = post(client, f"/bok/faktury/{tid}", f"/bok/faktury/{tid}/archiwizuj", {"potwierdzam": "1"})
+    assert r.status_code == 303
+    with SessionLocal() as db:
+        t = db.get(InvoiceTask, tid)
+        assert db.query(InvoicePhoto).count() == 0 and t.archived_at is not None
+        assert db.query(InvoiceReading).count() == 1
+    assert "zarchiwizował faktury" in client.get(f"/klienci/{cid}").text
+    assert "Faktury do zarchiwizowania" not in client.get("/bok").text
 
 
 def test_bok_nie_odsyla_faktur_ale_moze_wpisac_dane(client):

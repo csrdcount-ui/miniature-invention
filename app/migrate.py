@@ -34,6 +34,13 @@ def run(engine: Engine) -> None:
 
 
 def _schema(engine: Engine) -> None:
+    # 13.11.2026: archiwizacja zdjęć faktur (tabele powstały w tej samej porcji zmian; na wszelki wypadek)
+    if inspect(engine).has_table("invoice_photos"):
+        _add_column(engine, "invoice_photos", "downloaded_at", "TIMESTAMP")
+        _add_column(engine, "invoice_photos", "downloaded_by_id", "INTEGER REFERENCES users(id)")
+    if inspect(engine).has_table("invoice_tasks"):
+        _add_column(engine, "invoice_tasks", "archived_at", "TIMESTAMP")
+        _add_column(engine, "invoice_tasks", "archived_by_id", "INTEGER REFERENCES users(id)")
     _add_column(engine, "users", "first_name", "VARCHAR(100) NOT NULL DEFAULT ''")
     _add_column(engine, "users", "last_name", "VARCHAR(100) NOT NULL DEFAULT ''")
     _add_column(engine, "users", "last_login_at", "TIMESTAMP")
