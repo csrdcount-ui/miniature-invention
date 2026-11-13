@@ -44,7 +44,7 @@
 <ul class="karty">
 {% for c in clients %}
   <li>
-    <h3><a href="/klienci/{{ c.id }}">{{ c.name }}</a></h3>
+    <h2 class="h3"><a href="/klienci/{{ c.id }}">{{ c.name }}</a></h2>
     <p>{{ STAGES[c.stage] }}{% if user.role != ROLE_TRADER %}, opiekun: {{ c.owner.name }}{% endif %}</p>
     {% if c.stage in OPEN_STAGES %}
     <p>{% if c.next_step_date %}{% if c.next_step_date < today %}<strong class="uwaga">Zaległe od {{ c.next_step_date|data }}</strong>{% else %}{{ c.next_step_date|data }}{% endif %}: {{ c.next_step }}{% else %}<strong class="uwaga">Brak następnego kroku</strong>{% endif %}</p>

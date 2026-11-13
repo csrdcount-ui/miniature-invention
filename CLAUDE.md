@@ -166,6 +166,8 @@ Następne (w tej kolejności, po odpowiedziach na pytania niżej):
   projekt do zatwierdzenia, etapy A–D, pilot, testy (11.11.2026, do akceptacji; 6 pytań).
 - `docs/PROJEKT-WIDOK-TELEFON.md` — plan skrótu na telefon dla właściciela i menedżera,
   nowa dolna belka, pomiar z 12.11.2026, etapy A–C (do akceptacji; 5 pytań).
+- `docs/PROJEKT-PROCES-TEREN.md` — proces handlowca w terenie od telefonu do umowy: co jest,
+  czego brakuje, kolejność etapów (13.11.2026, do akceptacji; 7 pytań).
 - `docs/CHECKLISTA-PO-ROLACH.md` — co wdrożone a co nie, po każdej roli (właściciel,
   menedżer, handlowiec, BOK), do aktualizacji po każdym większym kroku.
 
@@ -410,3 +412,12 @@ wyjątki w `docs/PROJEKT-CENNIKI.md`. Oferta/umowa nie mogą wskazywać na rekor
 przechowywać same ceny. Sprawdzona rozmowa o bazie: dane demo ~2,5 MB, ok. 8 KB na umowę;
 w bazie leżą też wgrane pliki Excela z importów (do 2 MB każdy, nigdy nie usuwane) — propozycja
 usuwania treści pliku po zatwierdzeniu importu czeka na zgodę.
+
+## Przegląd użyteczności i feedback z terenu (13.11.2026)
+
+Handlowiec i menedżer obejrzeli platformę: kierunek dobry, czytelna na telefonie. Audyt
+automatyczny (Pixel 7, komputer): 0 pól bez etykiety, 0 problemów kontrastu, 0 błędów stron.
+Poprawione: cele dotyku (tytuły kart, linki do telefonów, pola wyboru, ranking w Zespole),
+przeskoki nagłówków (h1 -> h3 na listach klientów i umów), „Klient podpisał: zapisz umowę”
+jako przycisk główny. Fałszywy alarm audytu: „puste linki” na pulpicie to linki w zwiniętych
+`<details>` (innerText pusty, bo ukryte). Proces w terenie: `docs/PROJEKT-PROCES-TEREN.md`.

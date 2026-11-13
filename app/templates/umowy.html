@@ -67,7 +67,7 @@
 
 <p><strong>Wyniki: {{ contracts|length }}.</strong> Umowy: {{ summary.count }}, masa marży {{ summary.total_markup|zl }}.{% if summary.offers %} W lejku (lead, kontakt, oferta): {{ summary.offers }}.{% endif %}</p>
 {% if contracts %}
-{% include "_lista_umow.html" with context %}
+{% set karta_naglowek = "h2" %}{% include "_lista_umow.html" with context %}
 {% else %}
 <p>{{ "Żadna umowa nie pasuje do wybranych filtrów." if filters.active else "Brak umów." }}</p>
 {% endif %}

@@ -2,7 +2,7 @@
 <ul class="karty">
 {% for c in (recent if recent is defined else contracts) %}
   <li>
-    <h3><a href="/umowy/{{ c.id }}">{{ c.client_name }}</a> {{ produkt_plakietka(c.pricing_product) }}</h3>
+    {% set naglowek = karta_naglowek or "h3" %}<{{ naglowek }} class="h3"><a href="/umowy/{{ c.id }}">{{ c.client_name }}</a> {{ produkt_plakietka(c.pricing_product) }}</{{ naglowek }}>
     <p>{{ c.supplier_name }}, {{ MEDIA[c.medium]|lower }}, {{ c.term_months }} mies., status: {{ c.status }}</p>
     <p>Wolumen roczny {{ c.annual_volume_mwh|mwh }}, marża {{ c.markup_pln_mwh|zl }}/MWh</p>
     {% if user.role != ROLE_TRADER %}<p>Handlowiec: {{ c.trader_name }}</p>{% endif %}

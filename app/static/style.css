@@ -183,3 +183,11 @@ ul.karty li.alarm { border: 2px solid var(--blad); background: var(--blad-tlo); 
 ul.lejek { list-style: none; padding: 0; display: grid; gap: .35rem; margin: 0; }
 ul.lejek a { display: inline-flex; align-items: center; min-height: 44px; }
 ul.karty h2.h3 { font-size: 1.1rem; margin: 0 0 .25rem; }
+
+/* --- Cele dotyku: min. 44 px dla linków będących samodzielną pozycją i dla pól wyboru --- */
+ul.karty h2 a, ul.karty h3 a { display: inline-flex; align-items: center; min-height: 44px; }
+ol.ranking a, main p > a:only-child, a[href^="tel:"] { display: inline-flex; align-items: center; min-height: 44px; }
+input[type="checkbox"], input[type="radio"] { width: 1.4rem; height: 1.4rem; margin: 0 .6rem 0 0; flex: none; }
+label:has(> input[type="checkbox"]), label:has(> input[type="radio"]) {
+  display: flex; align-items: center; min-height: 44px;
+}

@@ -107,7 +107,7 @@
     <p>{{ o.annual_volume_mwh|mwh }} rocznie, {{ o.term_months }} mies., marża {{ o.markup_pln_mwh|zl }}/MWh{% if o.base_price_pln_mwh is not none %}, cena dla klienta {{ (o.base_price_pln_mwh + o.markup_pln_mwh)|zl }}/MWh{% endif %}</p>
     <p>Masa marży po podpisaniu: {{ total|zl }}</p>
     {% if can_sell and o.status == "otwarta" %}
-    <p><a href="/umowy/nowa?klient={{ c.id }}&oferta={{ o.id }}">Klient podpisał: zapisz umowę</a></p>
+    <p><a class="przycisk" href="/umowy/nowa?klient={{ c.id }}&oferta={{ o.id }}">Klient podpisał: zapisz umowę</a></p>
     <form method="post" action="/klienci/{{ c.id }}/oferta/{{ o.id }}/odrzucona">
       <input type="hidden" name="csrf" value="{{ csrf }}">
       <button type="submit" class="drugi">Klient odrzucił ofertę</button>
