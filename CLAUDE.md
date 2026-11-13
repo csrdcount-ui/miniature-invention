@@ -13,6 +13,33 @@ prowizje, umowy, zespół, a docelowo lejek sprzedaży, rezerwacje NIP i BOK.
 - Wiadomości bywają dyktowane: nazwy własne mogą być przekręcone. Dopytaj zamiast
   powtarzać niepewną nazwę jako fakt.
 
+## Przekazanie do następnej rozmowy (stan na 13.11.2026, wieczór)
+
+Przeczytaj najpierw tę sekcję, potem resztę. Wszystko ważne jest w repozytorium i tym pliku.
+
+- **Język: zawsze po polsku**, także podsumowania i dokumenty. Raz wpadłem w angielski i właścicielka
+  to zgłosiła. Odpowiedzi: nagłówki i listy, bez szerokich tabel, na końcu dwa linki (Render, aplikacja).
+- **Gałąź robocza** `ccr-1640eeef-vrnotz` i `main` wypychamy razem (`git push origin HEAD:ccr-1640eeef-vrnotz HEAD:main`),
+  po przejściu `python -m pytest -q` (158 testów, ok. 105 s). Wdrażanie robi właścicielka ręcznie w Renderze.
+- **Co działa na serwerze** (potwierdzone w historii Rendera): wersja ab45772 (marszruta klienta, faktury,
+  powiadomienia jeszcze nie). **Samouczek (commit 4d45c53) jest tylko w kodzie na `main`** — na serwerze dopiero
+  po jej ręcznym wdrożeniu. Sprawdź `list_events` (serwis srv-dbmc7cetlv9c73duncgg) i poproś o numer z `/wersja`.
+- **Dziś wieczorem pierwszy test z ludźmi:** właściciel, menedżer, dwóch handlowców. Właściciel gra BOK
+  (nikt z BOK nie testuje). Po teście wracamy z ich uwagami (lista w Konto → „Uwagi testerów”).
+- **Co jest zrobione w tej serii:** cenniki z demo na 2–5 lat, zasada dwóch cenników, udział w masie marży biura
+  (tylko właściciel i menedżer), poprawki dostępności i telefonu (+ ostrzeżenie „Wersja na komputer”), marszruta
+  klienta (4 ekrany), punkty poboru i dane z faktur, wolumen roczny, zdjęcia faktur z kolejką BOK i archiwizacją
+  po potwierdzeniu, test obciążenia i poprawki, samouczek per rola z uwagami testerów.
+- **Następne, w kolejności:** (1) zebrać uwagi po teście i je poprawić; (2) powiadomienia N1–N4
+  (`docs/PROJEKT-POWIADOMIENIA.md`, czekają odpowiedzi na 6 pytań); (3) wynik rozmowy jednym stuknięciem,
+  spotkanie z godziną i adresem, kalendarz ICS (`docs/PROJEKT-PROCES-TEREN.md`); (4) Excel dla BOK
+  (`docs/PROJEKT-EXCEL-BOK.md`); (5) skrót „Start” na telefon (`docs/PROJEKT-WIDOK-TELEFON.md`);
+  (6) podpowiedzi „Jak to działa?” przy trudnych ekranach i treści rozmów (osobna rozmowa).
+- **Przed pilotażem z brokerem:** darmowa baza wygasa ok. 5.12.2026; serwer Starter, baza Basic z kopiami
+  zapasowymi; wszystkie zmiany planu w Renderze tylko za zgodą właścicielki. Zdjęcia faktur w bazie to
+  rozwiązanie tymczasowe do decyzji o magazynie plików i RODO. AI do faktur: wyłączone, miejsce przygotowane.
+- **Otwarte pytania do właścicielki** są w dokumentach `docs/PROJEKT-*.md` (sekcje „Pytania”) i niżej.
+
 ## Zasady nadrzędne
 
 1. **Render: żadnej akcji bez zgody.** Przed każdą akcją w Renderze (tworzenie,
