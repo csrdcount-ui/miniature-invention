@@ -77,3 +77,7 @@ ul.karty { list-style: none; padding: 0; display: grid; gap: .75rem; }
 ul.karty li { border: 1px solid var(--ramka); border-radius: 8px; padding: .75rem 1rem; }
 ul.karty h3 { margin: 0 0 .25rem; }
 ul.karty p { margin: .1rem 0; }
+.akcje { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .5rem; }
+.akcje form { margin: 0; }
+button.drugorzedny { background: transparent; color: var(--marka); border: 2px solid var(--marka); }
+ul.karty h4 { margin: 0 0 .25rem; font-size: 1rem; }

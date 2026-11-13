@@ -155,3 +155,10 @@ def test_korekta_wylaczona():
 def test_D_przecinek_i_spacje():
     assert D("1 234,5") == Decimal("1234.5")
     assert D(0.1) + D(0.2) == Decimal("0.3")
+
+
+def test_kwota_wklejona_z_twarda_spacja():
+    from app.engine import D
+    assert D("11 550,00") == Decimal("11550.00")
+    assert D("11 550,5") == Decimal("11550.5")
+    assert D("11 550") == Decimal("11550")

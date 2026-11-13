@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% from "_makra.html" import tabela_rozliczen %}
+{% block title %}Rozliczenia{% endblock %}
+{% block content %}
+<h1>Rozliczenia</h1>
+<p>Stan na {{ today|data }}. Kwoty z umów, które widzisz. Wpływy od spółek wpisuje właściciel na karcie umowy.</p>
+
+<h2>Podsumowanie</h2>
+{% if r.rows %}
+{{ tabela_rozliczen(r.rows, "Rozliczenia ze wszystkich umów") }}
+<p class="podpowiedz">Zagrożone korektą to kwota rozliczona ponad część umowy zrealizowaną do dziś. Wróci do spółki, jeśli klient zerwie umowę teraz.</p>
+{% else %}
+<p>Brak umów z Twoim udziałem.</p>
+{% endif %}
+
+<h2>Do wypłaty</h2>
+{% if r.pending %}
+<p>Pozycji: {{ r.pending|length }}, razem {{ r.pending_total|zl }}. Kwota ujemna oznacza potrącenie po korekcie.</p>
+<ul class="karty">
+{% for p in r.pending %}
+  <li>
+    <h3><a href="/umowy/{{ p.contract_id }}#rozliczenia">{{ p.client_name }}</a></h3>
+    <p>{{ p.person }}: {{ p.amount|zl }}</p>
+    <p>{{ p.kind_label }} z {{ p.booked_on|data }}</p>
+    {% if user.role == ROLE_OWNER %}
+    <form method="post" action="/rozliczenia/{{ p.entry_id }}/wyplata">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="komu" value="{{ p.who }}">
+      <input type="hidden" name="wroc" value="/rozliczenia">
+      <button type="submit">Rozliczono dzisiaj: {{ p.person }}, {{ p.client_name }}</button>
+    </form>
+    {% endif %}
+  </li>
+{% endfor %}
+</ul>
+{% else %}
+<p>Nic nie czeka na wypłatę.</p>
+{% endif %}
+
+{% if r.by_supplier %}
+<h2>Udział brokera według spółek obrotu</h2>
+<div class="tabela">
+<table>
+  <caption>Udział brokera według spółek</caption>
+  <thead>
+    <tr>
+      <th scope="col">Spółka</th>
+      <th scope="col" class="kw">Prognoza</th>
+      <th scope="col" class="kw">Otrzymane</th>
+      <th scope="col" class="kw">Pozostało</th>
+      <th scope="col" class="kw">Zagrożone korektą</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for name, t in r.by_supplier %}
+    <tr>
+      <th scope="row">{{ name }}</th>
+      <td class="kw">{{ t.forecast|zl }}</td>
+      <td class="kw">{{ t.settled|zl }}</td>
+      <td class="kw">{{ t.remaining|zl }}</td>
+      <td class="kw">{{ t.at_risk|zl }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+
+<h2>Eksport</h2>
+<p><a href="/rozliczenia.csv">Pobierz historię wpływów i korekt jako plik CSV do Excela</a></p>
+{% endblock %}

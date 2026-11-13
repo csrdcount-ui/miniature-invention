@@ -160,3 +160,47 @@ class Contract(Base):
     supplier: Mapped[Supplier] = relationship()
     trader: Mapped[User] = relationship(foreign_keys=[trader_id])
     manager: Mapped[Optional[User]] = relationship(foreign_keys=[manager_id])
+    entries: Mapped[list["PayoutEntry"]] = relationship(
+        back_populates="contract",
+        order_by="PayoutEntry.booked_on, PayoutEntry.id",
+        cascade="all, delete-orphan",
+    )
+
+
+ENTRY_KINDS = {
+    "transza1": "Pierwsza transza",
+    "faktury": "Prowizja z zapłaconych faktur",
+    "korekta": "Korekta, zwrot do spółki",
+}
+
+
+class PayoutEntry(Base):
+    """Wpis w rejestrze rozliczeń: wpływ od spółki obrotu albo korekta.
+
+    Właściciel wpisuje kwotę, którą spółka faktycznie przelała brokerowi
+    (korekta jako kwota ujemna). Części handlowca i menedżera wynikają
+    proporcjonalnie z tej samej części umowy i są zapisywane w chwili
+    wpisu, żeby historia się nie przesuwała.
+    """
+
+    __tablename__ = "payout_entries"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    contract_id: Mapped[int] = mapped_column(ForeignKey("contracts.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(20))
+    booked_on: Mapped[date] = mapped_column(Date)
+    broker_amount: Mapped[Decimal] = mapped_column(MONEY)
+    trader_amount: Mapped[Decimal] = mapped_column(MONEY)
+    override_amount: Mapped[Decimal] = mapped_column(MONEY)
+    owner_amount: Mapped[Decimal] = mapped_column(MONEY)
+    trader_paid_on: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    manager_paid_on: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    note: Mapped[str] = mapped_column(Text, default="")
+    created_by_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    contract: Mapped[Contract] = relationship(back_populates="entries")
+
+    @property
+    def kind_label(self) -> str:
+        return ENTRY_KINDS.get(self.kind, self.kind)

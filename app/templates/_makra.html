@@ -47,3 +47,34 @@
 </table>
 </div>
 {%- endmacro %}
+
+
+{% macro tabela_rozliczen(rows, caption) -%}
+<div class="tabela">
+<table>
+  <caption>{{ caption }}</caption>
+  <thead>
+    <tr>
+      <th scope="col">Strona</th>
+      <th scope="col" class="kw">Prognoza z całej umowy</th>
+      <th scope="col" class="kw">Rozliczone z wpływów</th>
+      <th scope="col" class="kw">Pozostało do rozliczenia</th>
+      <th scope="col" class="kw">Zagrożone korektą</th>
+      <th scope="col" class="kw">Do wypłaty</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for label, p in rows %}
+    <tr>
+      <th scope="row">{{ label }}</th>
+      <td class="kw">{{ p.forecast|zl }}</td>
+      <td class="kw">{{ p.settled|zl }}</td>
+      <td class="kw">{{ p.remaining|zl }}</td>
+      <td class="kw">{{ p.at_risk|zl }}</td>
+      <td class="kw">{% if p.to_pay is not none %}{{ p.to_pay|zl }}{% else %}nie dotyczy{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{%- endmacro %}

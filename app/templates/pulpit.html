@@ -33,6 +33,18 @@
 </dl>
 <p class="podpowiedz">Kwoty to prognoza z pełnego okresu umów, a nie pieniądze już wypłacone.</p>
 
+<h2>Pieniądze w drodze</h2>
+{% if reg.rows %}
+<dl>
+{% for label, t in reg.rows %}
+  <dt>{{ label }}: rozliczone z wpływów</dt><dd>{{ t.settled|zl }}</dd>
+  {% if t.to_pay is not none %}<dt>{{ label }}: do wypłaty</dt><dd>{{ t.to_pay|zl }}</dd>{% endif %}
+  <dt>{{ label }}: zagrożone korektą</dt><dd>{{ t.at_risk|zl }}</dd>
+{% endfor %}
+</dl>
+{% endif %}
+<p><a href="/rozliczenia">Szczegóły rozliczeń</a></p>
+
 <h2>Ostatnie umowy</h2>
 {% if recent %}
 {% include "_lista_umow.html" with context %}

@@ -25,6 +25,7 @@ Bez danych demo pierwsze wejście prowadzi do utworzenia konta właściciela.
 ## Struktura
 
 - `app/engine.py` — silnik prowizji (czyste funkcje, Decimal). Baza procentów opisana w nagłówku pliku.
+- `app/settlements.py` — rejestr rozliczeń: wpływy od spółek, proporcje dla zespołu, korekty, zagrożone korektą.
 - `app/services.py` — reguły na dzień, tworzenie umów z zamrożeniem reguł, uprawnienia, widoki przycięte do roli.
 - `app/models.py` — model danych (wersjonowane reguły spółek i stawki osób).
 - `app/main.py` — strony i formularze (bez JavaScriptu, pod czytnik ekranu i telefon).
@@ -36,3 +37,6 @@ Bez danych demo pierwsze wejście prowadzi do utworzenia konta właściciela.
   wyzwalacz, limit narzutu, okres nowych przyłączy, korekta) i per osoba (udział w narzucie, override).
 - Zmiany reguł mają datę obowiązywania; umowa zamraża reguły z dnia podpisania.
 - Handlowiec i menedżer nie dostają z serwera udziału brokera ani marży właściciela.
+- Wpływ od spółki dzieli się proporcjonalnie: handlowiec i menedżer dostają tę samą część swojej
+  prognozy, co broker swojej. Kwoty zapisywane są w chwili wpisu. Korekta działa tak samo, z minusem.
+- Zagrożone korektą = rozliczone ponad część umowy zrealizowaną do dziś (miesiące od startu dostaw).

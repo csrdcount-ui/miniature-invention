@@ -45,7 +45,11 @@ def D(value) -> Decimal:
         return Decimal(str(value))
     if value is None or value == "":
         return ZERO
-    return Decimal(str(value).replace(",", ".").replace(" ", ""))
+    # Spacje, także twarde (wklejone z Excela lub wyciągu bankowego), to separatory tysięcy.
+    text = str(value)
+    for sep in (" ", "\u00a0", "\u202f"):
+        text = text.replace(sep, "")
+    return Decimal(text.replace(",", "."))
 
 
 def zl(value: Decimal) -> Decimal:

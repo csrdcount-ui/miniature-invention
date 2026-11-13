@@ -50,19 +50,38 @@ def main() -> None:
         ])
         db.commit()
 
-        for trader, sup, client, vol, months, markup, new in [
-            (t1, a, "Piekarnia Złoty Kłos", 100, 60, 100, False),
-            (t1, b, "Chłodnia Lubelska", 850, 36, 85, False),
-            (t2, a, "Hotel Pod Lipami", 240, 24, 120, False),
-            (t2, b, "Nowa Hala Logistyczna", 600, 48, 90, True),
-            (mgr, a, "Zakład Mechaniczny Kowalski", 1200, 36, 70, False),
+        today = date.today()
+
+        def ago(months: int) -> date:
+            y, m = divmod(today.year * 12 + today.month - 1 - months, 12)
+            return date(y, m + 1, 1)
+
+        created = []
+        for trader, sup, client, vol, months, markup, new, signed, start in [
+            (t1, a, "Piekarnia Złoty Kłos", 100, 60, 100, False, ago(14), ago(12)),
+            (t1, b, "Chłodnia Lubelska", 850, 36, 85, False, ago(5), ago(3)),
+            (t2, a, "Hotel Pod Lipami", 240, 24, 120, False, ago(1), None),
+            (t2, b, "Nowa Hala Logistyczna", 600, 48, 90, True, today, None),
+            (mgr, a, "Zakład Mechaniczny Kowalski", 1200, 36, 70, False, today, None),
         ]:
-            svc.create_contract(
+            created.append(svc.create_contract(
                 db, actor=owner, trader=trader, supplier=sup, client_name=client, client_nip="", medium="energia",
-                signed_date=date.today(), start_date=None, term_months=months,
+                signed_date=signed, start_date=start, term_months=months,
                 annual_volume_mwh=Decimal(vol), markup_pln_mwh=Decimal(markup), base_price_pln_mwh=Decimal(480),
                 new_connection=new, status="Umowa podpisana",
-            )
+            ))
+
+        # Rejestr: pierwsze transze od spółek, jedna wypłata dla zespołu już rozliczona.
+        from . import settlements as st
+
+        for c in created[:3]:
+            b = svc.calculate_contract(c)
+            e = st.record_entry(db, actor=owner, contract=c, kind="transza1",
+                                booked_on=(c.start_date or today), amount=b.broker.tranche1,
+                                note="Zestawienie prowizyjne, dane demo")
+            if c is created[0]:
+                st.mark_paid(db, actor=owner, entry=e, who="handlowiec", paid_on=c.start_date)
+                st.mark_paid(db, actor=owner, entry=e, who="menedzer", paid_on=c.start_date)
     print("Dane demo utworzone. Konta: wlasciciel@demo.pl, menedzer@demo.pl, handlowiec@demo.pl, junior@demo.pl")
     print(f"Hasło: {PW}")
 

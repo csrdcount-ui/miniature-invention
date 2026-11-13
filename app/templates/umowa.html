@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_makra.html" import tabela_prowizji, wybor %}
+{% from "_makra.html" import tabela_prowizji, wybor, pole, tabela_rozliczen %}
 {% block title %}{{ c.client_name }}{% endblock %}
 {% block content %}
 <h1>Umowa: {{ c.client_name }}</h1>
@@ -44,6 +44,77 @@
 <p class="podpowiedz">To prognoza od wolumenu z umowy. Wypłata z góry jest zaliczką: przy zerwaniu umowy lub niższym zużyciu spółka może ją skorygować, a korekta przechodzi proporcjonalnie na handlowca i menedżera.</p>
 {% else %}
 <p>Nie masz udziału w prowizji z tej umowy.</p>
+{% endif %}
+
+<h2 id="rozliczenia">Rozliczenia</h2>
+<p>
+  {% if s.started %}Dostawy trwają {{ s.months_elapsed }} z {{ s.term_months }} mies.
+  {% else %}Dostawy jeszcze nie ruszyły albo brak daty startu. Wszystko, co rozliczono, jest na razie zaliczką.{% endif %}
+  {% if not s.clawback_applies %}Spółka nie stosuje korekty w tej umowie.{% endif %}
+</p>
+{% if s.rows %}
+{{ tabela_rozliczen(s.rows, "Stan rozliczeń tej umowy") }}
+{% endif %}
+
+{% if s.entries %}
+<h3>Historia wpływów i korekt</h3>
+<ul class="karty">
+{% for e in s.entries %}
+  <li>
+    <h4>{{ e.booked_on|data }}: {{ e.kind_label }}</h4>
+    {% for label, amt in e.amounts %}<p>{{ label }}: {{ amt|zl }}</p>{% endfor %}
+    {% if e.trader_paid_on is defined %}<p>{% if user.role == ROLE_OWNER %}Handlowiec{% elif c.trader_id == user.id %}Twoja prowizja{% else %}Handlowiec{% endif %}: {% if e.trader_paid_on %}rozliczono {{ e.trader_paid_on|data }}{% else %}jeszcze nie rozliczono{% endif %}</p>{% endif %}
+    {% if e.manager_paid_on is defined and (user.role != ROLE_OWNER or e.has_override) %}<p>{% if user.role == ROLE_OWNER %}Menedżer{% else %}Twój override{% endif %}: {% if e.manager_paid_on %}rozliczono {{ e.manager_paid_on|data }}{% else %}jeszcze nie rozliczono{% endif %}</p>{% endif %}
+    {% if e.note %}<p>Uwagi: {{ e.note }}</p>{% endif %}
+    {% if user.role == ROLE_OWNER %}
+    <div class="akcje">
+      {% if not e.trader_paid_on %}
+      <form method="post" action="/rozliczenia/{{ e.id }}/wyplata">
+        <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="komu" value="handlowiec">
+        <button type="submit">Rozliczono z handlowcem dzisiaj</button>
+      </form>
+      {% endif %}
+      {% if e.has_override and not e.manager_paid_on %}
+      <form method="post" action="/rozliczenia/{{ e.id }}/wyplata">
+        <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="komu" value="menedzer">
+        <button type="submit">Rozliczono z menedżerem dzisiaj</button>
+      </form>
+      {% endif %}
+      {% if e.deletable %}
+      <form method="post" action="/rozliczenia/{{ e.id }}/usun">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <button type="submit" class="drugorzedny">Usuń błędny wpis z {{ e.booked_on|data }}</button>
+      </form>
+      {% endif %}
+    </div>
+    {% endif %}
+  </li>
+{% endfor %}
+</ul>
+{% else %}
+<p>Brak wpływów od spółki dla tej umowy.</p>
+{% endif %}
+
+{% if user.role == ROLE_OWNER %}
+<h3>Dodaj wpływ albo korektę od spółki</h3>
+<p>Wpisz kwotę z zestawienia prowizyjnego spółki, czyli to, co spółka przelała brokerowi. Część handlowca i menedżera wyliczy się proporcjonalnie.</p>
+{% if s.suggested_clawback and s.clawback_applies %}
+<p class="podpowiedz">Gdyby umowa została zerwana dzisiaj, korekta proporcjonalna wyniosłaby {{ s.suggested_clawback.broker|zl }}: handlowiec {{ s.suggested_clawback.trader|zl }}{% if c.manager_name %}, menedżer {{ s.suggested_clawback.manager_override|zl }}{% endif %}, marża właściciela {{ s.suggested_clawback.owner_margin|zl }}. Dotychczasowe wpływy netto: {{ s.net_received|zl }}.</p>
+{% endif %}
+<form method="post" action="/umowy/{{ c.id }}/rozliczenia" class="stack">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  {{ wybor("rodzaj", "Rodzaj wpisu", ENTRY_KINDS.items(), form.rodzaj or ("transza1" if not s.entries else "faktury")) }}
+  {{ pole("data", "Data wpływu albo korekty", form.data or today.isoformat(), type="date", required=true) }}
+  {{ pole("kwota", "Kwota od spółki w złotych", form.kwota, hint="Zawsze dodatnia, także przy korekcie. Na przykład 11550 albo 11 550,00.", required=true, extra='inputmode="decimal"') }}
+  <div class="pole">
+    <label><input type="checkbox" name="zerwana" value="1" {% if form.zerwana %}checked{% endif %}>Przy korekcie: oznacz umowę jako zerwaną</label>
+  </div>
+  <div class="pole">
+    <label for="f-uwagi">Uwagi, na przykład numer zestawienia</label>
+    <textarea id="f-uwagi" name="uwagi" rows="2">{{ form.uwagi or "" }}</textarea>
+  </div>
+  <button type="submit">Zapisz w rejestrze</button>
+</form>
 {% endif %}
 
 <h2>Status w lejku</h2>

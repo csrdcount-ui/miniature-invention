@@ -4,6 +4,8 @@ Strony działają bez JavaScriptu i są budowane pod czytnik ekranu oraz telefon
 """
 from __future__ import annotations
 
+import csv
+import io
 import os
 import secrets
 from datetime import date
@@ -12,7 +14,7 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import func, select
@@ -21,9 +23,11 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from . import engine as eng
 from . import services as svc
+from . import settlements as st
 from .db import Base, engine, get_db
 from .models import (
     CONTRACT_STATUSES,
+    ENTRY_KINDS,
     MEDIA,
     ROLE_MANAGER,
     ROLE_OWNER,
@@ -31,6 +35,7 @@ from .models import (
     ROLES,
     TRIGGERS,
     Contract,
+    PayoutEntry,
     Supplier,
     SupplierRuleSet,
     User,
@@ -140,6 +145,7 @@ templates.env.globals.update(
     TRIGGERS=TRIGGERS,
     MEDIA=MEDIA,
     STATUSES=CONTRACT_STATUSES,
+    ENTRY_KINDS=ENTRY_KINDS,
     ROLE_OWNER=ROLE_OWNER,
     ROLE_MANAGER=ROLE_MANAGER,
     ROLE_TRADER=ROLE_TRADER,
@@ -392,7 +398,12 @@ async def password_change(request: Request, user: User = Depends(current_user), 
 def dashboard(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
     contracts = list(db.scalars(svc.visible_contracts_query(user)))
     summary = svc.summary_for(user, contracts)
-    ctx = {"user": user, "summary": summary, "recent": [svc.contract_view(user, c) for c in contracts[:5]]}
+    ctx = {
+        "user": user,
+        "summary": summary,
+        "recent": [svc.contract_view(user, c) for c in contracts[:5]],
+        "reg": st.register_view(user, contracts, date.today()),
+    }
     if user.role == ROLE_OWNER:
         suppliers = list(db.scalars(select(Supplier).order_by(Supplier.name)))
         ctx["suppliers_without_rules"] = [s.name for s in suppliers if not s.rule_sets]
@@ -697,7 +708,20 @@ def _get_visible_contract(db: Session, user: User, cid: int) -> Contract:
 @app.get("/umowy/{cid}", response_class=HTMLResponse)
 def contract_page(cid: int, request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
     c = _get_visible_contract(db, user, cid)
-    return render(request, "umowa.html", {"user": user, "c": svc.contract_view(user, c)})
+    return render(request, "umowa.html", _contract_ctx(user, c))
+
+
+def _contract_ctx(user: User, c: Contract, **extra) -> dict:
+    today = date.today()
+    ctx = {
+        "user": user,
+        "c": svc.contract_view(user, c),
+        "s": st.contract_settlement_view(user, c, today),
+        "today": today,
+        "form": {},
+    }
+    ctx.update(extra)
+    return ctx
 
 
 @app.post("/umowy/{cid}/status")
@@ -711,6 +735,128 @@ async def contract_status(cid: int, request: Request, user: User = Depends(curre
     db.commit()
     flash(request, f"Status umowy: {status}.")
     return redirect(f"/umowy/{c.id}")
+
+
+# --------------------------------------------------------------------------
+# Rozliczenia: wpływy od spółek, korekty, wypłaty dla zespołu
+# --------------------------------------------------------------------------
+
+@app.post("/umowy/{cid}/rozliczenia")
+async def contract_entry_add(cid: int, request: Request, user: User = Depends(owner_only), db: Session = Depends(get_db)):
+    c = _get_visible_contract(db, user, cid)
+    form = await form_data(request)
+    try:
+        kind = form.get("rodzaj", "")
+        entry = st.record_entry(
+            db,
+            actor=user,
+            contract=c,
+            kind=kind,
+            booked_on=p_date(form, "data", "Data wpływu"),
+            amount=p_dec(form, "kwota", "Kwota od spółki", minimum=Decimal("0.01")),
+            note=form.get("uwagi", ""),
+            mark_broken=form.get("zerwana") == "1",
+        )
+    except (FormError, svc.BusinessError, eng.EngineError) as e:
+        db.rollback()
+        return render(request, "umowa.html", _contract_ctx(user, c, error=str(e), form=form), 400)
+    if entry.kind == st.KOREKTA:
+        flash(
+            request,
+            f"Zapisano korektę {fmt_zl(-entry.broker_amount)}. Handlowiec oddaje {fmt_zl(-entry.trader_amount)}"
+            + (f", menedżer {fmt_zl(-entry.override_amount)}" if c.manager_id else "")
+            + f". Status umowy: {c.status}.",
+        )
+    else:
+        flash(
+            request,
+            f"Zapisano wpływ {fmt_zl(entry.broker_amount)}. Należy się handlowcowi {fmt_zl(entry.trader_amount)}"
+            + (f", menedżerowi {fmt_zl(entry.override_amount)}" if c.manager_id else "")
+            + f". Status umowy: {c.status}.",
+        )
+    return redirect(f"/umowy/{c.id}#rozliczenia")
+
+
+def _get_entry(db: Session, eid: int) -> PayoutEntry:
+    e = db.get(PayoutEntry, eid)
+    if not e:
+        raise HTTPException(status_code=404)
+    return e
+
+
+def _back(form: dict, default: str) -> str:
+    url = form.get("wroc", "")
+    # tylko ścieżki wewnętrzne, bez przekierowań na zewnątrz
+    return url if url.startswith("/") and not url.startswith("//") else default
+
+
+@app.post("/rozliczenia/{eid}/wyplata")
+async def entry_mark_paid(eid: int, request: Request, user: User = Depends(owner_only), db: Session = Depends(get_db)):
+    e = _get_entry(db, eid)
+    form = await form_data(request)
+    back = _back(form, f"/umowy/{e.contract_id}#rozliczenia")
+    try:
+        paid_on = p_date(form, "data", "Data wypłaty", required=False) or date.today()
+        st.mark_paid(db, actor=user, entry=e, who=form.get("komu", ""), paid_on=paid_on)
+    except (FormError, svc.BusinessError) as err:
+        flash(request, f"Błąd: {err}")
+        return redirect(back)
+    who = e.contract.trader.name if form.get("komu") == "handlowiec" else (e.contract.manager.name if e.contract.manager else "")
+    amount = e.trader_amount if form.get("komu") == "handlowiec" else e.override_amount
+    verb = "potrącenie" if amount < 0 else "wypłatę"
+    flash(request, f"Oznaczono {verb} {fmt_zl(abs(amount))} dla {who}, {e.contract.client_name}, z dnia {fmt_date(paid_on)}.")
+    return redirect(back)
+
+
+@app.post("/rozliczenia/{eid}/usun")
+async def entry_delete(eid: int, request: Request, user: User = Depends(owner_only), db: Session = Depends(get_db)):
+    e = _get_entry(db, eid)
+    form = await form_data(request)
+    cid = e.contract_id
+    try:
+        st.delete_entry(db, actor=user, entry=e)
+    except svc.BusinessError as err:
+        flash(request, f"Błąd: {err}")
+        return redirect(f"/umowy/{cid}#rozliczenia")
+    flash(request, "Usunięto wpis z rejestru. Status umowy nie został zmieniony, popraw go ręcznie, jeśli trzeba.")
+    return redirect(_back(form, f"/umowy/{cid}#rozliczenia"))
+
+
+@app.get("/rozliczenia", response_class=HTMLResponse)
+def register_page(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    contracts = list(db.scalars(svc.visible_contracts_query(user)))
+    today = date.today()
+    return render(request, "rozliczenia.html", {"user": user, "r": st.register_view(user, contracts, today), "today": today})
+
+
+@app.get("/rozliczenia.csv")
+def register_csv(user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Eksport do Excela: średnik, przecinek dziesiętny, kodowanie z BOM."""
+    contracts = list(db.scalars(svc.visible_contracts_query(user)))
+    today = date.today()
+    buf = io.StringIO()
+    w = csv.writer(buf, delimiter=";")
+    w.writerow(["Umowa", "Klient", "Spółka", "Data", "Rodzaj", "Strona", "Kwota", "Wypłacono dnia"])
+
+    def num(v):
+        return f"{eng.D(v):f}".replace(".", ",")
+
+    for c in contracts:
+        view = st.contract_settlement_view(user, c, today)
+        for e in view["entries"]:
+            for label, amt in e["amounts"]:
+                paid = ""
+                if label.startswith(("Handlowiec", "Twoja prowizja", "Prowizja handlowca")):
+                    paid = fmt_date(e.get("trader_paid_on")) if e.get("trader_paid_on") else ""
+                elif "override" in label.lower():
+                    paid = fmt_date(e.get("manager_paid_on")) if e.get("manager_paid_on") else ""
+                w.writerow([c.id, c.client_name, c.supplier.name, e["booked_on"].isoformat(), e["kind_label"], label, num(amt), paid])
+    data = "\ufeff" + buf.getvalue()
+    return Response(
+        content=data.encode("utf-8"),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="rozliczenia-{today.isoformat()}.csv"'},
+    )
 
 
 def valid_nip(nip: str) -> bool:

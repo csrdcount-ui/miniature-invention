@@ -15,7 +15,7 @@ services:
     runtime: python
     plan: free
     region: frankfurt
-    branch: ccr-fcf28ba4-j6eqkl
+    branch: ccr-4dec9584-0v620t
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips='*'
     healthCheckPath: /logowanie
