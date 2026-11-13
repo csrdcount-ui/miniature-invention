@@ -171,6 +171,9 @@ Następne (w tej kolejności, po odpowiedziach na pytania niżej):
 - `docs/PROJEKT-MARSZRUTA-KLIENTA.md` — karta klienta jako marszruta (ekrany etapów, pasek
   etapów zamiast samego przesuwania, bo czytnik używa przesunięć) i zdjęcia faktur z kolejką
   BOK, AI opcjonalnie (13.11.2026, do akceptacji; 5 pytań).
+- `docs/PROJEKT-POWIADOMIENIA.md` — mapa komunikacji handlowiec, BOK, menedżer (i właściciel)
+  po krokach procesu, powiadomienia, wiadomości w sprawie, prośby z terminem, eskalacje,
+  dziennik firmy; etapy N1–N4 (13.11.2026, do akceptacji; 6 pytań).
 - `docs/CHECKLISTA-PO-ROLACH.md` — co wdrożone a co nie, po każdej roli (właściciel,
   menedżer, handlowiec, BOK), do aktualizacji po każdym większym kroku.
 
@@ -451,3 +454,7 @@ Po poprawkach 20 osób: 1177 żądań, 0 błędów, mediana 36 ms, ok. 25–40 m
 pamięć ok. 130 MB. 40 osób logujących się w tej samej sekundzie nadal zatyka serwer —
 skrajny scenariusz; pełne rozwiązanie: trasy POST bez blokujących zapytań w pętli zdarzeń.
 Test złośliwych danych na 80 adresach (z fakturami): 0 błędów.
+
+Wdrożenie ab45772 (poprawki z testu obciążenia) przeszło 13.11.2026 o 11:58 UTC. Tego dnia wieczorem
+pierwszy test z ludźmi: właściciel, menedżer, dwóch handlowców. Powiadomienia: lista „kto dostaje
+co” zaakceptowana co do idei; budowa po uwagach z testu, plan w `docs/PROJEKT-POWIADOMIENIA.md`.
