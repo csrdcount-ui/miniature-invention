@@ -168,6 +168,9 @@ Następne (w tej kolejności, po odpowiedziach na pytania niżej):
   nowa dolna belka, pomiar z 12.11.2026, etapy A–C (do akceptacji; 5 pytań).
 - `docs/PROJEKT-PROCES-TEREN.md` — proces handlowca w terenie od telefonu do umowy: co jest,
   czego brakuje, kolejność etapów (13.11.2026, do akceptacji; 7 pytań).
+- `docs/PROJEKT-MARSZRUTA-KLIENTA.md` — karta klienta jako marszruta (ekrany etapów, pasek
+  etapów zamiast samego przesuwania, bo czytnik używa przesunięć) i zdjęcia faktur z kolejką
+  BOK, AI opcjonalnie (13.11.2026, do akceptacji; 5 pytań).
 - `docs/CHECKLISTA-PO-ROLACH.md` — co wdrożone a co nie, po każdej roli (właściciel,
   menedżer, handlowiec, BOK), do aktualizacji po każdym większym kroku.
 
