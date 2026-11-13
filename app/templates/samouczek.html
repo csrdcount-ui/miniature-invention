@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Samouczek{% endblock %}
+{% block content %}
+<h1>Samouczek: {{ role_label }}</h1>
+<p>Zrobione {{ done_count }} z {{ total }} kroków. Każdy krok to jedno zadanie na prawdziwym ekranie, z linkiem i opisem tego, co powinieneś zobaczyć. Kroki oznaczasz jako zrobione sam, możesz też je cofnąć albo robić w dowolnej kolejności.</p>
+{% if nip %}<p>Twój NIP testowy: <strong>{{ nip }}</strong>. Jest poprawny i przeznaczony tylko dla Ciebie, więc nikt inny go nie wpisze.</p>{% endif %}
+
+<h2>Plan testu dla wszystkich</h2>
+<ol>
+  {% for line in plan %}<li>{{ line }}</li>{% endfor %}
+</ol>
+
+{% for sec in sections %}
+<section aria-labelledby="sek-{{ sec.id }}">
+<h2 id="sek-{{ sec.id }}">{{ sec.title }}</h2>
+<p>{{ sec.intro }}</p>
+<ol class="kroki">
+  {% for s in sec.steps %}
+  <li id="krok-{{ s.key }}">
+    <h3>{{ s.title }}{% if s.done %} (zrobione){% endif %}</h3>
+    <p><strong>Zrób:</strong> {{ s.do }}</p>
+    <p><strong>Co zobaczysz:</strong> {{ s.expect }}</p>
+    {% if s.url %}<p><a href="{{ s.url }}">Otwórz: {{ s.label }}</a></p>{% endif %}
+    <form method="post" action="/samouczek/krok">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="krok" value="{{ s.key }}">
+      {% if s.done %}
+      <input type="hidden" name="zrobione" value="0">
+      <button type="submit" class="drugi">Cofnij: {{ s.title }}</button>
+      {% else %}
+      <input type="hidden" name="zrobione" value="1">
+      <button type="submit">Oznacz jako zrobione: {{ s.title }}</button>
+      {% endif %}
+    </form>
+  </li>
+  {% endfor %}
+</ol>
+</section>
+{% endfor %}
+
+<h2>Gdy coś jest niejasne</h2>
+<p>Na dole każdej strony jest link „Zgłoś uwagę do tej strony”. Napisz jedno zdanie, a platforma sama dopisze, na której stronie byłeś.</p>
+{% endblock %}

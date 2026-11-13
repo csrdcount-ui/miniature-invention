@@ -66,6 +66,9 @@ def current_user(request: Request, db: Session = Depends(get_db)) -> User:
     from ..exchange.importer import demo_active
 
     request.state.demo_active = demo_active(db)
+    from ..samouczek import invite_visible
+
+    request.state.tutorial_invite = invite_visible(db, user) and not request.url.path.startswith(("/samouczek", "/haslo"))
     if request.url.path not in COMPLETION_ALLOWED and needs_completion(user, company):
         raise ProfileIncomplete()
     return user

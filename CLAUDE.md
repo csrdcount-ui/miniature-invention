@@ -174,6 +174,7 @@ Następne (w tej kolejności, po odpowiedziach na pytania niżej):
 - `docs/PROJEKT-POWIADOMIENIA.md` — mapa komunikacji handlowiec, BOK, menedżer (i właściciel)
   po krokach procesu, powiadomienia, wiadomości w sprawie, prośby z terminem, eskalacje,
   dziennik firmy; etapy N1–N4 (13.11.2026, do akceptacji; 6 pytań).
+- `docs/PROJEKT-SAMOUCZEK.md` — samouczek per rola: zasady, kroki, uwagi testerów (13.11.2026).
 - `docs/CHECKLISTA-PO-ROLACH.md` — co wdrożone a co nie, po każdej roli (właściciel,
   menedżer, handlowiec, BOK), do aktualizacji po każdym większym kroku.
 
@@ -458,3 +459,15 @@ Test złośliwych danych na 80 adresach (z fakturami): 0 błędów.
 Wdrożenie ab45772 (poprawki z testu obciążenia) przeszło 13.11.2026 o 11:58 UTC. Tego dnia wieczorem
 pierwszy test z ludźmi: właściciel, menedżer, dwóch handlowców. Powiadomienia: lista „kto dostaje
 co” zaakceptowana co do idei; budowa po uwagach z testu, plan w `docs/PROJEKT-POWIADOMIENIA.md`.
+
+## Samouczek i uwagi testerów (13.11.2026, przed pierwszym testem z ludźmi)
+
+Strony zamiast nakładek (czytniki ekranu radzą sobie z nimi źle, patrz `docs/PROJEKT-SAMOUCZEK.md`):
+`/samouczek` (kroki per rola: handlowiec, menedżer, BOK, właściciel + „Zagraj BOK” dla właściciela),
+postęp per osoba (`TutorialProgress`), NIP testowy per osoba (`samouczek.test_nip`, poprawny i
+unikalny, bo NIP ma w biurze jedną kartę), pasek zaproszenia przy pierwszym logowaniu (bez
+okienek), „Zgłoś uwagę do tej strony” w stopce każdej strony, lista uwag dla właściciela
+`/konto/uwagi` (`Feedback`). Kod: `app/samouczek.py` (treść kroków, bez FastAPI),
+`app/routes/samouczek.py`. Test `tests/test_samouczek.py` przechodzi proces handlowca dokładnie
+tak, jak opisano w krokach, więc zmiana ekranu bez zmiany samouczka wywali test.
+Zmiana ekranu = popraw też krok w `app/samouczek.py`.

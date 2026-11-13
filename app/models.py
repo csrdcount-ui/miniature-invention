@@ -10,7 +10,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, LargeBinary, Numeric, String, Text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, LargeBinary, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
@@ -722,3 +722,38 @@ class InvoicePhoto(Base):
 
     task: Mapped[InvoiceTask] = relationship(back_populates="photos")
     downloaded_by: Mapped[Optional[User]] = relationship()
+
+
+# --------------------------------------------------------------------------
+# Samouczek i uwagi testerów (13.11.2026)
+# --------------------------------------------------------------------------
+
+FEEDBACK_STATUSES = {"nowa": "Nowa", "zalatwiona": "Załatwiona"}
+
+
+class TutorialProgress(Base):
+    """Które kroki samouczka osoba oznaczyła jako zrobione. Klucz „_ukryte” = zaproszenie schowane."""
+
+    __tablename__ = "tutorial_progress"
+    __table_args__ = (UniqueConstraint("user_id", "step_key", name="uq_tutorial_user_step"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    step_key: Mapped[str] = mapped_column(String(60))
+    done_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class Feedback(Base):
+    """Uwaga testera z dowolnej strony: kto, z jakiej strony, co. Widzi ją właściciel."""
+
+    __tablename__ = "feedback"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
+    role: Mapped[str] = mapped_column(String(20), default="")
+    url: Mapped[str] = mapped_column(String(300), default="")
+    text: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(20), default="nowa", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    user: Mapped[Optional[User]] = relationship()

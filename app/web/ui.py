@@ -160,6 +160,7 @@ def render(request: Request, name: str, ctx: Optional[dict] = None, status_code:
     )
     ctx["brand"] = getattr(request.state, "company_name", None) or "Platforma brokerska"
     ctx["demo_active"] = bool(getattr(request.state, "demo_active", False)) and ctx["user"] is not None
+    ctx["tutorial_invite"] = bool(getattr(request.state, "tutorial_invite", False)) and ctx["user"] is not None
     return templates.TemplateResponse(request, name, ctx, status_code=status_code)
 
 

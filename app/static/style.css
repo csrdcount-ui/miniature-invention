@@ -222,3 +222,15 @@ section.etap { scroll-margin-top: .5rem; }
   }
   .marszruta > section.etap { flex: 0 0 100%; min-width: 0; scroll-snap-align: start; }
 }
+
+/* --- Samouczek i uwagi --- */
+.zaproszenie { border: 2px solid var(--marka); border-radius: 8px; padding: .5rem 1rem; margin: 0 0 1rem; }
+.zaproszenie p { margin: .25rem 0; }
+.zaproszenie-akcje { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
+.zaproszenie-akcje form { margin: 0; }
+ol.kroki { list-style: none; padding: 0; display: grid; gap: .75rem; }
+ol.kroki > li { border: 1px solid var(--ramka); border-radius: 8px; padding: .75rem 1rem; }
+ol.kroki h3 { margin: 0 0 .25rem; }
+ol.kroki p { margin: .25rem 0; }
+.stopka-pomoc { margin-top: 2rem; font-size: .95rem; }
+.stopka-pomoc a { display: inline-flex; align-items: center; min-height: 44px; }

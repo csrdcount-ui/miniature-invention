@@ -42,6 +42,17 @@
     {% if demo_active %}
     <p class="demo-baner">Dane demonstracyjne: osoby, klienci i warunki ze spółkami są zmyślone.</p>
     {% endif %}
+    {% if tutorial_invite %}
+    <div class="zaproszenie" role="region" aria-label="Samouczek">
+      <p><strong>Pierwszy raz w platformie?</strong> Samouczek zajmie około 10 minut i prowadzi krok po kroku przez Twoje zadania.</p>
+      <div class="zaproszenie-akcje"><a class="przycisk" href="/samouczek">Zacznij samouczek</a>
+      <form method="post" action="/samouczek/ukryj">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <input type="hidden" name="wroc" value="{{ request.url.path }}">
+        <button type="submit" class="drugi">Nie teraz</button>
+      </form></div>
+    </div>
+    {% endif %}
     {% if flashes %}
     <div role="status" class="flash">
       {% for f in flashes %}<p>{{ f }}</p>{% endfor %}
@@ -51,6 +62,9 @@
     <div role="alert" class="error"><p>{{ error }}</p></div>
     {% endif %}
     {% block content %}{% endblock %}
+    {% if user %}
+    <p class="stopka-pomoc"><a href="/uwagi?strona={{ request.url.path|urlencode }}">Zgłoś uwagę do tej strony</a> · <a href="/samouczek">Samouczek</a></p>
+    {% endif %}
   </main>
   <script>
     /* Telefon w trybie „Wersja na komputer”: strona ma ~980 px szerokości na ekranie ~400 px,

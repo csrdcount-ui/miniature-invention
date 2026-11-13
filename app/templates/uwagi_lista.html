@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Uwagi testerów{% endblock %}
+{% block content %}
+<h1>Uwagi testerów: {{ rows|length }}, nowych {{ new }}</h1>
+<p>Od najnowszych, nowe na górze. Przy każdej uwadze: kto, z jakiej strony i co napisał.</p>
+{% if rows %}
+<ul class="karty">
+  {% for f in rows %}
+  <li>
+    <h2 class="h3">{{ f.created_at.strftime("%d.%m.%Y %H:%M") }}, {{ f.user.name if f.user else "nieznany" }} ({{ ROLES.get(f.role, f.role) }}) — {{ STATUSES[f.status] }}</h2>
+    <p><strong>Strona:</strong> <a href="{{ f.url }}">{{ f.url }}</a></p>
+    <p>{{ f.text }}</p>
+    <form method="post" action="/konto/uwagi/{{ f.id }}/status">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      {% if f.status == "nowa" %}
+      <input type="hidden" name="status" value="zalatwiona">
+      <button type="submit">Oznacz jako załatwioną</button>
+      {% else %}
+      <input type="hidden" name="status" value="nowa">
+      <button type="submit" class="drugi">Przywróć jako nową</button>
+      {% endif %}
+    </form>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>Jeszcze nikt nic nie zgłosił.</p>
+{% endif %}
+{% endblock %}

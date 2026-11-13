@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% from "_makra.html" import pole %}
+{% block title %}Zgłoś uwagę{% endblock %}
+{% block content %}
+<h1>Zgłoś uwagę</h1>
+<p>Napisz, co było niejasne, czego brakowało albo co nie działało. Platforma sama dopisze stronę, której dotyczy uwaga ({{ page }}), i Twoją rolę.</p>
+<form method="post" action="/uwagi" class="stack">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <input type="hidden" name="strona" value="{{ page }}">
+  <div class="pole">
+    <label for="f-uwaga">Uwaga (wymagane)</label>
+    <textarea id="f-uwaga" name="uwaga" rows="6" maxlength="3000" required>{{ text }}</textarea>
+  </div>
+  <button type="submit">Wyślij uwagę</button>
+</form>
+<p><a href="{{ page }}">Wróć bez zgłaszania</a></p>
+{% endblock %}
