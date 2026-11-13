@@ -107,3 +107,21 @@ usługi. Dlatego kolejność: najpierw kolejka zdjęć dla BOK, AI jako dodatek 
 4. Czy zgadzasz się na wysyłanie zdjęć faktur do usługi AI (po sprawdzeniu umowy
    powierzenia i lokalizacji danych), czy tylko BOK?
 5. Jak długo trzymać zdjęcia faktur po wprowadzeniu danych?
+
+## Odpowiedzi i stan (13.11.2026)
+
+Odpowiedzi: 1) cztery ekrany tak; 2) wolumen z 6 faktur albo z dwóch oddalonych o co najmniej
+10 miesięcy (różnica stanów licznika), 6 faktur pokazuje też sezonowość; 3) BOK zwykle dostępny
+w trakcie spotkań; 4) pilotaż bez AI: dane wpisuje BOK („odeślij do BOK”) albo sam handlowiec,
+AI jako przyszła płatna opcja, architektura ma na nią miejsce; 5) okres przechowywania zdjęć:
+bez odpowiedzi, przyjęte: zdjęcia usuwane, gdy BOK zamknie zadanie.
+
+ZROBIONE: marszruta (cztery ekrany, pasek etapów z `aria-current="step"`, przesuwanie palcem
+przez CSS scroll-snap tylko na telefonie, linki z „Mój dzień” prowadzą do właściwego ekranu),
+punkty poboru (`MeteringPoint`), dane z faktur (`InvoiceReading`, źródło handlowiec/BOK/ai,
+`verified`), wolumen roczny i profil (`app/faktury.py`), termin wypowiedzenia, kalkulator
+z wolumenem i grupą z karty, „Odeślij zdjęcia faktur do BOK” (`InvoiceTask`, `InvoicePhoto`,
+zdjęcia pomniejszane do JPEG, PDF bez zmian, w bazie tylko do zamknięcia zadania), kolejka BOK
+„Faktury do wprowadzenia”, „dane z faktur gotowe” w „Mój dzień”. Miejsce na AI: `extractor()`
+zwraca None. Nie zrobione: szybki wynik rozmowy, spotkanie z godziną i adresem, kalendarz ICS,
+kalkulator z przyciskami ±5 zł, podpowiedzi rozmów.

@@ -2,12 +2,13 @@
 <span class="produkt produkt-{{ kod }}">{{ PRICING_PRODUCTS.get(kod, kod) }}</span>
 {%- endmacro %}
 
-{% macro pole(name, label, value="", type="text", hint="", required=false, extra="") -%}
+{% macro pole(name, label, value="", type="text", hint="", required=false, extra="", id="") -%}
+{%- set fid = id or ("f-" ~ name) %}{% set hid = "h-" ~ (id or name) -%}
 <div class="pole">
-  <label for="f-{{ name }}">{{ label }}{% if required %} (wymagane){% endif %}</label>
-  {% if hint %}<p class="podpowiedz" id="h-{{ name }}">{{ hint }}</p>{% endif %}
-  <input id="f-{{ name }}" name="{{ name }}" type="{{ type }}" value="{{ value if value is not none else '' }}"
-    {% if hint %}aria-describedby="h-{{ name }}"{% endif %} {% if required %}required{% endif %} {{ extra|safe }}>
+  <label for="{{ fid }}">{{ label }}{% if required %} (wymagane){% endif %}</label>
+  {% if hint %}<p class="podpowiedz" id="{{ hid }}">{{ hint }}</p>{% endif %}
+  <input id="{{ fid }}" name="{{ name }}" type="{{ type }}" value="{{ value if value is not none else '' }}"
+    {% if hint %}aria-describedby="{{ hid }}"{% endif %} {% if required %}required{% endif %} {{ extra|safe }}>
 </div>
 {%- endmacro %}
 

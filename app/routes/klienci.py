@@ -71,7 +71,9 @@ def day_page(request: Request, user: User = Depends(current_user), db: Session =
     if user.role == ROLE_BOK:
         return redirect("/bok")
     month = svc.month_start()
+    from .. import faktury as fk
     ctx = {"user": user, "d": pl.day_view(db, user), "mine": svc.month_sales(db, [user.id], month),
+           "invoices_done": fk.recent_done_for(db, user),
            "month_label": svc.month_label(month), "STAGES": STAGES, "OPEN_STAGES": OPEN_STAGES}
     if user.role == ROLE_MANAGER:
         people = list(db.scalars(select(User).where(User.manager_id == user.id, User.active.is_(True)).order_by(User.last_name)))
@@ -159,6 +161,10 @@ async def client_create(request: Request, user: User = Depends(current_user), db
 # Karta klienta
 # --------------------------------------------------------------------------
 
+# Marszruta klienta: ekran, na którym jest klient na danym etapie (link otwiera go od razu).
+CLIENT_SCREENS = {"lead": "kontakt", "kontakt": "kontakt", "dane": "dane", "oferta": "oferta", "wygrana": "oferta", "przegrana": "kontakt"}
+
+
 def _client_ctx(db: Session, user: User, c: Client, **extra) -> dict:
     today = date.today()
     suppliers = list(db.scalars(select(Supplier).where(Supplier.active.is_(True)).order_by(Supplier.name)))
@@ -172,6 +178,15 @@ def _client_ctx(db: Session, user: User, c: Client, **extra) -> dict:
         "need_offer": pl.checklist(db, "oferta"), "need_contract": pl.checklist(db, "umowa"),
         "form": {}, "week": today + timedelta(days=7),
     }
+    from .. import faktury as fk
+    from ..models import INVOICE_TASK_STATUSES, READING_SOURCES, TARIFF_GROUPS
+    rows, total, group = fk.summarize(c)
+    ctx.update({
+        "fk": fk, "points": rows, "volume_total": total, "volume_group": group,
+        "can_enter": fk.can_enter_data(user, c), "TARIFF_GROUPS": TARIFF_GROUPS, "READING_SOURCES": READING_SOURCES,
+        "INVOICE_TASK_STATUSES": INVOICE_TASK_STATUSES, "screen": CLIENT_SCREENS.get(c.stage, "kontakt"),
+        "pending_task": next((t for t in c.invoice_tasks if t.status == "czeka"), None),
+    })
     ctx.update(extra)
     return ctx
 
@@ -371,8 +386,10 @@ def bok_page(request: Request, user: User = Depends(_bok_user), db: Session = De
         g = groups.setdefault(k.client_id, {"c": k.client, "checks": [], "since": k.requested_at})
         g["checks"].append(k)
     recent = list(db.scalars(select(NipCheck).where(NipCheck.checked_at.is_not(None)).order_by(NipCheck.checked_at.desc()).limit(15)))
+    from .. import faktury as fk
     return render(request, "bok.html", {
         "user": user, "groups": list(groups.values()), "count": len(checks), "recent": recent,
+        "invoice_tasks": fk.pending_tasks(db),
         "NIP_CHECK_RESULTS": NIP_CHECK_RESULTS, "default_until": date.today() + timedelta(days=30),
     })
 

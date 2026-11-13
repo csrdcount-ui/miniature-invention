@@ -4,6 +4,22 @@
 {% block content %}
 <h1>{{ c.name }}</h1>
 <p><a href="/klienci">Wróć do listy klientów</a></p>
+<p class="skrot-klienta"><strong>{{ STAGES[c.stage] }}</strong>{% if c.stage in OPEN_STAGES %}. {% if c.next_step_date %}{% if c.next_step_date < today %}<strong class="uwaga">Zaległe od {{ c.next_step_date|data }}</strong>{% else %}Następny krok {{ c.next_step_date|data }}{% endif %}: {{ c.next_step }}{% else %}<strong class="uwaga">Brak następnego kroku.</strong>{% endif %}{% endif %}</p>
+{% if c.phone %}<p><a class="przycisk" href="tel:{{ c.phone }}">Zadzwoń: {{ c.phone }}</a></p>{% endif %}
+
+<nav class="etapy" aria-label="Marszruta klienta: ekrany">
+  <ol>
+    <li><a href="#kontakt"{% if screen == "kontakt" %} aria-current="step"{% endif %}><span class="etap-nazwa">1. Kontakt</span><span class="etap-stan">{% if c.next_step_date %}krok {{ c.next_step_date|data }}{% else %}bez kroku{% endif %}</span></a></li>
+    <li><a href="#dane"{% if screen == "dane" %} aria-current="step"{% endif %}><span class="etap-nazwa">2. Dane</span><span class="etap-stan">{% if pending_task %}faktury u BOK{% elif volume_total is not none %}{{ volume_total|mwh }} rocznie{% elif points %}brak wolumenu{% else %}brak punktów{% endif %}</span></a></li>
+    <li><a href="#teren"><span class="etap-nazwa">3. Teren</span><span class="etap-stan">{{ free|length }} {{ "spółka wolna" if free|length == 1 else "spółki wolne" if 2 <= free|length <= 4 else "spółek wolnych" }}</span></a></li>
+    <li><a href="#oferta-umowa"{% if screen == "oferta" %} aria-current="step"{% endif %}><span class="etap-nazwa">4. Oferta i umowa</span><span class="etap-stan">{{ offers|length }} {{ "oferta" if offers|length == 1 else "oferty" if 2 <= offers|length <= 4 else "ofert" }}</span></a></li>
+  </ol>
+</nav>
+<p class="podpowiedz tylko-telefon">Ekrany przesuwasz palcem w lewo i w prawo albo wybierasz z listy powyżej.</p>
+
+<div class="marszruta">
+<section class="etap" id="kontakt" aria-labelledby="h-kontakt">
+<h2 id="h-kontakt">1. Kontakt</h2>
 <dl>
   <dt>Etap</dt><dd><strong>{{ STAGES[c.stage] }}</strong>, od {{ c.stage_since|data }}{% if c.stage == "przegrana" %}. Powód: {{ c.lost_reason }}{% endif %}</dd>
   <dt>NIP</dt><dd>{{ c.nip or "nie podano" }}</dd>
@@ -15,7 +31,7 @@
 </dl>
 
 {% if c.stage in OPEN_STAGES %}
-<h2>Następny krok</h2>
+<h3>Następny krok</h3>
 {% if c.next_step_date %}
 <p>{% if c.next_step_date < today %}<strong class="uwaga">Zaległe od {{ c.next_step_date|data }}:</strong>{% else %}<strong>{{ c.next_step_date|data }}:</strong>{% endif %} {{ c.next_step }}</p>
 {% else %}
@@ -61,7 +77,41 @@
 </details>
 {% endif %}
 
-<h2>Sprawdzenie NIP w BOK</h2>
+{% if can_sell %}
+<details class="zwijane"{% if error and form.nazwa is defined %} open{% endif %}>
+  <summary>Zmień dane klienta</summary>
+  <div class="wnetrze">
+  <form method="post" action="/klienci/{{ c.id }}/dane" class="stack">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    {{ pole("nazwa", "Nazwa firmy", form.nazwa or c.name, required=true) }}
+    {{ pole("nip", "NIP", form.nip or c.nip or "", extra='inputmode="numeric"') }}
+    {{ pole("osoba", "Osoba kontaktowa", form.osoba or c.contact_person) }}
+    {{ pole("telefon", "Telefon", form.telefon or c.phone, type="tel") }}
+    {{ pole("email", "E-mail", form.email or c.email, type="email") }}
+    <div class="pole">
+      <label for="f-zrodlo">Skąd pochodzi ten lead</label>
+      <select id="f-zrodlo" name="zrodlo"><option value="">Nie wybrano</option>{% for s in sources %}<option value="{{ s }}" {% if (form.zrodlo or c.source) == s %}selected{% endif %}>{{ s }}</option>{% endfor %}</select>
+    </div>
+    <button type="submit">Zapisz dane</button>
+  </form>
+  </div>
+</details>
+{% endif %}
+
+<details class="zwijane">
+  <summary>Historia działań ({{ c.events|length }})</summary>
+  <ol class="historia wnetrze">
+    {% for e in c.events %}
+    <li><p><strong>{{ e.day|data }}, {{ EVENT_KINDS[e.kind]|lower }}</strong>{% if e.user %} ({{ e.user.name }}){% endif %}</p><p>{{ e.text }}</p></li>
+    {% endfor %}
+  </ol>
+</details>
+</section>
+
+<section class="etap" id="dane" aria-labelledby="h-dane">
+<h2 id="h-dane">2. Dane</h2>
+{% include "_klient_dane.html" %}
+<h3>Sprawdzenie NIP w BOK</h3>
 {% if c.checks %}
 <ul>
   {% for k in c.checks %}
@@ -96,12 +146,43 @@
 </details>
 {% endif %}
 
-<h2>Oferty</h2>
+<details class="zwijane">
+  <summary>{{ "Co jest potrzebne do przygotowania umowy" if c.stage == "oferta" else "Co jest potrzebne do złożenia oferty" }}</summary>
+  <ul class="wnetrze">
+    {% if c.stage != "oferta" %}
+    {% if not c.nip %}<li><strong class="uwaga">Brakuje NIP-u klienta.</strong></li>{% endif %}
+    {% if c.nip and not free %}<li><strong class="uwaga">Brak potwierdzonej rezerwacji w żadnej spółce: wyślij NIP do BOK.</strong></li>{% endif %}
+    {% for item in need_offer %}<li>{{ item }}</li>{% endfor %}
+    {% else %}
+    {% for item in need_contract %}<li>{{ item }}</li>{% endfor %}
+    {% endif %}
+  </ul>
+</details>
+
+</section>
+
+<section class="etap" id="teren" aria-labelledby="h-teren">
+<h2 id="h-teren">3. Teren</h2>
+<dl>
+  <dt>Wolumen roczny</dt><dd>{% if volume_total is not none %}<strong>{{ volume_total|mwh }}</strong>{% else %}brak: uzupełnij dane z faktur na ekranie „Dane”{% endif %}</dd>
+  {% if volume_group %}<dt>Grupa taryfowa</dt><dd>{{ volume_group }}</dd>{% endif %}
+  {% for r in points %}{% if r.point.current_seller or r.point.contract_end %}<dt>{{ r.point.ppe or r.point.address }}</dt><dd>{% if r.point.current_seller %}sprzedawca {{ r.point.current_seller }}{% endif %}{% if r.point.contract_end %}, umowa do {{ r.point.contract_end|data }}{% endif %}{% if fk.notice_deadline(r.point) %}, wypowiedzenie do {{ fk.notice_deadline(r.point)|data }}{% endif %}{% if r.profile.kind %}, profil {{ r.profile.kind }}{% endif %}</dd>{% endif %}{% endfor %}
+</dl>
+<h3>Spółki, w których NIP jest wolny</h3>
+{% if free %}<ul>{% for s in free %}<li>{{ s.name }}</li>{% endfor %}</ul>{% else %}<p>Jeszcze żadna: wyślij NIP do BOK na ekranie „Dane”.</p>{% endif %}
+{% if can_sell and c.stage in OPEN_STAGES %}
+<p><a class="przycisk" href="/klienci/{{ c.id }}/kalkulator{% if volume_total is not none or volume_group %}?{% if volume_total is not none %}wolumen={{ volume_total }}{% endif %}{% if volume_group %}&amp;grupa={{ volume_group }}{% endif %}{% endif %}">Kalkulator: gdzie się bardziej opłaca</a></p>
+{% endif %}
+</section>
+
+<section class="etap" id="oferta-umowa" aria-labelledby="h-oferta">
+<h2 id="h-oferta">4. Oferta i umowa</h2>
+<h3>Oferty</h3>
 {% if offers %}
 <ul class="karty">
   {% for o, st, total in offers %}
   <li>
-    <h3>{{ o.supplier.name }} {{ produkt_plakietka(o.pricing_product) }}</h3>
+    <h4>{{ o.supplier.name }} {{ produkt_plakietka(o.pricing_product) }}</h4>
     <p>Status: <strong>{{ OFFER_STATUSES[o.status] }}</strong>{% if st.expired %}, <strong class="uwaga">wygasła {{ o.valid_until|data }}</strong>{% elif o.status == "otwarta" %}, ważna do {{ o.valid_until|data }}{% endif %}</p>
     {% if st.needs_followup %}<p><strong class="uwaga">Wysłana {{ st.days }} dni temu, bez odpowiedzi: zadzwoń do klienta.</strong></p>{% endif %}
     <p>{{ o.annual_volume_mwh|mwh }} rocznie, {{ o.term_months }} mies., marża {{ o.markup_pln_mwh|zl }}/MWh{% if o.base_price_pln_mwh is not none %}, cena dla klienta {{ (o.base_price_pln_mwh + o.markup_pln_mwh)|zl }}/MWh{% endif %}</p>
@@ -120,7 +201,6 @@
 <p>Brak ofert.</p>
 {% endif %}
 {% if can_sell and c.stage in OPEN_STAGES %}
-<p><a href="/klienci/{{ c.id }}/kalkulator">Kalkulator: gdzie się bardziej opłaca</a></p>
 <details class="zwijane" id="oferta"{% if form.marza is defined %} open{% endif %}>
   <summary>Zapisz złożoną ofertę</summary>
   <div class="wnetrze">
@@ -156,46 +236,6 @@
 </details>
 {% endif %}
 
-<details class="zwijane">
-  <summary>{{ "Co jest potrzebne do przygotowania umowy" if c.stage == "oferta" else "Co jest potrzebne do złożenia oferty" }}</summary>
-  <ul class="wnetrze">
-    {% if c.stage != "oferta" %}
-    {% if not c.nip %}<li><strong class="uwaga">Brakuje NIP-u klienta.</strong></li>{% endif %}
-    {% if c.nip and not free %}<li><strong class="uwaga">Brak potwierdzonej rezerwacji w żadnej spółce: wyślij NIP do BOK.</strong></li>{% endif %}
-    {% for item in need_offer %}<li>{{ item }}</li>{% endfor %}
-    {% else %}
-    {% for item in need_contract %}<li>{{ item }}</li>{% endfor %}
-    {% endif %}
-  </ul>
-</details>
-
-{% if can_sell %}
-<details class="zwijane"{% if error and form.nazwa is defined %} open{% endif %}>
-  <summary>Zmień dane klienta</summary>
-  <div class="wnetrze">
-  <form method="post" action="/klienci/{{ c.id }}/dane" class="stack">
-    <input type="hidden" name="csrf" value="{{ csrf }}">
-    {{ pole("nazwa", "Nazwa firmy", form.nazwa or c.name, required=true) }}
-    {{ pole("nip", "NIP", form.nip or c.nip or "", extra='inputmode="numeric"') }}
-    {{ pole("osoba", "Osoba kontaktowa", form.osoba or c.contact_person) }}
-    {{ pole("telefon", "Telefon", form.telefon or c.phone, type="tel") }}
-    {{ pole("email", "E-mail", form.email or c.email, type="email") }}
-    <div class="pole">
-      <label for="f-zrodlo">Skąd pochodzi ten lead</label>
-      <select id="f-zrodlo" name="zrodlo"><option value="">Nie wybrano</option>{% for s in sources %}<option value="{{ s }}" {% if (form.zrodlo or c.source) == s %}selected{% endif %}>{{ s }}</option>{% endfor %}</select>
-    </div>
-    <button type="submit">Zapisz dane</button>
-  </form>
-  </div>
-</details>
-{% endif %}
-
-<details class="zwijane">
-  <summary>Historia działań ({{ c.events|length }})</summary>
-  <ol class="historia wnetrze">
-    {% for e in c.events %}
-    <li><p><strong>{{ e.day|data }}, {{ EVENT_KINDS[e.kind]|lower }}</strong>{% if e.user %} ({{ e.user.name }}){% endif %}</p><p>{{ e.text }}</p></li>
-    {% endfor %}
-  </ol>
-</details>
+</section>
+</div>
 {% endblock %}

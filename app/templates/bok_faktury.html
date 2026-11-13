@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Faktury: {{ t.client.name }}{% endblock %}
+{% block content %}
+<h1>Faktury: {{ t.client.name }}</h1>
+<p><a href="/bok">Wróć do zleceń</a></p>
+<dl>
+  <dt>Status</dt><dd><strong>{{ STATUSES[t.status] }}</strong></dd>
+  <dt>Handlowiec</dt><dd>{{ t.client.owner.name }}</dd>
+  <dt>Przesłane</dt><dd>{{ t.requested_at.strftime("%d.%m.%Y %H:%M") }}</dd>
+  {% if t.note %}<dt>Uwagi handlowca</dt><dd>{{ t.note }}</dd>{% endif %}
+  {% if t.done_at %}<dt>Zamknięte</dt><dd>{{ t.done_at.strftime("%d.%m.%Y %H:%M") }}{% if t.done_by %}, {{ t.done_by.name }}{% endif %}{% if t.done_note %}: {{ t.done_note }}{% endif %}</dd>{% endif %}
+</dl>
+
+{% if t.status == "czeka" %}
+<p><a class="przycisk" href="/klienci/{{ t.client_id }}#dane">Wpisz dane na karcie klienta</a></p>
+
+<h2>Zdjęcia faktur: {{ t.photos|length }}</h2>
+<ul class="faktury-zdjecia">
+  {% for ph in t.photos %}
+  <li>
+    {% if ph.content_type == "application/pdf" %}
+    <a href="/bok/faktury/{{ t.id }}/zdjecie/{{ ph.id }}">Faktura {{ loop.index }} z {{ t.photos|length }} (PDF)</a>
+    {% else %}
+    <a href="/bok/faktury/{{ t.id }}/zdjecie/{{ ph.id }}"><img src="/bok/faktury/{{ t.id }}/zdjecie/{{ ph.id }}" alt="Faktura, zdjęcie {{ loop.index }} z {{ t.photos|length }}" loading="lazy"></a>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+
+<h2>Zamknij zadanie</h2>
+<form method="post" action="/bok/faktury/{{ t.id }}/zamknij" class="stack">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <fieldset>
+    <legend>Wynik</legend>
+    <div class="pole"><label><input type="radio" name="wynik" value="zrobione" checked>Dane wprowadzone na kartę klienta</label></div>
+    <div class="pole"><label><input type="radio" name="wynik" value="anuluj">Nie da się odczytać: anuluj i poproś handlowca o nowe zdjęcia</label></div>
+  </fieldset>
+  <div class="pole">
+    <label for="f-uwagi">Uwagi dla handlowca</label>
+    <input id="f-uwagi" name="uwagi" maxlength="1000">
+  </div>
+  <button type="submit">Zamknij zadanie i usuń zdjęcia</button>
+</form>
+{% endif %}
+{% endblock %}

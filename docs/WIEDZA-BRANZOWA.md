@@ -289,3 +289,14 @@ spółek są poufne. Zapisujemy tylko strukturę.
   blok kilku lat ≈ średnia lat.
 - Prowizja handlowca od dopłaty do opłaty handlowej: w tym samym procencie co od sprzedaży
   (junior 35% → 35% dopłaty).
+
+## Wolumen roczny z faktur (potwierdzone 13.11.2026)
+
+- Najlepiej 6 faktur: z nich wolumen roczny i ocena profilu (sezonowy czy płaski, czyli czy
+  klient zużywa miesiąc do miesiąca podobną ilość energii).
+- Minimum: dwie faktury, które dzieli co najmniej 10 miesięcy. Na każdej fakturze jest stan
+  licznika; różnica stanów (późniejszy minus wcześniejszy) daje zużycie z tego okresu.
+- BOK jest zwykle dostępny w trakcie spotkań handlowców i może wprowadzić dane z faktur na
+  bieżąco. Po godzinach lub w sobotę handlowiec wpisuje dane sam.
+- Rozpoznawanie faktur przez AI: nie teraz. Ewentualnie później jako płatna opcja (umowa
+  powierzenia danych, koszt jednej faktury w abonamencie).

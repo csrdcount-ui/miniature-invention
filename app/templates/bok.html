@@ -2,6 +2,22 @@
 {% block title %}Do sprawdzenia{% endblock %}
 {% block content %}
 <h1>Do sprawdzenia: {{ count }}</h1>
+
+{% if invoice_tasks %}
+<h2>Faktury do wprowadzenia: {{ invoice_tasks|length }}</h2>
+<p>Handlowcy przesłali zdjęcia faktur. Wpisz dane na karcie klienta (ekran „Dane”), potem zamknij zadanie: zdjęcia zostaną usunięte.</p>
+<ul class="karty">
+  {% for t in invoice_tasks %}
+  <li>
+    <h3><a href="/bok/faktury/{{ t.id }}">{{ t.client.name }}</a></h3>
+    <p>{{ t.photos|length }} {{ "plik" if t.photos|length == 1 else "pliki" if t.photos|length < 5 else "plików" }}, handlowiec: {{ t.client.owner.name }}, przesłane {{ t.requested_at.strftime("%d.%m.%Y %H:%M") }}</p>
+    {% if t.note %}<p>Uwagi: {{ t.note }}</p>{% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+<h2>NIP-y do sprawdzenia: {{ count }}</h2>
 <p>NIP-y przesłane przez handlowców. Sprawdź tylko wskazane spółki: czy NIP jest wolny, zarezerwuj go i sprawdź scoring. Handlowiec zobaczy wynik od razu na swoim ekranie dnia.</p>
 
 {% if groups %}

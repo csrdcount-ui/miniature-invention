@@ -446,6 +446,12 @@ class Client(Base):
     events: Mapped[list["ClientEvent"]] = relationship(
         back_populates="client", cascade="all, delete-orphan", order_by="ClientEvent.id.desc()"
     )
+    points: Mapped[list["MeteringPoint"]] = relationship(
+        back_populates="client", cascade="all, delete-orphan", order_by="MeteringPoint.id"
+    )
+    invoice_tasks: Mapped[list["InvoiceTask"]] = relationship(
+        back_populates="client", cascade="all, delete-orphan", order_by="InvoiceTask.id.desc()"
+    )
 
 
 class NipCheck(Base):
@@ -618,3 +624,93 @@ class PriceItem(Base):
     value: Mapped[Decimal] = mapped_column(Numeric(12, 2))
 
     price_list: Mapped[PriceList] = relationship(back_populates="items")
+
+
+# --------------------------------------------------------------------------
+# Punkty poboru i dane z faktur (13.11.2026)
+# --------------------------------------------------------------------------
+
+# Kto wprowadził dane z faktury. „ai” zarezerwowane na płatną opcję rozpoznawania faktur
+# (wymaga umowy powierzenia danych i decyzji o koszcie; dziś wyłączone, patrz app/faktury.py).
+READING_SOURCES = {"handlowiec": "Handlowiec", "bok": "BOK", "ai": "Rozpoznanie automatyczne"}
+INVOICE_TASK_STATUSES = {"czeka": "Czeka na BOK", "zrobione": "BOK wprowadził dane", "anulowane": "Anulowane"}
+
+
+class MeteringPoint(Base):
+    """Punkt poboru klienta (PPE): z niego bierze się grupa taryfowa i wolumen do oferty."""
+
+    __tablename__ = "metering_points"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    client_id: Mapped[int] = mapped_column(ForeignKey("clients.id"), index=True)
+    ppe: Mapped[str] = mapped_column(String(50), default="")
+    address: Mapped[str] = mapped_column(String(300), default="")
+    tariff_group: Mapped[str] = mapped_column(String(10), default="")
+    current_seller: Mapped[str] = mapped_column(String(120), default="")
+    contract_end: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    notice_months: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    created_by_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    client: Mapped[Client] = relationship(back_populates="points")
+    readings: Mapped[list["InvoiceReading"]] = relationship(
+        back_populates="point", cascade="all, delete-orphan", order_by="InvoiceReading.period_to"
+    )
+
+
+class InvoiceReading(Base):
+    """Dane z jednej faktury: okres rozliczeniowy, stany licznika (suma stref) i zużycie."""
+
+    __tablename__ = "invoice_readings"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    point_id: Mapped[int] = mapped_column(ForeignKey("metering_points.id"), index=True)
+    period_from: Mapped[date] = mapped_column(Date)
+    period_to: Mapped[date] = mapped_column(Date)
+    meter_start: Mapped[Optional[Decimal]] = mapped_column(Numeric(14, 3), nullable=True)
+    meter_end: Mapped[Optional[Decimal]] = mapped_column(Numeric(14, 3), nullable=True)
+    consumption_kwh: Mapped[Optional[Decimal]] = mapped_column(Numeric(14, 3), nullable=True)
+    source: Mapped[str] = mapped_column(String(20), default="handlowiec")
+    verified: Mapped[bool] = mapped_column(Boolean, default=True)  # False tylko dla przyszłych danych z AI
+    entered_by_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    point: Mapped[MeteringPoint] = relationship(back_populates="readings")
+    entered_by: Mapped[Optional[User]] = relationship()
+
+
+class InvoiceTask(Base):
+    """„Odeślij do BOK”: handlowiec przekazuje zdjęcia faktur, BOK wprowadza dane."""
+
+    __tablename__ = "invoice_tasks"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    client_id: Mapped[int] = mapped_column(ForeignKey("clients.id"), index=True)
+    status: Mapped[str] = mapped_column(String(20), default="czeka", index=True)
+    note: Mapped[str] = mapped_column(String(1000), default="")
+    requested_by_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
+    requested_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    done_by_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id"), nullable=True)
+    done_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    done_note: Mapped[str] = mapped_column(String(1000), default="")
+
+    client: Mapped[Client] = relationship(back_populates="invoice_tasks")
+    requested_by: Mapped[Optional[User]] = relationship(foreign_keys=[requested_by_id])
+    done_by: Mapped[Optional[User]] = relationship(foreign_keys=[done_by_id])
+    photos: Mapped[list["InvoicePhoto"]] = relationship(
+        back_populates="task", cascade="all, delete-orphan", order_by="InvoicePhoto.id"
+    )
+
+
+class InvoicePhoto(Base):
+    """Zdjęcie faktury (pomniejszone). Usuwane, gdy BOK zamknie zadanie: trzymamy dane, nie zdjęcia."""
+
+    __tablename__ = "invoice_photos"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    task_id: Mapped[int] = mapped_column(ForeignKey("invoice_tasks.id"), index=True)
+    content_type: Mapped[str] = mapped_column(String(50), default="image/jpeg")
+    data: Mapped[bytes] = mapped_column(LargeBinary)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    task: Mapped[InvoiceTask] = relationship(back_populates="photos")

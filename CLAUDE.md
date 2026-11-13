@@ -424,3 +424,14 @@ Poprawione: cele dotyku (tytuły kart, linki do telefonów, pola wyboru, ranking
 przeskoki nagłówków (h1 -> h3 na listach klientów i umów), „Klient podpisał: zapisz umowę”
 jako przycisk główny. Fałszywy alarm audytu: „puste linki” na pulpicie to linki w zwiniętych
 `<details>` (innerText pusty, bo ukryte). Proces w terenie: `docs/PROJEKT-PROCES-TEREN.md`.
+
+## Marszruta klienta i dane z faktur (13.11.2026)
+
+Karta klienta (`klient.html`) ma cztery ekrany: `#kontakt`, `#dane` (`_klient_dane.html`),
+`#teren`, `#oferta-umowa`; `CLIENT_SCREENS` w `app/routes/klienci.py`. Punkty poboru, faktury,
+wolumen i profil: `app/faktury.py` (bez FastAPI), strony: `app/routes/faktury.py`. Nowe tabele:
+metering_points, invoice_readings, invoice_tasks, invoice_photos (bez zmian w starych tabelach).
+Zdjęcia faktur w bazie (bytea) tylko do zamknięcia zadania przez BOK — tymczasowo, do decyzji
+o magazynie plików i okresie przechowywania. Dane może wpisać opiekun, jego menedżer,
+właściciel i BOK (`can_enter_data`); odesłać zdjęcia: opiekun, menedżer, właściciel.
+Biblioteka `pillow` przypięta w requirements. Szczegóły: `docs/PROJEKT-MARSZRUTA-KLIENTA.md`.

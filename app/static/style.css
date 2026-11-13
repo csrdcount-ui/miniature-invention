@@ -191,3 +191,34 @@ input[type="checkbox"], input[type="radio"] { width: 1.4rem; height: 1.4rem; mar
 label:has(> input[type="checkbox"]), label:has(> input[type="radio"]) {
   display: flex; align-items: center; min-height: 44px;
 }
+
+/* --- Zdjęcia faktur dla BOK --- */
+ul.faktury-zdjecia { list-style: none; padding: 0; display: grid; gap: 1rem; }
+ul.faktury-zdjecia img { max-width: 100%; height: auto; border: 1px solid var(--ramka); border-radius: 6px; }
+
+/* --- Marszruta klienta: pasek etapów i ekrany przesuwane palcem na telefonie ---
+   Bez JavaScriptu (CSS scroll-snap). Czytnik ekranu czyta ekrany po kolei jako sekcje;
+   przesunięcia palcem w czytniku służą do nawigacji, dlatego pasek etapów to zwykłe linki. */
+nav.etapy ol { list-style: none; margin: .5rem 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
+nav.etapy a {
+  display: flex; flex-direction: column; justify-content: center; min-height: 56px; padding: .4rem .75rem;
+  border: 1px solid var(--ramka); border-radius: 8px; text-decoration: none; color: var(--tekst);
+}
+nav.etapy a[aria-current="step"] { border: 2px solid var(--marka); }
+nav.etapy .etap-nazwa { font-weight: 700; color: var(--marka); }
+nav.etapy .etap-stan { font-size: .9rem; color: var(--cichy); }
+.skrot-klienta { margin: .25rem 0; }
+.tylko-telefon { display: none; }
+section.etap { scroll-margin-top: .5rem; }
+@media (min-width: 48.01rem) {
+  nav.etapy ol { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  section.etap { border-top: 1px solid var(--ramka); margin-top: 1.5rem; }
+}
+@media (max-width: 48rem) {
+  .tylko-telefon { display: block; }
+  .marszruta {
+    display: flex; align-items: flex-start; gap: 1rem; overflow-x: auto; overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory; margin: 0 -1rem; padding: 0 1rem; scroll-padding: 0 1rem;
+  }
+  .marszruta > section.etap { flex: 0 0 100%; min-width: 0; scroll-snap-align: start; }
+}

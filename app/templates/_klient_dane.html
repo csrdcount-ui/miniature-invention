@@ -1,0 +1,105 @@
+<h3>Punkty poboru</h3>
+{% if points %}
+<ul class="karty">
+  {% for r in points %}{% set p = r.point %}
+  <li>
+    <h4>{{ p.ppe or "Punkt bez numeru" }}{% if p.tariff_group %}, {{ p.tariff_group }}{% endif %}</h4>
+    {% if p.address %}<p>{{ p.address }}</p>{% endif %}
+    {% if p.current_seller or p.contract_end %}<p>{% if p.current_seller %}Sprzedawca: {{ p.current_seller }}. {% endif %}{% if p.contract_end %}Umowa do {{ p.contract_end|data }}{% if fk.notice_deadline(p) %}, wypowiedzenie najpóźniej {{ fk.notice_deadline(p)|data }}{% endif %}.{% endif %}</p>{% endif %}
+    {% if r.volume.mwh is not none %}
+    <p>Wolumen roczny: <strong>{{ r.volume.mwh|mwh }}</strong> ({{ r.volume.method }}).</p>
+    {% else %}
+    <p>{{ r.volume.error }}</p>
+    {% endif %}
+    {% if r.volume.warning %}<p><strong class="uwaga">Uwaga: {{ r.volume.warning }}.</strong></p>{% endif %}
+    <p>{{ r.profile.text }}</p>
+    {% if p.readings %}
+    <details class="zwijane">
+      <summary>Faktury ({{ p.readings|length }})</summary>
+      <ul class="wnetrze">
+        {% for x in p.readings %}
+        <li>
+          {{ x.period_from|data }} – {{ x.period_to|data }}{% if x.consumption_kwh is not none %}: zużycie {{ x.consumption_kwh|num(0) }} kWh{% endif %}{% if x.meter_end is not none %}, stan licznika {{ x.meter_end|num(0) }}{% endif %}. Wpisał: {{ READING_SOURCES.get(x.source, x.source) }}{% if x.entered_by %} ({{ x.entered_by.name }}){% endif %}{% if not x.verified %}, <strong class="uwaga">niesprawdzone przez BOK</strong>{% endif %}.
+          {% if can_enter %}
+          <form method="post" action="/klienci/{{ c.id }}/punkty/{{ p.id }}/faktura/{{ x.id }}/usun">
+            <input type="hidden" name="csrf" value="{{ csrf }}">
+            <button type="submit" class="drugi">Usuń fakturę z {{ x.period_to|data }}</button>
+          </form>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </details>
+    {% endif %}
+    {% if can_enter %}
+    <details class="zwijane"{% if error and form.od is defined and form.punkt == p.id|string %} open{% endif %}>
+      <summary>Dodaj dane z faktury: {{ p.ppe or p.address }}</summary>
+      <div class="wnetrze">
+      <form method="post" action="/klienci/{{ c.id }}/punkty/{{ p.id }}/faktura" class="stack">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <input type="hidden" name="punkt" value="{{ p.id }}">
+        {{ pole("od", "Okres rozliczeniowy od", form.od if form.punkt == p.id|string else "", type="date", required=true, id="f-od-" ~ p.id) }}
+        {{ pole("do", "Okres rozliczeniowy do", form.do if form.punkt == p.id|string else "", type="date", required=true, id="f-do-" ~ p.id) }}
+        {{ pole("zuzycie", "Zużycie w okresie, kWh", form.zuzycie if form.punkt == p.id|string else "", extra='inputmode="decimal"', hint="Przy kilku strefach wpisz sumę stref.", id="f-zuzycie-" ~ p.id) }}
+        {{ pole("licznik_od", "Stan licznika na początek okresu", form.licznik_od if form.punkt == p.id|string else "", extra='inputmode="decimal"', hint="Przy liczniku wielostrefowym suma stref.", id="f-lod-" ~ p.id) }}
+        {{ pole("licznik_do", "Stan licznika na koniec okresu", form.licznik_do if form.punkt == p.id|string else "", extra='inputmode="decimal"', id="f-ldo-" ~ p.id) }}
+        <button type="submit">Zapisz dane z faktury</button>
+      </form>
+      <p class="podpowiedz">Wolumen roczny: najlepiej z 6 faktur (pokazują też sezonowość) albo z dwóch faktur oddalonych o co najmniej 10 miesięcy, z różnicy stanów licznika.</p>
+      </div>
+    </details>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>Brak punktów poboru.</p>
+{% endif %}
+
+{% if can_enter %}
+<details class="zwijane"{% if error and form.ppe is defined %} open{% endif %}>
+  <summary>Dodaj punkt poboru</summary>
+  <div class="wnetrze">
+  <form method="post" action="/klienci/{{ c.id }}/punkty" class="stack">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    {{ pole("ppe", "Numer punktu poboru (PPE)", form.ppe) }}
+    {{ pole("adres", "Adres punktu", form.adres) }}
+    <div class="pole">
+      <label for="f-grupa">Grupa taryfowa</label>
+      <select id="f-grupa" name="grupa"><option value="">Nie wiem jeszcze</option>{% for g in TARIFF_GROUPS %}<option value="{{ g }}" {% if form.grupa == g %}selected{% endif %}>{{ g }}</option>{% endfor %}</select>
+    </div>
+    {{ pole("sprzedawca", "Obecny sprzedawca", form.sprzedawca) }}
+    {{ pole("koniec", "Koniec obecnej umowy", form.koniec, type="date") }}
+    {{ pole("wypowiedzenie", "Okres wypowiedzenia w miesiącach", form.wypowiedzenie, type="number", extra='min="0" max="36"') }}
+    <button type="submit">Dodaj punkt poboru</button>
+  </form>
+  </div>
+</details>
+{% endif %}
+
+<h3>Faktury dla BOK</h3>
+{% if c.invoice_tasks %}
+<ul>
+  {% for t in c.invoice_tasks[:3] %}
+  <li>{{ t.requested_at.strftime("%d.%m.%Y %H:%M") }}: <strong>{{ INVOICE_TASK_STATUSES[t.status] }}</strong>{% if t.done_note %}. {{ t.done_note }}{% endif %}</li>
+  {% endfor %}
+</ul>
+{% endif %}
+{% if can_sell %}
+<details class="zwijane">
+  <summary>Odeślij zdjęcia faktur do BOK</summary>
+  <div class="wnetrze">
+  <form method="post" action="/klienci/{{ c.id }}/faktury-bok" enctype="multipart/form-data" class="stack">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="pole">
+      <label for="f-zdjecia">Zdjęcia albo pliki PDF faktur (do {{ fk.MAX_PHOTOS }})</label>
+      <input id="f-zdjecia" name="zdjecia" type="file" accept="image/*,application/pdf" multiple required>
+      <p class="podpowiedz">Telefon zaproponuje aparat albo galerię. Zdjęcia są usuwane, gdy BOK wpisze dane.</p>
+    </div>
+    {{ pole("uwagi", "Uwagi dla BOK", "", hint="Np. który punkt poboru, czego szukać.") }}
+    <button type="submit">Wyślij do BOK</button>
+  </form>
+  <p class="podpowiedz">Po godzinach pracy BOK możesz wpisać dane sam: „Dodaj dane z faktury” przy punkcie poboru.</p>
+  </div>
+</details>
+{% endif %}
