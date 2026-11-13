@@ -439,3 +439,15 @@ albo serwer biura — nie wiadomo który) i dopiero po pytaniu i potwierdzeniu u
 zarchiwizowania”. Bezpośredni zapis na dysk biura (integracja) — możliwy później. Dane może wpisać opiekun, jego menedżer,
 właściciel i BOK (`can_enter_data`); odesłać zdjęcia: opiekun, menedżer, właściciel.
 Biblioteka `pillow` przypięta w requirements. Szczegóły: `docs/PROJEKT-MARSZRUTA-KLIENTA.md`.
+
+## Test obciążenia (13.11.2026, przed pilotażem z 4 osobami)
+
+Lokalnie: PostgreSQL 16, serwer na 1 rdzeniu, polecenie jak na Renderze, dane demo. Wersja
+sprzed poprawek: 4 osoby 0 błędów; 20 osób klikających co ~1 s zatykało serwer (pula połączeń
+5+10, czekanie 30 s; logowanie PBKDF2 blokowało pętlę). Poprawki: pula 10+20, `pool_pre_ping`
+(stare połączenia po uśpieniu darmowego planu), `pool_recycle`; logowanie i zmiana hasła
+liczą hasło w `run_in_threadpool`, a logowanie oddaje połączenie przed sprawdzaniem hasła.
+Po poprawkach 20 osób: 1177 żądań, 0 błędów, mediana 36 ms, ok. 25–40 ms CPU na żądanie,
+pamięć ok. 130 MB. 40 osób logujących się w tej samej sekundzie nadal zatyka serwer —
+skrajny scenariusz; pełne rozwiązanie: trasy POST bez blokujących zapytań w pętli zdarzeń.
+Test złośliwych danych na 80 adresach (z fakturami): 0 błędów.

@@ -22,6 +22,8 @@ from ..models import (
     Company,
     User,
 )
+from starlette.concurrency import run_in_threadpool
+
 from ..security import hash_password, verify_password
 from ..web.auth import company_of, current_user, needs_completion, owner_only
 from ..web.forms import company_error, names_error, validate_new_user
@@ -69,7 +71,10 @@ async def login(request: Request, db: Session = Depends(get_db)):
     form = await form_data(request)
     email = form.get("email", "").lower()
     user = db.scalar(select(User).where(User.email == email))
-    if not user or not user.active or not verify_password(form.get("haslo", ""), user.password_hash):
+    active, stored = (user.active, user.password_hash) if user else (False, "")
+    db.rollback()  # oddaj połączenie z bazą na czas sprawdzania hasła (test obciążenia 13.11.2026)
+    # Sprawdzanie hasła celowo trwa (PBKDF2); w osobnym wątku, żeby nie blokować innych osób.
+    if not user or not active or not await run_in_threadpool(verify_password, form.get("haslo", ""), stored):
         return render(
             request, "logowanie.html", {"error": "Nieprawidłowy e-mail lub hasło.", "email": email}, 401
         )
@@ -224,13 +229,13 @@ def password_page(request: Request, user: User = Depends(current_user)):
 @router.post("/haslo")
 async def password_change(request: Request, user: User = Depends(current_user), db: Session = Depends(get_db)):
     form = await form_data(request)
-    if not verify_password(form.get("obecne", ""), user.password_hash):
+    if not await run_in_threadpool(verify_password, form.get("obecne", ""), user.password_hash):
         return render(request, "haslo.html", {"user": user, "error": "Obecne hasło jest nieprawidłowe."}, 400)
     if len(form.get("nowe", "")) < 10:
         return render(request, "haslo.html", {"user": user, "error": "Nowe hasło musi mieć co najmniej 10 znaków."}, 400)
     if form.get("nowe") != form.get("powtorz"):
         return render(request, "haslo.html", {"user": user, "error": "Nowe hasła nie są takie same."}, 400)
-    user.password_hash = hash_password(form["nowe"])
+    user.password_hash = await run_in_threadpool(hash_password, form["nowe"])
     db.commit()
     flash(request, "Hasło zmienione.")
     return redirect("/konto")
