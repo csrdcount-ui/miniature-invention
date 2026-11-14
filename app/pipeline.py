@@ -247,7 +247,7 @@ def add_offer(
         set_stage(db, c, user, "oferta")
     follow = sent_date + timedelta(days=OFFER_FOLLOWUP_DAYS)
     if not c.next_step_date or c.next_step_date > follow or c.stage == "oferta":
-        c.next_step, c.next_step_date = "Zadzwoń w sprawie oferty: jak się podoba, czy coś poprawić", follow
+        c.next_step, c.next_step_date = "Zadzwoń i sprawdź, co ze złożoną ofertą", follow
     return o
 
 

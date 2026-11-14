@@ -90,7 +90,7 @@ Terminy w nawiasach to propozycje do potwierdzenia.
 ### 4. Oferta
 - Działa: handlowiec (kalkulator, zapis oferty).
 - Powiadomienia:
-  - handlowiec: „Zadzwoń w sprawie oferty: [klient]” po 3 dniach bez decyzji;
+  - handlowiec: „Zadzwoń i sprawdź, co ze złożoną ofertą: [klient]” po 3 dniach bez decyzji;
   - handlowiec: „Oferta wygasa jutro: [klient]”;
   - handlowiec: „Nowy cennik [spółka]: oferta z poprzedniego ważna do końca dnia”;
   - menedżer: zbiorczo „Oferty zespołu bez odpowiedzi od 5 dni: [n]”.
@@ -172,6 +172,9 @@ Terminy w nawiasach to propozycje do potwierdzenia.
 1. Terminy reakcji BOK: NIP-y (do końca następnego dnia roboczego?), faktury w trakcie spotkań
    (1 godzina?), umowa do przygotowania (ile?).
 2. Eskalacje: do menedżera handlowca, do szefa BOK, czy do obu? Kiedy także do właściciela?
+   **Odpowiedź 14.11.2026:** zgodnie z hierarchią. Najpierw przypomnienie do osoby, która ma sprawę
+   (np. BOK), potem menedżer; dopiero gdy to nie przyniesie skutku, właściciel. Do potwierdzenia w N3:
+   ile czasu między stopniami (propozycja: drugi termin tej samej długości co pierwszy).
 3. Szef BOK: dziś platforma nie odróżnia szefa BOK od pracownika BOK. Czy dodać tę rolę?
 4. Czy menedżer czyta wiadomości między swoim handlowcem a BOK, czy tylko widzi, że były?
 5. Okres przechowywania dziennika (RODO): 2 lata?

@@ -31,6 +31,7 @@ def run(engine: Engine) -> None:
     _schema(engine)
     _split_names(engine)
     _baseline_status_history(engine)
+    _offer_followup_text(engine)
 
 
 def _schema(engine: Engine) -> None:
@@ -69,6 +70,20 @@ def _split_names(engine: Engine) -> None:
             changed = True
         if changed:
             db.commit()
+
+
+OLD_FOLLOWUP = "Zadzwoń w sprawie oferty: jak się podoba, czy coś poprawić"
+NEW_FOLLOWUP = "Zadzwoń i sprawdź, co ze złożoną ofertą"
+
+
+def _offer_followup_text(engine: Engine) -> None:
+    """14.11.2026: nowe brzmienie następnego kroku po ofercie (prośba właścicielki). Podmienia tylko
+    dokładnie stary tekst wpisany przez platformę; tekstów wpisanych ręcznie nie rusza."""
+    if not inspect(engine).has_table("clients"):
+        return
+    with engine.begin() as conn:
+        conn.execute(text("UPDATE clients SET next_step = :new WHERE next_step = :old"),
+                     {"new": NEW_FOLLOWUP, "old": OLD_FOLLOWUP})
 
 
 def _baseline_status_history(engine: Engine) -> None:

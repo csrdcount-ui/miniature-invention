@@ -27,7 +27,7 @@
   {% for c, o, st in d.followups %}
   <li>
     <h3><a href="/klienci/{{ c.id }}#oferta-umowa">{{ c.name }}</a>: zadzwoń w sprawie oferty</h3>
-    <p>Oferta {{ o.supplier.name }} wysłana {{ st.days }} dni temu, bez odpowiedzi. Zadzwoń: jak się podoba, czy wszystko jest zrozumiałe, czy coś poprawić.{% if c.phone %} Telefon: <a href="tel:{{ c.phone }}">{{ c.phone }}</a>.{% endif %}</p>
+    <p>Oferta {{ o.supplier.name }} wysłana {{ st.days }} dni temu, bez odpowiedzi. Zadzwoń i sprawdź, co ze złożoną ofertą.{% if c.phone %} Telefon: <a href="tel:{{ c.phone }}">{{ c.phone }}</a>.{% endif %}</p>
   </li>
   {% endfor %}
   {% for c, o, st in d.expiring %}

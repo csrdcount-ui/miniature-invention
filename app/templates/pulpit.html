@@ -57,7 +57,7 @@
   {% for o in g.lista %}
     <li>
       <h3><a href="{{ o.url }}">{{ o.client_name }}</a> {{ produkt_plakietka(o.pricing_product) }}</h3>
-      {% if o.days >= OFFER_STALE_DAYS %}<p><strong class="uwaga">Czeka {{ o.days }} dni: zadzwoń, jak oferta się podoba, czy coś poprawić.</strong></p>{% endif %}
+      {% if o.days >= OFFER_STALE_DAYS %}<p><strong class="uwaga">Czeka {{ o.days }} dni: zadzwoń i sprawdź, co ze złożoną ofertą.</strong></p>{% endif %}
       <p>Złożona {{ o.date|data }} ({{ o.days }} {{ "dzień" if o.days == 1 else "dni" }} temu), {{ o.supplier_name }}, {{ MEDIA[o.medium]|lower }}</p>
       <p>{{ o.annual_volume_mwh|mwh }} rocznie, {{ o.term_months }} mies., marża {{ o.markup_pln_mwh|zl }}/MWh</p>
       <p>Masa marży po podpisaniu: <strong>{{ o.markup|zl }}</strong></p>

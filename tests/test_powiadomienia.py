@@ -160,3 +160,30 @@ def test_cofniecie_demo_zostawia_wpisy_w_dzienniku(client):
         revert(db, batch)
         n = db.query(Notification).one()
         assert n.recipient_id is None and n.recipient_name == "Demo Osoba"
+
+
+def test_nowe_brzmienie_kroku_po_ofercie_i_podmiana_starego_tekstu(client):
+    """14.11.2026: „Zadzwoń i sprawdź, co ze złożoną ofertą”; stary tekst w bazie podmieniany przy starcie."""
+    from app import migrate
+    from app.db import engine
+    from app.models import Client
+    cid = _nip_flow(client)
+    with SessionLocal() as db:
+        db.get(Client, cid).next_step = migrate.OLD_FOLLOWUP
+        db.commit()
+    migrate.run(engine)
+    with SessionLocal() as db:
+        assert db.get(Client, cid).next_step == "Zadzwoń i sprawdź, co ze złożoną ofertą"
+
+
+def test_karta_handlowca_mowi_kto_jest_menedzerem(client):
+    """14.11.2026: zamiast samego „Zespół: Marek Menedżer” — „w zespole menedżera: …”."""
+    setup_company(client)
+    login(client, "kris@firma.pl")
+    page = client.get("/zespol").text
+    assert "Handlowiec w zespole menedżera: Marek Menedżer" in page and "zespół: Marek" not in page
+    with SessionLocal() as db:
+        from app.models import User
+        hid = db.query(User).filter_by(email="hania@firma.pl").one().id
+    page = client.get(f"/zespol/{hid}").text
+    assert "<dt>W zespole menedżera</dt><dd>Marek Menedżer</dd>" in page

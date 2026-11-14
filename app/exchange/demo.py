@@ -406,7 +406,7 @@ def _pipeline(rows: dict, rng: random.Random, today: date, sellers: list) -> Non
         seller = sellers[k % len(sellers)][0]
         sup = rng.choice(SUPPLIERS)
         sent = today - timedelta(days=sent_days[k % len(sent_days)])
-        ext = client(seller, name, "oferta", "Zadzwoń w sprawie oferty: jak się podoba, czy coś poprawić", sent + timedelta(days=3))
+        ext = client(seller, name, "oferta", "Zadzwoń i sprawdź, co ze złożoną ofertą", sent + timedelta(days=3))
         until = today + timedelta(days=4 if k == 2 else rng.randint(20, 70))
         check(ext, sup[0], "zarezerwowany", until, "Rezerwacja przez portal partnerski.")
         rows["oferty"].append({

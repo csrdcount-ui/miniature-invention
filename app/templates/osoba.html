@@ -7,7 +7,7 @@
 <dl>
   <dt>Rola</dt><dd>{{ p.role_label }}</dd>
   <dt>E-mail</dt><dd>{{ p.email }}</dd>
-  <dt>Zespół</dt><dd>{{ p.manager.name if p.manager else "brak" }}</dd>
+  <dt>W zespole menedżera</dt><dd>{{ p.manager.name if p.manager else "brak, bez menedżera" }}</dd>
   <dt>Konto</dt><dd>{{ "aktywne" if p.active else "nieaktywne" }}</dd>
 </dl>
 

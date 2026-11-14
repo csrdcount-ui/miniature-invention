@@ -28,7 +28,10 @@ Przeczytaj najpierw tę sekcję, potem resztę. Wszystko ważne jest w repozytor
   13.11.2026 11:58 UTC. Samouczek (4d45c53) i powiadomienia N1 są tylko w kodzie na `main`, na serwerze dopiero
   po ręcznym wdrożeniu. Sprawdź `list_events` (serwis srv-dbmc7cetlv9c73duncgg) i poproś o numer z `/wersja`.
 - **Test z ludźmi 13.11.2026** odbył się na wersji BEZ samouczka i bez „Zgłoś uwagę”, więc testerzy nie mogli
-  zapisać uwag w platformie. Uwag z testu jeszcze nie dostałem: poproś, żeby je wkleiła albo podyktowała.
+  zapisać uwag w platformie. Testy z ludźmi trwają do środy 18.11.2026; wtedy właścicielka przyniesie uwagi.
+- **Poprawki 14.11.2026 (po rozmowie):** karta handlowca „w zespole menedżera: [imię]” zamiast „zespół: [imię]”;
+  krok po ofercie „Zadzwoń i sprawdź, co ze złożoną ofertą” (stary tekst w bazie podmienia `migrate._offer_followup_text`);
+  eskalacje zgodnie z hierarchią: osoba odpowiedzialna (np. BOK) → menedżer → dopiero potem właściciel.
 - **Powiadomienia N1 zrobione 14.11.2026** (`app/powiadomienia.py`, stan i założenia w
   `docs/PROJEKT-POWIADOMIENIA.md`, sekcja „Stan wdrożenia”). Dalej N2 (wiadomości w sprawie, prośby z terminem),
   potem N3 (terminy, eskalacje, przypomnienia o ofertach i rezerwacjach, podsumowania menedżera) — N3 wymaga
