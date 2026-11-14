@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from .. import engine as eng
 from .. import cenniki as cn
 from .. import pipeline as pl
+from .. import powiadomienia as pw
 from .. import services as svc
 from ..db import get_db
 from ..models import (
@@ -256,6 +257,8 @@ async def client_request_check(cid: int, request: Request, user: User = Depends(
     suppliers = [s for s in (db.get(Supplier, i) for i in ids) if s and s.active]
     try:
         n = pl.request_checks(db, c, user, suppliers)
+        if n:
+            pw.nip_sent(db, c, user, n)
         db.commit()
     except svc.BusinessError as e:
         return _error(request, db, user, c, e, {})
@@ -402,6 +405,7 @@ async def bok_resolve(kid: int, request: Request, user: User = Depends(_bok_user
         raise HTTPException(status_code=404)
     try:
         pl.resolve_check(db, k, user, form.get("wynik", ""), p_date(form, "do", "Rezerwacja do", required=False), form.get("uwagi", ""))
+        pw.nip_resolved(db, k, user)
         db.commit()
     except (FormError, svc.BusinessError) as e:
         db.rollback()

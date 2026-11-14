@@ -17,11 +17,11 @@ TABS = [
     ("portfel", "Portfel", "/pulpit", ("/pulpit", "/umowy", "/raporty"), False),
     ("spolki", "Spółki", "/spolki", ("/spolki", "/cenniki"), "owner"),
     ("zespol", "Zespół", "/zespol", ("/zespol",), "team"),
-    ("konto", "Konto", "/konto", ("/konto", "/haslo", "/samouczek", "/uwagi"), False),
+    ("konto", "Konto", "/konto", ("/konto", "/haslo", "/samouczek", "/uwagi", "/powiadomienia"), False),
 ]
 
 # podsekcje widoczne tylko dla właściciela
-OWNER_ONLY_SUBTABS = {"/konto/import", "/zespol/nowa", "/konto/listy", "/konto/uwagi"}
+OWNER_ONLY_SUBTABS = {"/konto/dziennik", "/konto/import", "/zespol/nowa", "/konto/listy", "/konto/uwagi"}
 
 SUBTABS = {
     "portfel": [("Podsumowanie", "/pulpit"), ("Umowy", "/umowy"), ("Nowa umowa", "/umowy/nowa"), ("Raporty", "/raporty")],
@@ -29,7 +29,8 @@ SUBTABS = {
     "spolki": [("Lista spółek", "/spolki"), ("Cenniki", "/cenniki"), ("Dodaj spółkę", "/spolki/nowa")],
     "bok": [("Do sprawdzenia", "/bok"), ("Cenniki", "/cenniki")],
     "zespol": [("Lista osób", "/zespol"), ("Dodaj osobę", "/zespol/nowa")],
-    "konto": [("Moje konto", "/konto"), ("Moje dane", "/konto/dane"), ("Zmiana hasła", "/haslo"),
+    "konto": [("Moje konto", "/konto"), ("Powiadomienia", "/powiadomienia"), ("Dziennik firmy", "/konto/dziennik"),
+              ("Moje dane", "/konto/dane"), ("Zmiana hasła", "/haslo"),
               ("Samouczek", "/samouczek"), ("Zgłoś uwagę", "/uwagi"),
               ("Listy wymagań", "/konto/listy"), ("Uwagi testerów", "/konto/uwagi"), ("Import danych", "/konto/import")],
 }

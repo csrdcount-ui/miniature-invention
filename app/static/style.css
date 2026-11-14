@@ -57,6 +57,13 @@ a { color: var(--marka); }
 .belka { border-bottom: 1px solid var(--ramka); padding: .5rem 1rem; }
 .marka-nazwa { margin: 0; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .marka-nazwa .sekcja { font-weight: 400; color: var(--cichy); }
+.belka { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.belka .marka-nazwa { min-width: 0; }
+.powiadomienia-link { flex: none; display: inline-flex; align-items: center; min-height: 44px; padding: 0 .25rem; font-weight: 600; }
+/* nowe powiadomienia: liczba w tekście (czytnik ją czyta), kolor tylko jako dodatek */
+.powiadomienia-link.sa-nowe .licznik { background: var(--blad-tlo); color: var(--blad); border-radius: .5rem; padding: .1rem .4rem; margin-left: .15rem; }
+.powiadomienie-nowe { border-left: 4px solid var(--marka); }
+.powiadomienie-pilne { border-left: 4px solid var(--blad); }
 nav ul { list-style: none; margin: 0; padding: 0; }
 .zakladki { background: var(--tlo); border-bottom: 1px solid var(--ramka); }
 .zakladki ul { display: flex; justify-content: center; gap: .25rem; max-width: 60rem; margin: 0 auto; }

@@ -757,3 +757,45 @@ class Feedback(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     user: Mapped[Optional[User]] = relationship()
+
+
+# --------------------------------------------------------------------------
+# Powiadomienia i dziennik firmy (etap N1, 14.11.2026, docs/PROJEKT-POWIADOMIENIA.md)
+# --------------------------------------------------------------------------
+
+NOTIFICATION_KINDS = {
+    "nip_nowe": "NIP do sprawdzenia",
+    "nip_wynik": "Wynik sprawdzenia NIP",
+    "faktury_nowe": "Faktury do wprowadzenia",
+    "faktury_gotowe": "Dane z faktur",
+    "umowa_podpisana": "Podpisana umowa",
+    "umowa_do_przygotowania": "Umowa do przygotowania",
+    "umowa_status": "Zmiana statusu umowy",
+    "umowa_problem": "Problem z umową",
+}
+
+
+class Notification(Base):
+    """Jedno powiadomienie dla jednej osoby. Tworzy je wyłącznie platforma; nikt go nie edytuje
+    ani nie usuwa (dziennik firmy). Trzy czasy: powstało, adresat zobaczył listę, adresat otworzył.
+
+    Numery osób, klientów i umów są zwykłymi liczbami, bez kluczy obcych, a imiona zapisane w chwili
+    powstania: wpis zostaje w dzienniku także po cofnięciu danych demo albo usunięciu rekordu."""
+
+    __tablename__ = "notifications"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    recipient_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
+    recipient_name: Mapped[str] = mapped_column(String(200), default="")
+    recipient_role: Mapped[str] = mapped_column(String(20), default="")
+    actor_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    actor_name: Mapped[str] = mapped_column(String(200), default="")
+    kind: Mapped[str] = mapped_column(String(30), index=True)
+    text: Mapped[str] = mapped_column(String(500))
+    url: Mapped[str] = mapped_column(String(300), default="")
+    urgent: Mapped[bool] = mapped_column(Boolean, default=False)
+    client_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
+    contract_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    seen_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    read_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)

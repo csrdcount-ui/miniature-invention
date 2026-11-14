@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Dziennik firmy{% endblock %}
+{% block content %}
+<h1>Dziennik firmy: {{ total }} {{ "wpis" if total == 1 else ("wpisy" if (total % 10 in (2, 3, 4) and total % 100 not in (12, 13, 14)) else "wpisów") }}</h1>
+<p>Wszystkie powiadomienia w biurze: kto, co, kiedy dostał, kiedy zobaczył i kiedy otworzył sprawę. Wpisów nie można zmienić ani usunąć.</p>
+<form method="get" action="/konto/dziennik" class="pasek-filtrow">
+  <details class="panel"{% if active %} open{% endif %}>
+    <summary>Filtry{% if active %} (włączone){% endif %}</summary>
+    <p><label for="f-osoba">Adresat</label>
+      <select id="f-osoba" name="osoba">
+        <option value="">Wszyscy</option>
+        {% for pid, pname in people %}<option value="{{ pid }}"{% if f.person == pid %} selected{% endif %}>{{ pname }}</option>{% endfor %}
+      </select></p>
+    <p><label for="f-rodzaj">Rodzaj</label>
+      <select id="f-rodzaj" name="rodzaj">
+        <option value="">Wszystkie</option>
+        {% for k, lab in KINDS.items() %}<option value="{{ k }}"{% if f.kind == k %} selected{% endif %}>{{ lab }}</option>{% endfor %}
+      </select></p>
+    <p><label for="f-od">Od dnia</label> <input id="f-od" type="date" name="od" value="{{ f.day_from.isoformat() if f.day_from else '' }}"></p>
+    <p><label for="f-do">Do dnia</label> <input id="f-do" type="date" name="do" value="{{ f.day_to.isoformat() if f.day_to else '' }}"></p>
+    <p><input id="f-nieprz" type="checkbox" name="nieprzeczytane" value="1"{% if f.unread_only %} checked{% endif %}> <label for="f-nieprz">Tylko nieprzeczytane</label></p>
+    <button type="submit">Pokaż</button>
+  </details>
+  {% if active %}<a class="przycisk-drugi" href="/konto/dziennik">Wyczyść filtry</a>{% endif %}
+</form>
+{% if rows %}
+{% if total > rows|length %}<p>Pokazane najnowsze {{ rows|length }}. Zawęź filtry, żeby zobaczyć starsze.</p>{% endif %}
+<ul class="karty">
+  {% for n in rows %}
+  <li class="{% if n.urgent %}powiadomienie-pilne{% endif %}">
+    <h2 class="h3">{% if n.urgent %}Pilne: {% endif %}{{ n.text }}</h2>
+    <p><strong>Do:</strong> {{ n.recipient_name }}. <strong>Rola:</strong> {{ ROLES.get(n.recipient_role, n.recipient_role) }}{% if n.actor_name %}. <strong>Od:</strong> {{ n.actor_name }}{% endif %}. {{ KINDS.get(n.kind, n.kind) }}.</p>
+    <p><strong>Powstało:</strong> {{ n.created_at|czas }}. <strong>Zobaczone:</strong> {{ n.seen_at|czas if n.seen_at else "jeszcze nie" }}. <strong>Otwarte:</strong> {{ n.read_at|czas if n.read_at else "jeszcze nie" }}.</p>
+    {% if n.url %}<p><a href="{{ n.url }}">Przejdź do sprawy</a></p>{% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>{% if active %}Brak wpisów dla tych filtrów.{% else %}Dziennik jest pusty. Pierwsze wpisy pojawią się, gdy ktoś wyśle NIP do BOK, przekaże faktury albo zapisze umowę.{% endif %}</p>
+{% endif %}
+{% endblock %}

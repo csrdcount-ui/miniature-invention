@@ -6,6 +6,7 @@ from fastapi.responses import HTMLResponse, Response
 from sqlalchemy.orm import Session
 
 from .. import faktury as fk
+from .. import powiadomienia as pw
 from .. import services as svc
 from ..db import get_db
 from ..models import INVOICE_TASK_STATUSES, ROLE_BOK, ROLE_OWNER, InvoicePhoto, InvoiceTask, MeteringPoint, User
@@ -97,7 +98,8 @@ async def task_request(cid: int, request: Request, user: User = Depends(current_
         if getattr(f, "filename", ""):
             files.append(await f.read(fk.MAX_UPLOAD_BYTES + 1))
     try:
-        fk.request_task(db, c, user, files, form.get("uwagi", "") if isinstance(form.get("uwagi", ""), str) else "")
+        t = fk.request_task(db, c, user, files, form.get("uwagi", "") if isinstance(form.get("uwagi", ""), str) else "")
+        pw.invoices_sent(db, t, user)
         db.commit()
     except svc.BusinessError as e:
         return _error(request, db, user, c, e, {})
@@ -175,6 +177,7 @@ async def task_close(tid: int, request: Request, user: User = Depends(_bok_user)
     form = await form_data(request)
     try:
         fk.finish_task(db, t, user, form.get("uwagi", ""), cancel=form.get("wynik") == "anuluj")
+        pw.invoices_done(db, t, user)
         db.commit()
     except svc.BusinessError as e:
         db.rollback()

@@ -30,6 +30,7 @@ from ..models import (
     PriceTemplate,
     Client,
     ClientEvent,
+    Notification,
     ClientOffer,
     NipCheck,
     Contract,
@@ -607,6 +608,8 @@ def revert(db: Session, batch: ImportBatch) -> dict:
         db.execute(update(NipCheck).where(NipCheck.checked_by_id.in_(user_ids)).values(checked_by_id=None))
         db.execute(update(ClientOffer).where(ClientOffer.created_by_id.in_(user_ids)).values(created_by_id=None))
         db.execute(update(ClientEvent).where(ClientEvent.user_id.in_(user_ids)).values(user_id=None))
+        db.execute(update(Notification).where(Notification.recipient_id.in_(user_ids)).values(recipient_id=None))
+        db.execute(update(Notification).where(Notification.actor_id.in_(user_ids)).values(actor_id=None))
         db.execute(update(Checklist).where(Checklist.updated_by_id.in_(user_ids)).values(updated_by_id=None))
         db.execute(update(PriceList).where(PriceList.created_by_id.in_(user_ids)).values(created_by_id=None))
         db.execute(update(PriceList).where(PriceList.approved_by_id.in_(user_ids)).values(approved_by_id=None))

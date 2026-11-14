@@ -69,6 +69,9 @@ def current_user(request: Request, db: Session = Depends(get_db)) -> User:
     from ..samouczek import invite_visible
 
     request.state.tutorial_invite = invite_visible(db, user) and not request.url.path.startswith(("/samouczek", "/haslo"))
+    from ..powiadomienia import unseen_count
+
+    request.state.unseen_notifications = unseen_count(db, user)
     if request.url.path not in COMPLETION_ALLOWED and needs_completion(user, company):
         raise ProfileIncomplete()
     return user

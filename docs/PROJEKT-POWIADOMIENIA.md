@@ -11,6 +11,35 @@ terminów reakcji i eskalacji do menedżera, dziennika powiadomień dla właści
 Wersja do testów: platforma bez powiadomień, wdrożona 13.11.2026 (commit ab45772). Ten dokument
 uzupełniamy po uwagach testerów (sekcja na końcu).
 
+## Stan wdrożenia (14.11.2026)
+
+**N1 jest w kodzie na main** (powiadomienia i dziennik firmy). Właścicielka zgodziła się 14.11.2026 ruszyć
+z budową; N1 nie wymagał odpowiedzi na pytania, przyjęte założenia są niżej i łatwo je zmienić.
+
+Co działa:
+- tabela `notifications` (nowa, bez zmian w starych), logika `app/powiadomienia.py`, strony
+  `app/routes/powiadomienia.py`: `/powiadomienia`, `/powiadomienia/{id}` (otwiera sprawę i zapisuje odczyt),
+  „Oznacz wszystkie jako przeczytane”, `/konto/dziennik` (tylko właściciel, filtry w adresie);
+- znacznik w belce jako tekst: „Powiadomienia, 3 nowe”; jedno zapytanie po indeksie przy każdej stronie;
+- zdarzenia: NIP do BOK (wszyscy z BOK), wynik NIP (opiekun klienta i zlecający), faktury do BOK (wszyscy z BOK),
+  faktury gotowe albo odrzucone (opiekun i zlecający), zapisana umowa (menedżer handlowca, handlowiec gdy zapisał
+  ktoś inny, wszyscy z BOK: „umowa do przygotowania”), zmiana statusu umowy (handlowiec i menedżer z umowy),
+  zerwanie: pilne, także właściciel;
+- autor zdarzenia nie dostaje powiadomienia o własnym ruchu; treść bez kwot, udziałów i prowizji (test);
+- dziennik nieusuwalny: brak tras do edycji i usuwania; numery osób, klientów i umów bez kluczy obcych, imiona
+  zapisane w chwili powstania; cofnięcie demo odpina wpisy od usuwanych osób, ale ich nie kasuje;
+- import z Excela i dane demo NIE tworzą powiadomień (tylko działania ludzi w platformie);
+- czasy pokazywane w czasie polskim, zapisywane w UTC.
+
+Przyjęte założenia (do zmiany po odpowiedziach na pytania):
+- pytanie 3: szefa BOK nie ma, więc powiadomienia dla BOK dostaje każda osoba z BOK;
+- pytanie 5: okres przechowywania nieustalony, na razie nic nie jest usuwane;
+- pytanie 6: w N1 wszystko przychodzi od razu; zbiorcze podsumowania menedżera dopiero w N3.
+
+Nie zrobione z N1: „Faktury do zarchiwizowania” jako powiadomienie (BOK ma tę kolejkę na ekranie Zlecenia),
+przypomnienia zależne od czasu (oferta: telefon po 3 dniach, wygasa jutro; rezerwacja wygasa) — te wymagają
+zegara i przechodzą do N3 razem z eskalacjami. Kroku samouczka o powiadomieniach jeszcze nie ma.
+
 ## Zasady
 
 1. **Trzy kanały, każdy do czegoś innego:**

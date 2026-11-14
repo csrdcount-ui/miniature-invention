@@ -11,6 +11,8 @@
   {% if user %}
   <header class="belka">
     <p class="marka-nazwa">{{ brand }}{% if nav.section %}<span class="sekcja">: {{ nav.section }}</span>{% endif %}</p>
+    {% set n = unseen_notifications %}
+    <a class="powiadomienia-link{% if n %} sa-nowe{% endif %}" href="/powiadomienia"{% if request.url.path == "/powiadomienia" %} aria-current="page"{% endif %}>Powiadomienia{% if n %}<span class="licznik">, {{ n }} {{ "nowe" if (n % 10 in (2, 3, 4) and n % 100 not in (12, 13, 14)) or n == 1 else "nowych" }}</span>{% endif %}</a>
   </header>
   <nav class="zakladki" aria-label="Menu główne">
     <ul>

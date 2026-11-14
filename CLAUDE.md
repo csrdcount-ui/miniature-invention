@@ -13,25 +13,32 @@ prowizje, umowy, zespół, a docelowo lejek sprzedaży, rezerwacje NIP i BOK.
 - Wiadomości bywają dyktowane: nazwy własne mogą być przekręcone. Dopytaj zamiast
   powtarzać niepewną nazwę jako fakt.
 
-## Przekazanie do następnej rozmowy (stan na 13.11.2026, wieczór)
+## Przekazanie do następnej rozmowy (stan na 14.11.2026)
 
 Przeczytaj najpierw tę sekcję, potem resztę. Wszystko ważne jest w repozytorium i tym pliku.
 
 - **Język: zawsze po polsku**, także podsumowania i dokumenty. Raz wpadłem w angielski i właścicielka
   to zgłosiła. Odpowiedzi: nagłówki i listy, bez szerokich tabel, na końcu dwa linki (Render, aplikacja).
-- **Gałąź robocza** `ccr-1640eeef-vrnotz` i `main` wypychamy razem (`git push origin HEAD:ccr-1640eeef-vrnotz HEAD:main`),
-  po przejściu `python -m pytest -q` (158 testów, ok. 105 s). Wdrażanie robi właścicielka ręcznie w Renderze.
-- **Co działa na serwerze** (potwierdzone w historii Rendera): wersja ab45772 (marszruta klienta, faktury,
-  powiadomienia jeszcze nie). **Samouczek (commit 4d45c53) jest tylko w kodzie na `main`** — na serwerze dopiero
-  po jej ręcznym wdrożeniu. Sprawdź `list_events` (serwis srv-dbmc7cetlv9c73duncgg) i poproś o numer z `/wersja`.
-- **Dziś wieczorem pierwszy test z ludźmi:** właściciel, menedżer, dwóch handlowców. Właściciel gra BOK
-  (nikt z BOK nie testuje). Po teście wracamy z ich uwagami (lista w Konto → „Uwagi testerów”).
+- **Gałęzie:** każda rozmowa dostaje od systemu własną gałąź roboczą (np. `ccr-ec9f3790-32rqzd` 14.11.2026).
+  Wypychamy ją razem z `main` (`git push origin HEAD:<gałąź-sesji> HEAD:main`), po przejściu `python -m pytest -q`
+  (164 testy, ok. 2 min). Na `main` sesja potrzebuje zgody właścicielki w tej rozmowie: zapytaj krótko, bez
+  technicznych szczegółów; 14.11.2026 wyjaśniono jej gałęzie i zgodziła się („Możesz wypychać na main”).
+  Wdrażanie robi właścicielka ręcznie w Renderze.
+- **Co działa na serwerze** (potwierdzone w historii Rendera 14.11.2026): wersja ab45772, ostatnie wdrożenie
+  13.11.2026 11:58 UTC. Samouczek (4d45c53) i powiadomienia N1 są tylko w kodzie na `main`, na serwerze dopiero
+  po ręcznym wdrożeniu. Sprawdź `list_events` (serwis srv-dbmc7cetlv9c73duncgg) i poproś o numer z `/wersja`.
+- **Test z ludźmi 13.11.2026** odbył się na wersji BEZ samouczka i bez „Zgłoś uwagę”, więc testerzy nie mogli
+  zapisać uwag w platformie. Uwag z testu jeszcze nie dostałem: poproś, żeby je wkleiła albo podyktowała.
+- **Powiadomienia N1 zrobione 14.11.2026** (`app/powiadomienia.py`, stan i założenia w
+  `docs/PROJEKT-POWIADOMIENIA.md`, sekcja „Stan wdrożenia”). Dalej N2 (wiadomości w sprawie, prośby z terminem),
+  potem N3 (terminy, eskalacje, przypomnienia o ofertach i rezerwacjach, podsumowania menedżera) — N3 wymaga
+  odpowiedzi na pytania 1, 2 i 6.
 - **Co jest zrobione w tej serii:** cenniki z demo na 2–5 lat, zasada dwóch cenników, udział w masie marży biura
   (tylko właściciel i menedżer), poprawki dostępności i telefonu (+ ostrzeżenie „Wersja na komputer”), marszruta
   klienta (4 ekrany), punkty poboru i dane z faktur, wolumen roczny, zdjęcia faktur z kolejką BOK i archiwizacją
   po potwierdzeniu, test obciążenia i poprawki, samouczek per rola z uwagami testerów.
-- **Następne, w kolejności:** (1) zebrać uwagi po teście i je poprawić; (2) powiadomienia N1–N4
-  (`docs/PROJEKT-POWIADOMIENIA.md`, czekają odpowiedzi na 6 pytań); (3) wynik rozmowy jednym stuknięciem,
+- **Następne, w kolejności:** (1) zebrać uwagi po teście i je poprawić; (2) powiadomienia N2–N4
+  (`docs/PROJEKT-POWIADOMIENIA.md`, N1 zrobione); (3) wynik rozmowy jednym stuknięciem,
   spotkanie z godziną i adresem, kalendarz ICS (`docs/PROJEKT-PROCES-TEREN.md`); (4) Excel dla BOK
   (`docs/PROJEKT-EXCEL-BOK.md`); (5) skrót „Start” na telefon (`docs/PROJEKT-WIDOK-TELEFON.md`);
   (6) podpowiedzi „Jak to działa?” przy trudnych ekranach i treści rozmów (osobna rozmowa).
@@ -198,7 +205,7 @@ Następne (w tej kolejności, po odpowiedziach na pytania niżej):
 - `docs/PROJEKT-MARSZRUTA-KLIENTA.md` — karta klienta jako marszruta (ekrany etapów, pasek
   etapów zamiast samego przesuwania, bo czytnik używa przesunięć) i zdjęcia faktur z kolejką
   BOK, AI opcjonalnie (13.11.2026, do akceptacji; 5 pytań).
-- `docs/PROJEKT-POWIADOMIENIA.md` — mapa komunikacji handlowiec, BOK, menedżer (i właściciel)
+- `docs/PROJEKT-POWIADOMIENIA.md` — (N1 w kodzie 14.11.2026) mapa komunikacji handlowiec, BOK, menedżer (i właściciel)
   po krokach procesu, powiadomienia, wiadomości w sprawie, prośby z terminem, eskalacje,
   dziennik firmy; etapy N1–N4 (13.11.2026, do akceptacji; 6 pytań).
 - `docs/PROJEKT-SAMOUCZEK.md` — samouczek per rola: zasady, kroki, uwagi testerów (13.11.2026).
@@ -498,3 +505,14 @@ okienek), „Zgłoś uwagę do tej strony” w stopce każdej strony, lista uwag
 `app/routes/samouczek.py`. Test `tests/test_samouczek.py` przechodzi proces handlowca dokładnie
 tak, jak opisano w krokach, więc zmiana ekranu bez zmiany samouczka wywali test.
 Zmiana ekranu = popraw też krok w `app/samouczek.py`.
+
+## Powiadomienia N1 (14.11.2026)
+
+`Notification` w `app/models.py` (bez kluczy obcych: dziennik ma przetrwać cofnięcie demo), logika i reguły
+„kto dostaje co” w `app/powiadomienia.py`, wołane z warstwy stron po udanej akcji (`klienci.py`, `faktury.py`,
+`portfel.py`), nigdy z importu. Zmiana statusu umowy w `portfel.py` używa teraz `apply_status_change` + commit
+(wcześniej `change_status`), żeby powiadomienie i zmiana szły w jednym zapisie. Znacznik liczy
+`unseen_count` w `current_user` (`request.state.unseen_notifications`). Filtr szablonów `czas`: UTC → czas polski.
+Testy: `tests/test_powiadomienia.py` (adresaci, brak powiadomień o własnym ruchu, poufność treści, dziennik
+tylko dla właściciela, brak tras usuwania, cofnięcie demo). Sprawdzone na PostgreSQL 16 bazą z poprzedniej wersji.
+

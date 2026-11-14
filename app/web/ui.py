@@ -91,7 +91,25 @@ def fmt_date(value) -> str:
     return value.strftime("%d.%m.%Y")
 
 
-templates.env.filters.update(zip=lambda a, b: list(zip(a, b)), zl=fmt_zl, pct=fmt_pct, mwh=fmt_mwh, data=fmt_date, num=fmt_num,
+try:
+    from zoneinfo import ZoneInfo
+
+    _PL = ZoneInfo("Europe/Warsaw")
+except Exception:  # brak bazy stref czasowych na serwerze: pokazujemy czas UTC z dopiskiem
+    _PL = None
+
+
+def fmt_time(value) -> str:
+    """Czas zapisany w UTC pokazany po polsku, w czasie polskim: „14.11.2026, 09:05”."""
+    if not value:
+        return "—"
+    if _PL is None:
+        return value.strftime("%d.%m.%Y, %H:%M") + " UTC"
+    from datetime import timezone
+    return value.replace(tzinfo=timezone.utc).astimezone(_PL).strftime("%d.%m.%Y, %H:%M")
+
+
+templates.env.filters.update(zip=lambda a, b: list(zip(a, b)), zl=fmt_zl, pct=fmt_pct, mwh=fmt_mwh, data=fmt_date, czas=fmt_time, num=fmt_num,
                             umowy=plural_umowy, oferty=plural_oferty,
                             zdanie=lambda t: (str(t)[:1].upper() + str(t)[1:]) if t else t)
 templates.env.globals.update(
@@ -160,6 +178,7 @@ def render(request: Request, name: str, ctx: Optional[dict] = None, status_code:
     )
     ctx["brand"] = getattr(request.state, "company_name", None) or "Platforma brokerska"
     ctx["demo_active"] = bool(getattr(request.state, "demo_active", False)) and ctx["user"] is not None
+    ctx["unseen_notifications"] = int(getattr(request.state, "unseen_notifications", 0) or 0) if ctx["user"] else 0
     ctx["tutorial_invite"] = bool(getattr(request.state, "tutorial_invite", False)) and ctx["user"] is not None
     return templates.TemplateResponse(request, name, ctx, status_code=status_code)
 

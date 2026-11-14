@@ -8,6 +8,15 @@ Role w aplikacji dziś: **Właściciel**, **Menedżer**, **Handlowiec**, **BOK**
 Zaloguj się do każdej przez dane demonstracyjne (zakładka Konto → Import danych →
 „Sprawdź dane demonstracyjne” → zatwierdź → hasła pokażą się raz na ekranie wyniku).
 
+## Nowość 14.11.2026: powiadomienia, etap N1 (do sprawdzenia po wdrożeniu)
+
+- Każdy: w belce u góry link „Powiadomienia”, z liczbą nowych („Powiadomienia, 2 nowe”). Lista w Konto → Powiadomienia.
+- Handlowiec: wynik sprawdzenia NIP, dane z faktur gotowe albo prośba o nowe zdjęcia, każda zmiana statusu jego umowy.
+- Menedżer: podpisana umowa w zespole, zmiany statusów umów zespołu.
+- BOK: nowe NIP-y do sprawdzenia, nowe faktury do wprowadzenia, umowa do przygotowania.
+- Właściciel: zerwanie umowy (pilne); wszystko inne w Konto → Dziennik firmy (filtry: adresat, rodzaj, daty, nieprzeczytane).
+- Nie ma jeszcze: wiadomości w sprawie, próśb z terminem, eskalacji, przypomnień o ofertach i rezerwacjach, e-maili (etapy N2–N4).
+
 ## Nowość 9.11.2026 (wieczór) — dla wszystkich ról
 
 - Lista umów: przyciski „Filtry” i „Sortowanie” zwinięte, licznik „Pasuje: N umów” zmienia

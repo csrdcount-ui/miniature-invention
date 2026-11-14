@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from .. import engine as eng
 from .. import pipeline as pl
+from .. import powiadomienia as pw
 from .. import services as svc
 from ..db import get_db
 from ..models import (
@@ -237,7 +238,9 @@ async def contract_create(request: Request, user: User = Depends(current_user), 
     client, offer = _offer_from_query(db, user, form.get("klient_id", ""), form.get("oferta_id", ""))
     if client:
         pl.win_with_contract(db, client, user, c, offer)
-        db.commit()
+    if c.status not in ("Lead", "Kontakt", "Oferta"):
+        pw.contract_signed(db, c, user)
+    db.commit()
     flash(request, f"Zapisano umowę z klientem {c.client_name}." + (" Klient przeszedł na etap „Umowa podpisana”." if client else ""))
     return redirect(f"/umowy/{c.id}")
 
@@ -276,7 +279,10 @@ async def contract_status(cid: int, request: Request, user: User = Depends(curre
     form = await form_data(request)
     try:
         when = p_date(form, "data", "Data zdarzenia", required=False) or date.today()
-        svc.change_status(db, actor=user, c=c, new_status=form.get("status", ""), effective_date=when, note=form.get("notatka", ""), perms=bok_perms(db))
+        old = c.status
+        ev = svc.apply_status_change(db, actor=user, c=c, new_status=form.get("status", ""), effective_date=when, note=form.get("notatka", ""), perms=bok_perms(db))
+        pw.contract_status_changed(db, c, user, old, c.status, ev.note)
+        db.commit()
     except (FormError, svc.BusinessError) as e:
         db.rollback()
         return render(request, "umowa.html", _contract_ctx(user, c, form, str(e), perms=bok_perms(db), show_b=svc.tranche_b_visible(user, company_of(db))), 400)

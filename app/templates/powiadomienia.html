@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Powiadomienia{% endblock %}
+{% block content %}
+<h1>Powiadomienia</h1>
+{% if rows %}
+<p>Nowych od ostatniej wizyty: {{ new_ids|length }}. Nieprzeczytanych: {{ unread }}. Najnowsze na górze{% if rows|length >= limit %}, pokazane ostatnie {{ limit }}{% endif %}.</p>
+{% if unread %}
+<form method="post" action="/powiadomienia/przeczytane">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <button type="submit" class="drugi">Oznacz wszystkie jako przeczytane</button>
+</form>
+{% endif %}
+<ul class="karty">
+  {% for n in rows %}
+  <li class="{% if n.urgent %}powiadomienie-pilne{% elif n.id in new_ids %}powiadomienie-nowe{% endif %}">
+    {% set state = "Nowe" if n.id in new_ids else ("Nieprzeczytane" if not n.read_at else "") %}
+    {% set label = (state ~ (", pilne" if n.urgent else "")) if state else ("Pilne" if n.urgent else "") %}
+    <h2 class="h3"><a href="/powiadomienia/{{ n.id }}">{% if label %}{{ label }}: {% endif %}{{ n.text }}</a></h2>
+    <p>{{ KINDS.get(n.kind, n.kind) }}, {{ n.created_at|czas }}{% if n.actor_name %}, od: {{ n.actor_name }}{% endif %}.</p>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>Nie masz jeszcze powiadomień. Pojawią się tu, gdy ktoś odpowie na Twoją sprawę albo coś będzie na Ciebie czekać.</p>
+{% endif %}
+<details class="panel">
+  <summary>Kiedy przychodzą powiadomienia</summary>
+  <ul>
+    <li>Handlowiec: wynik sprawdzenia NIP, dane z faktur gotowe albo prośba o nowe zdjęcia, zmiana statusu jego umowy.</li>
+    <li>Menedżer: podpisana umowa w zespole i zmiany statusów umów zespołu.</li>
+    <li>BOK: nowe NIP-y do sprawdzenia, nowe faktury do wprowadzenia, umowa do przygotowania.</li>
+    <li>Właściciel: zerwanie umowy (pilne). Wszystkie pozostałe są w dzienniku firmy.</li>
+  </ul>
+  <p>Nie dostajesz powiadomień o własnych działaniach. Powiadomień nie da się usunąć: zostają w dzienniku firmy.</p>
+</details>
+{% endblock %}
